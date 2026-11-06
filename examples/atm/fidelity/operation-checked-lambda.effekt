@@ -1,0 +1,6 @@
+def main(): Int = {
+  try { h.use(fun (x: Int): Int { x }) } with h: Int {
+    def use(f: ((Int) => Int)): Int / (Int => Int) = { val n = f(42); resume(n) }
+    return x => { x }
+  }
+}

@@ -147,6 +147,12 @@ enum Stmt extends Tree  {
 
   case Try(body: Block, handler: List[Implementation])
 
+  // ATM: the normal-return continuation runs outside the handled region.
+  // Its answer may differ from the handler's final result. Unlike Try, neither
+  // equality is inferred from body.returnType. The ATM frontend checks the full
+  // computation/region annotations before this runtime representation is built.
+  case Handle(body: Block.BlockLit, handler: List[Implementation], onReturn: Block.BlockLit, result: ValueType)
+
   // after evidence monomorphization -- does not pass evidence to body
   case Reset(body: Stmt)
 
@@ -256,6 +262,7 @@ def freeVariables(stmt: Stmt): FreeVariables = stmt match {
   case Get(id, ev, tpe) => FreeVariables(BlockParam(id, lifted.Type.TState(tpe))) ++ freeVariables(ev)
   case Put(id, ev, value) => FreeVariables(BlockParam(id, lifted.Type.TState(value.tpe))) ++ freeVariables(ev) ++ freeVariables(value)
   case Try(body, handlers) => freeVariables(body) ++ handlers.map(freeVariables).combineFV
+  case Handle(body, handlers, onReturn, _) => freeVariables(body) ++ handlers.map(freeVariables).combineFV ++ freeVariables(onReturn)
   case Reset(body) => freeVariables(body)
   case Shift(ev, body) => freeVariables(ev) ++ freeVariables(body)
   case Region(body) => freeVariables(body)

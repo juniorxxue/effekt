@@ -1,0 +1,13 @@
+// Supplemental p33: defer two calls, infer their minimum region, and reroute
+// each call through a shared region/distance/evidence parameter.
+def main(): Int = {
+  def outer(u: Unit): Unit = { () }
+  try {
+    def inner(u: Unit): Unit = { () }
+    def both(u: Unit) = { outer(); inner() }
+    both(); 42
+  } with h: Int {
+    def unused(u: Unit): Unit / (Int => Int) = { resume() }
+    return x => { x }
+  }
+}

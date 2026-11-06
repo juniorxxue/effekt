@@ -1,5 +1,35 @@
 # Ξ Effekt
 
+## ATM research frontend in this checkout
+
+This working tree contains a separate ATM frontend using `.effekt` files, based on
+**Effekt v0.3.0**
+(`cd18ad896b9f1c856a9d6002fd0a5733e5cb9a15`). It implements a subset of the paper's
+region/evidence algorithm, with explicit fixed-region functions and effectful
+handler-return forms. Its default backend is the adapted historical Lifted IR
+and Chez. Select the ATM frontend through `effekt.atm.Main`.
+
+Run from this checkout with its pinned Kiama submodule, Java/sbt, Z3 and Chez
+available. The differential test suite also requires Node:
+
+```sh
+sbt 'effektJVM/runMain effekt.atm.Main --run examples/atm/int-to-bool.effekt'
+sbt 'effektJVM/testOnly effekt.Atm*Tests'
+```
+
+The first command prints `false`. These commands use the local implementation;
+the upstream npm package below does not contain this ATM work. The frontend
+checks and elaborates source to a typed region/evidence core, then lowers it
+to the ATM-adapted Lifted backend. `--elaborate` displays that typed core.
+
+The inference regressions in `examples/atm/infer` cover nested handlers,
+residual obligations, and symbolic-distance cases where ATC inference is
+unsupported. Tests distinguish those limitations from type errors and failed
+refinement contracts. Clean-checkout release packaging and CI validation
+remain unfinished.
+
+## Upstream Effekt overview
+
 Compared to other languages with effect handlers (and support for polymorphic effects) the Effekt language
 aims to be significantly more lightweight in its concepts.
 
@@ -11,7 +41,11 @@ aims to be significantly more lightweight in its concepts.
 Also, Effekt comes with no warranty and there are (probably) many bugs -- If this does not discourage you, feel free to
 play with it and give us your feedback :)
 
-## Installation
+## Upstream installation
+
+The following is the historical upstream installation guide. It installs an
+upstream release, not this v0.3.0-based research working tree. Use the local
+commands above for ATM.
 
 You need to have Java (>= 11) and Node (>= 12) and npm installed.
 

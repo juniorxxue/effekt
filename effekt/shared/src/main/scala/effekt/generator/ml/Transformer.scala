@@ -282,6 +282,7 @@ object Transformer {
 
     // TODO maybe don't drop the continuation here? Although, it is dead code.
     case lifted.Hole() => CPS.inline { k => ml.RawExpr("raise Hole") }
+    case _: lifted.Stmt.Handle => C.abort("ATM handlers require the evidence-preserving Chez-Lift backend")
 
     case lifted.Scope(definitions, body) => CPS.reflected { k =>
       // TODO couldn't it be that the definitions require the continuation?

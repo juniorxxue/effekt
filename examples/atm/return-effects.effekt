@@ -1,0 +1,23 @@
+// The inner return clause invokes the outer capability outside the inner prompt.
+def main(): Bool = {
+  try {
+    try {
+      ()
+    } with inner: Int / (Int => Bool) {
+      def tick(arg: Unit): Unit / (Int / (Int => Bool) => Int / (Int => Bool)) = {
+        resume()
+      }
+      return effect x => {
+        outer.ask()
+      }
+    }
+  } with outer: Bool {
+    def ask(arg: Unit): Int / (Int => Bool) = {
+      val n = resume(42);
+      zero(n)
+    }
+    return x => {
+      x
+    }
+  }
+}

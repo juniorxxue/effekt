@@ -1,0 +1,34 @@
+// All three handlers are invoked: evidence/ATC depths 0, 1, and 2.
+// The inner clauses add 10 and 100; main evaluates to true.
+def main(): Bool = {
+  try {
+    try {
+      try {
+        innermost.tick();
+        inner.tick();
+        outer.ask()
+      } with innermost: Int / (Int => Int / (Int => Bool)) {
+        def tick(u: Unit): Unit /
+          (Int / (Int => Int / (Int => Bool)) =>
+           Int / (Int => Int / (Int => Bool))) = {
+          val n = resume();
+          n + 10
+        }
+        return x => { x }
+      }
+    } with inner: Int / (Int => Bool) {
+      def tick(u: Unit): Unit /
+        (Int / (Int => Bool) => Int / (Int => Bool)) = {
+        val n = resume();
+        n + 100
+      }
+      return x => { x }
+    }
+  } with outer: Bool {
+    def ask(u: Unit): Int / (Int => Bool) = {
+      val n = resume(42);
+      n == 152
+    }
+    return x => { x }
+  }
+}

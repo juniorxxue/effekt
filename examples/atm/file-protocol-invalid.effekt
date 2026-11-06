@@ -1,0 +1,19 @@
+// Rejected by the ATM checker: reading after closing cannot compose.
+def main(): Open = {
+  try {
+    val done = file.close();
+    val byte = file.read();
+    byte
+  } with file: Open {
+    def read(arg: Unit): Int / (Open => Open) = {
+      resume(7)
+    }
+    def close(arg: Unit): Unit / (Closed => Open) = {
+      val done = resume();
+      token(Open)
+    }
+    return x => {
+      token(Closed)
+    }
+  }
+}

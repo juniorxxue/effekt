@@ -1,0 +1,22 @@
+// The helper is polymorphic in explicit initial/final answer value types.
+// This replaces opaque E by (Initial => Final); see REJECTED-EXAMPLES.md.
+def main(): Bool = {
+  val apply = capfun (c: { def ask(): Int / (Int => Bool); }) {
+    typefun [Initial] { typefun [Final] {
+      fun local[c] (f: (local[c] (Unit) => Int / (Initial => Final))):
+          Int / (Initial => Final) { f() }
+    } }
+  };
+  try {
+    val localApply = apply{cap(h)};
+    val p = localApply[type Bool][type Bool](fun local (u: Unit): Int { 0 });
+    val n = localApply[type Int][type Bool](fun local (u: Unit): Int / (Int => Bool) { h.ask() });
+    p + n
+  } with h: Bool {
+    def ask(x: Unit): Int / (Int => Bool) = {
+      val n = resume(42);
+      zero(n)
+    }
+    return x => { x }
+  }
+}

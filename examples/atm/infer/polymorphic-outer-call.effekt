@@ -1,0 +1,28 @@
+// Expected limitation: evidence reconstruction emits a residual witness from
+// callback's abstract caller region to outer. Its distance is symbolic, so the
+// paper's partial ATC inference is undefined. Do not replace that distance by 0.
+//
+// TODO: A successfully typechecked program with ATC annotations
+//
+def main(): Bool = {
+  try {
+    def callback(u: Unit): Int / (Int => Bool) = {
+      outer.ask()
+    }
+    try {
+      callback()
+    } with inner: Int / (Int => Bool) {
+      def unused(u: Unit): Unit /
+        (Int / (Int => Bool) => Int / (Int => Bool)) = {
+        resume()
+      }
+      return x => { x }
+    }
+  } with outer: Bool {
+    def ask(u: Unit): Int / (Int => Bool) = {
+      val n = resume(42);
+      n == 42
+    }
+    return x => { x }
+  }
+}

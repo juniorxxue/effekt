@@ -1,0 +1,8 @@
+def main(): Int = {
+  def apply(f: ((Int) => Int)): Int = {
+    f(41)
+  }
+  apply(fun (x: Int): Int {
+    (x + 1)
+  })
+}

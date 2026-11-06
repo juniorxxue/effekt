@@ -169,6 +169,17 @@ object TransformerLift {
           chez.Call(CPS.reset(chez.Call(toChez(body), CPS.lift :: handlers.map(h => Variable(h.name)))), List(k.reify)))
       }
 
+    case Handle(body, handler, onReturn, _) =>
+      val handlers = handler.map { h => Binding(freshName(RecordNames(h.interface.name).name), toChez(h)) }
+      // A normal return leaves the delimiter before entering onReturn. The
+      // captured continuation includes this callback, so every resumption also
+      // applies the return clause. Aborting clauses bypass it entirely.
+      CPS.inline { k =>
+        chez.Let(handlers,
+          chez.Call(chez.Call(chez.Call(toChez(body), CPS.lift :: handlers.map(h => Variable(h.name))),
+            List(toChez(onReturn))), List(k.reify)))
+      }
+
     // TODO continue
     // [[ reset { body } ]] = k => [[ body ]] (pure) k
     case Reset(body) => CPS.join { k => chez.Expr.Call(toChezExpr(body).apply(CPS.pure), List(k.reify)) }

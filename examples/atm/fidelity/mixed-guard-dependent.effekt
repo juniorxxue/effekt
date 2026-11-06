@@ -1,0 +1,10 @@
+def main(): Int = {
+  def f(b: Bool): Int = {
+    try { if (b) { h.left() } else { h.right() } } with h: Int {
+      def left(u: Unit): Int / ({v: Int | v == 0} => Int) = { 1 }
+      def right(u: Unit): Int / ((x: {z: Int | z == 0}) / ({v: Int | v == x} => {v: Int | v == 0}) => Int) = { 1 }
+      return x => { 0 }
+    }
+  }
+  f(true)
+}

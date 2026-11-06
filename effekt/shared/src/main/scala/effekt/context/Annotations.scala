@@ -72,10 +72,10 @@ object Annotations {
 
   sealed trait Key[T] { def key: T }
 
-  private class HashKey[T](val key: T) extends Key[T] {
+  private[effekt] class HashKey[T](val key: T) extends Key[T] {
     override val hashCode = System.identityHashCode(key)
     override def equals(o: Any) = o match {
-      case k: HashKey[_] => hashCode == k.hashCode
+      case k: HashKey[_] => key.asInstanceOf[AnyRef] eq k.key.asInstanceOf[AnyRef]
       case _         => false
     }
   }
@@ -83,7 +83,7 @@ object Annotations {
   private class IdKey[T](val key: T) extends Key[T] {
     override val hashCode = key.hashCode()
     override def equals(o: Any) = o match {
-      case k: Key[_] => key == k.key
+      case k: IdKey[_] => key == k.key
       case _         => false
     }
   }

@@ -138,6 +138,7 @@ object Type {
     case Stmt.Get(ev, id, tpe) => tpe
     case Stmt.Put(ev, id, value) => TUnit
     case Stmt.Try(body, handler) => body.returnType
+    case Stmt.Handle(_, _, _, result) => result
     case Stmt.Reset(body) => body.tpe
     case Stmt.Region(body) => body.returnType
 

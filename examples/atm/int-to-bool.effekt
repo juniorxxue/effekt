@@ -1,0 +1,14 @@
+// The continuation returns Int; the operation clause returns Bool.
+def main(): Bool = {
+  try {
+    h.ask()
+  } with h: Bool {
+    def ask(arg: Unit): Int / (Int => Bool) = {
+      val n = resume(42);
+      zero(n)
+    }
+    return x => {
+      x
+    }
+  }
+}

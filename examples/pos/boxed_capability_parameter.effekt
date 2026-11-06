@@ -1,0 +1,15 @@
+interface Ask {
+  def ask(): Int
+}
+
+def main() = {
+  val make = box { () {cap: Ask} => box { () => cap.ask() } }
+  try {
+    val thunk = make(){handler}
+    println(thunk())
+  } with handler: Ask {
+    def ask() = resume(42)
+  }
+  val invoke = box { () {f: () => Int} => f() }
+  println(invoke(){ () => 42 })
+}

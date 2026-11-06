@@ -1,0 +1,16 @@
+def main(): Bool = {
+  try {
+    try {
+      try { outer.ask() } with innermost: Int / (Int => Int / (Int => Bool)) {
+        def unused(u: Unit): Unit / (Int / (Int => Int / (Int => Bool)) => Int / (Int => Int / (Int => Bool))) = { resume() }
+        return x => { x }
+      }
+    } with inner: Int / (Int => Bool) {
+      def unused(u: Unit): Unit / (Int / (Int => Bool) => Int / (Int => Bool)) = { resume() }
+      return x => { x }
+    }
+  } with outer: Bool {
+    def ask(u: Unit): Int / (Int => Bool) = { val n = resume(42); zero(n) }
+    return x => { x }
+  }
+}

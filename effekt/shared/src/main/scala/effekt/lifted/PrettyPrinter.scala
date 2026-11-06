@@ -192,6 +192,10 @@ object PrettyPrinter extends ParenPrettyPrinter {
     case Try(body, hs) =>
       "try" <+> toDoc(body) <+> "with" <+> hsep(hs.map(toDoc), " with")
 
+    case Handle(body, hs, onReturn, result) =>
+      "handle-atm" <+> toDoc(body) <+> "with" <+> hsep(hs.map(toDoc), " with") <+>
+        "return" <+> toDoc(onReturn) <+> ":" <+> toDoc(result)
+
     case Reset(body) =>
       "reset" <+> block(toDoc(body))
 

@@ -1,0 +1,46 @@
+// Three known handler edges compose with the abstract call witness for seed.
+// The two calls to nested supply witnesses of distances 0 and 1.
+def main(): Bool = {
+  def seed(x: Int): Int = { x }
+  def nested(u: Unit): Bool = {
+    try {
+      try {
+        try {
+          val x = seed(42);
+          innermost.tick();
+          inner.tick();
+          outer.ask(x)
+        } with innermost: Int / (Int => Int / (Int => Bool)) {
+          def tick(u: Unit): Unit /
+            (Int / (Int => Int / (Int => Bool)) =>
+             Int / (Int => Int / (Int => Bool))) = {
+            val n = resume();
+            n + 10
+          }
+          return x => { x }
+        }
+      } with inner: Int / (Int => Bool) {
+        def tick(u: Unit): Unit /
+          (Int / (Int => Bool) => Int / (Int => Bool)) = {
+          val n = resume();
+          n + 100
+        }
+        return x => { x }
+      }
+    } with outer: Bool {
+      def ask(x: Int): Int / (Int => Bool) = {
+        val n = resume(x);
+        n == 152
+      }
+      return x => { x }
+    }
+  }
+  val first = nested();
+  val second = try {
+    nested()
+  } with extra: Bool {
+    def unused(u: Unit): Unit / (Bool => Bool) = { resume() }
+    return x => { x }
+  };
+  first && second
+}

@@ -19,3 +19,9 @@ bin
 notes/
 artwork/
 sbt-microsite-docs
+
+# Local editor metadata and generated ATM artifacts
+.DS_Store
+__pycache__/
+/output/
+/docs/atm/results/*.build.log

@@ -1,0 +1,4 @@
+// Exact integer arithmetic must not silently inherit JavaScript Number rounding.
+def main(): Int = {
+  (9007199254740993 + 2)
+}

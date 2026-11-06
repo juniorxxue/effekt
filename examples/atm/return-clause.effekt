@@ -1,0 +1,13 @@
+// Both resuming and normal completion apply this non-identity return clause.
+def main(): Bool = {
+  try {
+    h.ask()
+  } with h: Bool {
+    def ask(arg: Unit): Int / (Bool => Bool) = {
+      resume(0)
+    }
+    return x => {
+      zero(x)
+    }
+  }
+}

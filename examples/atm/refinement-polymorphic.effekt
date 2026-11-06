@@ -1,0 +1,10 @@
+// Both abstractions are checked once for arbitrary types/predicates.
+def main(): {r: Int | r >= 0} = {
+  type Nat = {n: Int | n >= 0};
+  val identity = typefun [A] { fun (x: A): A { x } };
+  val keep = predfun [P(Int)] {
+    fun (x: {v: Int | P(v)}): {v: Int | P(v)} { x }
+  };
+  val n = identity[type Nat](42);
+  keep[pred (v: Int) => v >= 0](n)
+}

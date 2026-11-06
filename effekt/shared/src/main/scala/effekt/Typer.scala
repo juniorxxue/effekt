@@ -976,7 +976,7 @@ object Typer extends Phase[NameResolved, Typechecked] {
         val tpe = param.tpe.getOrElse {
           INTERNAL_ERROR("Expected type need to be know for function arguments at the moment.")
         }
-        Context.bind(param, tpe)
+        Context.bind(param, tpe, CaptureSet(param.capture))
         tpe
       }
 

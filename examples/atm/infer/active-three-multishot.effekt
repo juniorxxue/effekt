@@ -1,0 +1,35 @@
+// Both resumptions restore the two intervening handlers.
+// Their results are 152 and 110; main evaluates to true.
+def main(): Bool = {
+  try {
+    try {
+      try {
+        innermost.tick();
+        inner.tick();
+        outer.ask()
+      } with innermost: Int / (Int => Int / (Int => Bool)) {
+        def tick(u: Unit): Unit /
+          (Int / (Int => Int / (Int => Bool)) =>
+           Int / (Int => Int / (Int => Bool))) = {
+          val n = resume();
+          n + 10
+        }
+        return x => { x }
+      }
+    } with inner: Int / (Int => Bool) {
+      def tick(u: Unit): Unit /
+        (Int / (Int => Bool) => Int / (Int => Bool)) = {
+        val n = resume();
+        n + 100
+      }
+      return x => { x }
+    }
+  } with outer: Bool {
+    def ask(u: Unit): Int / (Int => Bool) = {
+      val left = resume(42);
+      val right = resume(0);
+      left == 152 && right == 110
+    }
+    return x => { x }
+  }
+}

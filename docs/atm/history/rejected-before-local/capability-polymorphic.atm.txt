@@ -1,0 +1,34 @@
+// One abstraction is checked outside either handler, then instantiated twice.
+def main(): Bool = {
+  val invoke = capfun (c: { def ask(): Int / [Int => Bool]; }) {
+    fun (u: Unit): Int / [Int => Bool] {
+      c.ask()
+    }
+  };
+  val first = try {
+    invoke{cap(h)}()
+  } with h: Bool {
+    def ask(arg: Unit): Int / [Int => Bool] resume k = {
+      val n = k(42);
+      zero(n)
+    }
+    return x => {
+      x
+    }
+  };
+  try {
+    invoke{cap(h)}()
+  } with h: Bool {
+    def ask(arg: Unit): Int / [Int => Bool] resume k = {
+      val n = k(0);
+      zero(n)
+    }
+    return x => {
+      if (first) {
+        1
+      } else {
+        x
+      }
+    }
+  }
+}

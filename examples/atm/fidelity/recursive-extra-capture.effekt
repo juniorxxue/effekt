@@ -1,0 +1,10 @@
+def main(): Int = {
+ try {
+  def use(f: ((Int) => Int)): Int = { f(3) }
+  def rec count(x: Int): Int = { if (x == 0) { 42 } else { count(x - 1) } }
+  use(count)
+ } with h: Int {
+  def unused(u: Unit): Int / (Int => Int) = { resume(0) }
+  return x => { x }
+ }
+}

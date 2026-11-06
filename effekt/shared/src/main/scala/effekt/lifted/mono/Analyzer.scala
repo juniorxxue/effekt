@@ -266,6 +266,7 @@ def analyze(s: Stmt)(using C: ErrorReporter, F: FlowAnalysis): Unit = s match {
 
   case Stmt.Return(e) => analyze(e)
   case Stmt.Hole() => ()
+  case _: Stmt.Handle => C.abort("ATM handlers require the evidence-preserving Chez-Lift backend; ML monomorphization is not supported")
 
   case Stmt.Region(Block.BlockLit(Nil, ev :: caps, body)) =>
     F.bindEvidence(ev.id, Ev(List(Lift.Reg())))

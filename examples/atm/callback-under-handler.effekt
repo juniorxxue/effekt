@@ -1,0 +1,27 @@
+// A closure is defined at h, then invoked below a caller-owned handler.
+// The call lifts the complete answer transition through the inner context.
+def main(): Bool = {
+  try {
+    def callback(u: Unit): Int / (Int => Bool) = {
+      h.ask()
+    }
+    try {
+      callback()
+    } with inner: Int / (Int => Bool) {
+      def tick(arg: Unit): Unit / (Int / (Int => Bool) => Int / (Int => Bool)) = {
+        resume()
+      }
+      return x => {
+        x
+      }
+    }
+  } with h: Bool {
+    def ask(arg: Unit): Int / (Int => Bool) = {
+      val n = resume(42);
+      zero(n)
+    }
+    return x => {
+      x
+    }
+  }
+}

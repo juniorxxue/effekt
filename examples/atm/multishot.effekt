@@ -1,0 +1,15 @@
+// Reusing one captured continuation twice is accepted and executes both resumes.
+def main(): Bool = {
+  try {
+    h.choose()
+  } with h: Bool {
+    def choose(arg: Unit): Int / (Int => Bool) = {
+      val left = resume(20);
+      val right = resume(-20);
+      zero((left + right))
+    }
+    return x => {
+      x
+    }
+  }
+}

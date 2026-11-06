@@ -28,6 +28,9 @@ trait EffektTests extends munit.FunSuite {
   // Test files which are to be ignored (since features are missing or known bugs exist)
   def ignored: List[File] = List()
 
+  // Regressions that need to exercise the compiler before optimization.
+  def withoutOptimizations: Set[File] = Set.empty
+
   // Folders to discover and run tests in
   def positives: List[File] = List()
 
@@ -64,6 +67,7 @@ trait EffektTests extends munit.FunSuite {
       "--out", output.getPath,
     )
     if (valgrind) options = options :+ "--valgrind"
+    if (withoutOptimizations.contains(input)) options = options :+ "--no-optimize"
     val configs = compiler.createConfig(options)
     configs.verify()
 

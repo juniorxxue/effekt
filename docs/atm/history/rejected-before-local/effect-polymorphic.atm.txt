@@ -1,0 +1,29 @@
+// The same helper is checked once with abstract E and instantiated at both pure
+// and Int-to-Bool answer effects. The bound capability fixes lexical scope.
+def main(): Bool = {
+  val apply = capfun (c: { def ask(): Int / [Int => Bool]; }) {
+    effectfun [E] {
+      fun (f: ((Unit) => Int / E) at {c}): Int / E {
+        f()
+      }
+    }
+  };
+  try {
+    val localApply = apply{cap(h)};
+    val p = localApply[effect pure](fun (u: Unit): Int {
+      0
+    });
+    val n = localApply[effect [Int => Bool]](fun (u: Unit): Int / [Int => Bool] {
+      h.ask()
+    });
+    (p + n)
+  } with h: Bool {
+    def ask(x: Unit): Int / [Int => Bool] resume k = {
+      val n = k(42);
+      zero(n)
+    }
+    return x => {
+      x
+    }
+  }
+}

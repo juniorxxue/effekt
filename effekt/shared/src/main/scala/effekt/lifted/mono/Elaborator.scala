@@ -420,6 +420,7 @@ def elaborate(s: Stmt)(using T: TransformationContext): Stmt = s match {
 
   case Stmt.Region(_) => INTERNAL_ERROR("unreachable, body of region should always be a blocklit.")
   case Stmt.Hole() => Stmt.Hole()
+  case _: Stmt.Handle => INTERNAL_ERROR("ATM Handle must not enter evidence monomorphization")
 }
 
 def elaborate(e: Evidence)(using T: TransformationContext): Ev = Ev(e.lifts.flatMap(elaborate))

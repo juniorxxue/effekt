@@ -1,0 +1,21 @@
+// The helper's callback contract names its bound capability, not a concrete h.
+def main(): Bool = {
+  val apply = capfun (c: { def ask(): Int / [Int => Bool]; }) {
+    fun (f: ((Unit) => Int / [Int => Bool]) at {c}): Int / [Int => Bool] {
+      f()
+    }
+  };
+  try {
+    apply{cap(h)}(fun (u: Unit): Int / [Int => Bool] {
+      h.ask()
+    })
+  } with h: Bool {
+    def ask(arg: Unit): Int / [Int => Bool] resume k = {
+      val n = k(42);
+      zero(n)
+    }
+    return x => {
+      x
+    }
+  }
+}

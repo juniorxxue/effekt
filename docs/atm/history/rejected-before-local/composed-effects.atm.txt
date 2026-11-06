@@ -1,0 +1,42 @@
+// Check once under a directed composition constraint, then instantiate with
+// two different, nonidentity answer transitions on the same lexical handler.
+def main(): Int = {
+  val pair = capfun (c: { def first(): Int / [Bool => Int]; def second(): Int / [Int => Bool]; }) {
+    effectfun [E] {
+      effectfun [F: after(E)] {
+        fun (f: ((Unit) => Int / E) at {c}): ((((Unit) => Int / F) at {c}) => Int / (E; F)) at {c} {
+          fun (g: ((Unit) => Int / F) at {c}): Int / (E; F) {
+            val a = f();
+            val b = g();
+            (a + b)
+          }
+        }
+      }
+    }
+  };
+  try {
+    val local = pair{cap(h)}[effect [Bool => Int]][effect [Int => Bool]];
+    val withFirst = local(fun (u: Unit): Int / [Bool => Int] {
+      h.first()
+    });
+    withFirst(fun (u: Unit): Int / [Int => Bool] {
+      h.second()
+    })
+  } with h: Int {
+    def first(x: Unit): Int / [Bool => Int] resume k = {
+      val b = k(20);
+      if (b) {
+        100
+      } else {
+        200
+      }
+    }
+    def second(x: Unit): Int / [Int => Bool] resume k = {
+      val n = k(22);
+      zero(n)
+    }
+    return x => {
+      x
+    }
+  }
+}

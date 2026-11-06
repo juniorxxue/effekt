@@ -1,0 +1,20 @@
+// Continuation requirements run backwards: close needs Closed and produces Open.
+// Tokens model the answer-state protocol; no operating-system file is opened.
+def main(): Open = {
+  try {
+    val byte = file.read();
+    val done = file.close();
+    byte
+  } with file: Open {
+    def read(arg: Unit): Int / (Open => Open) = {
+      resume(7)
+    }
+    def close(arg: Unit): Unit / (Closed => Open) = {
+      val done = resume();
+      token(Open)
+    }
+    return x => {
+      token(Closed)
+    }
+  }
+}

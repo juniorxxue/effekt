@@ -24,7 +24,14 @@ class JavaScriptTests extends EffektTests {
     examplesDir / "neg"
   )
 
+  override def withoutOptimizations: Set[File] = Set(
+    // inferred boxed functions must retain capture metadata for block parameters
+    examplesDir / "pos" / "boxed_capability_parameter.effekt"
+  )
+
   override def ignored: List[File] = List(
+    // These .effekt sources are checked by the separate ATM frontend.
+    examplesDir / "atm"
   )
 }
 

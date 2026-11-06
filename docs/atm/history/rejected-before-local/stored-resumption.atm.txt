@@ -1,0 +1,15 @@
+// The handler returns its continuation, which is invoked after the handler exits.
+// Its latent answer contract is Int / pure, and its ambient context is top level.
+def main(): Int = {
+  val saved = try {
+    h.suspend()
+  } with h: ((Int) => Int) {
+    def suspend(arg: Unit): Int / [Int => ((Int) => Int)] resume k = {
+      k
+    }
+    return x => {
+      x
+    }
+  };
+  saved(42)
+}

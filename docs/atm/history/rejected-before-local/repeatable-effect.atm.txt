@@ -1,0 +1,30 @@
+// Repeatability concerns answer transitions. Both callback invocations still run.
+def main(): Int = {
+  val twice = capfun (c: { def ask(): Int / [Int => Int]; }) {
+    effectfun [E: repeatable] {
+      fun (f: ((Unit) => Int / E) at {c}): Int / E {
+        val a = f();
+        val b = f();
+        (a + b)
+      }
+    }
+  };
+  try {
+    val localTwice = twice{cap(h)};
+    val pureResult = localTwice[effect pure](fun (u: Unit): Int {
+      1
+    });
+    val effectResult = localTwice[effect [Int => Int]](fun (u: Unit): Int / [Int => Int] {
+      h.ask()
+    });
+    (pureResult + effectResult)
+  } with h: Int {
+    def ask(x: Unit): Int / [Int => Int] resume k = {
+      val n = k(42);
+      (n + 1)
+    }
+    return x => {
+      x
+    }
+  }
+}
