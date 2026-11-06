@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "benchmarks": [
+    {
+      "source": "active-three-counts.effekt",
+      "port": "examples/atm/infer/active-three-counts.effekt",
+      "port_sha256": "d5e6eaa0ff6706690b05a9441c58a6ee322c073c6f22350e7f625bb7b31165cb",
+      "expected": "accept",
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "runtime": "true",
+      "purpose": "Three active handlers, with evidence/ATC depths 0, 1, and 2 and observable clause results."
+    },
+    {
+      "source": "active-three-multishot.effekt",
+      "port": "examples/atm/infer/active-three-multishot.effekt",
+      "port_sha256": "1c1292fa946f66c5adf9c70edc03a84a7b0fda7914239c11bf469fd5c204b83b",
+      "expected": "accept",
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "runtime": "true",
+      "purpose": "Two outer resumptions restore the two intervening handlers."
+    },
+    {
+      "source": "nested-residuals.effekt",
+      "port": "examples/atm/infer/nested-residuals.effekt",
+      "port_sha256": "c44452267de062ad590c6d012c88ea6dd95978b579442834d07160c401f4d48a",
+      "expected": "accept",
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "runtime": "true",
+      "purpose": "Abstract helper-call evidence composes with three local handler edges; callers instantiate distances 0 and 1."
+    },
+    {
+      "source": "mixed-answer-layers.effekt",
+      "port": "examples/atm/infer/mixed-answer-layers.effekt",
+      "port_sha256": "50451e51d4b7e65557603b90a34d618917e56b8a9618e34e4ab33bc1b7cb4963",
+      "expected": "accept",
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "runtime": "true",
+      "purpose": "An outer operation infers a Bool layer around an Int layer, preserving both initial answers."
+    },
+    {
+      "source": "shadowed-capabilities.effekt",
+      "port": "examples/atm/infer/shadowed-capabilities.effekt",
+      "port_sha256": "127abf4837d3348299296f00f26b524369c23239ec68a0bf405b930aecb91f0e",
+      "expected": "accept",
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "runtime": "true",
+      "purpose": "Aliases retain the identities of outer handlers despite repeated source name h."
+    },
+    {
+      "source": "polymorphic-outer-call.effekt",
+      "port": "examples/atm/infer/polymorphic-outer-call.effekt",
+      "port_sha256": "2e75c2331818f7a9514656278a14bb15e2605ea4cc87401b1d903ff40f2d4c7c",
+      "expected": "unsupported",
+      "diagnostic_kind": "Unsupported",
+      "runtime": null,
+      "purpose": "Reconstruct a residual witness to a captured outer capability, then fail ATC inference at symbolic distance."
+    }
+  ]
+}

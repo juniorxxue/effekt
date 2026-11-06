@@ -1,0 +1,27 @@
+// Port of coar POPL24 ARM choose-sum-SAT.ml; both Decide context fields are retained.
+def main(): Int = {
+  def test(x: Int): ((y: Int) => {r: Int | r == 0}) = {
+    fun (y: Int): {r: Int | r == 0} {
+      try {
+        val first = choice.decide((false, 0));
+        val a = if (first) { x } else { y };
+        val second = choice.decide((true, a));
+        val b = if (second) { x } else { y };
+        a - b
+      } with choice: {r: Int | r == 0} {
+        def decide(ctx: (Bool, Int)): (selected: Bool) /
+          ({r: Int | r == (if fst(ctx)
+              then snd(ctx) - (if selected then x else y)
+              else 2 * (if selected then x else y) - x - y)} =>
+           {r: Int | r == (if fst(ctx) then 2 * snd(ctx) - x - y else 0)}) = {
+          val left = resume(true);
+          val right = resume(false);
+          left + right
+        }
+        return value => { value }
+      }
+    }
+  }
+  val run = test(3);
+  run(7)
+}

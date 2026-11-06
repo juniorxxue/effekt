@@ -1,0 +1,41 @@
+// Pinned coar ARM: choose-all-SAT.ml. Both original Decide context fields are retained.
+data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
+measure append(xs: ListInt, ys: ListInt): ListInt {
+  case Nil() => ys;
+  case Cons(h,t) => Cons(h,append(t,ys));
+}
+def main(): Bool = {
+  def rec appendList(xs: ListInt): ((ys: ListInt) => {r: ListInt | r == append(xs,ys)}) = {
+    fun (ys: ListInt): {r: ListInt | r == append(xs,ys)} {
+      match (xs) {
+        case Nil() => { ys }
+        case Cons(h,t) => { val more = appendList(t); val tail = more(ys); Cons(h,tail) }
+      }
+    }
+  }
+  def test(x: Int): ((y: Int) => {r: Bool | r == true}) = {
+    fun (y: Int): {r: Bool | r == true} {
+      val result = try {
+        val first = choice.decide((false,0));
+        val a = if (first) { x } else { y };
+        val second = choice.decide((true,a));
+        val b = if (second) { x } else { y };
+        a - b
+      } with choice: {r: ListInt | r == Cons(0,Cons(x-y,Cons(y-x,Cons(0,Nil()))))} {
+        def decide(ctx: (Bool,Int)): (selected: Bool) /
+          ({r: ListInt | r == (if fst(ctx)
+            then Cons(snd(ctx) - (if selected then x else y),Nil())
+            else Cons((if selected then x else y)-x,Cons((if selected then x else y)-y,Nil())))} =>
+           {r: ListInt | r == (if fst(ctx)
+            then Cons(snd(ctx)-x,Cons(snd(ctx)-y,Nil()))
+            else Cons(0,Cons(x-y,Cons(y-x,Cons(0,Nil())))))}) = {
+          val left = resume(true); val right = resume(false);
+          val appendRight = appendList(left); appendRight(right)
+        }
+        return v => { Cons(v,Nil()) }
+      };
+      result == Cons(0,Cons(x-y,Cons(y-x,Cons(0,Nil()))))
+    }
+  }
+  val run = test(3); run(7)
+}

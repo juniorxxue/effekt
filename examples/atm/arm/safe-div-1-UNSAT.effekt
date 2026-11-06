@@ -1,0 +1,21 @@
+// coar d293ee6759bd285f4a496b727f1df85e70f30f3e: safe-div-1-UNSAT.ml
+// Original universal assertion retained. optionize is inlined at this use;
+// MyExn is an aborting lexical operation with an uninhabited return type.
+// The unreachable Dummy operation is omitted (the original body never performs it).
+data OptionInt { None(); Some(value: Int) }
+def main(): Bool = {
+  def test(n: Int): ((m: {z: Int | z == 0}) => {z: OptionInt | z != None()}) = {
+    fun (m: {z: Int | z == 0}): {z: OptionInt | z != None()} {
+        try {
+          if (m == 0) { exception.fail(()) } else { n / m }
+        } with exception: {z: OptionInt | z != None()} {
+          def fail(u: {u: Unit | m == 0}): {v: Int | false} /
+            ({z: OptionInt | z != None()} => {z: OptionInt | z != None()}) = { None() }
+          return value => { Some(value) }
+        }
+    }
+  }
+  val withN = test(-10);
+  val result = withN(0);
+  result == None()
+}

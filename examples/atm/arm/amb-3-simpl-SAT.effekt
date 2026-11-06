@@ -1,0 +1,35 @@
+// Pinned coar ARM: amb-3-simpl-SAT.ml
+// Select carries the current list as annotation context.
+data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
+measure contains(xs: ListInt, e: Int): Bool {
+  case Nil() => false;
+  case Cons(h,t) => h == e || contains(t,e);
+}
+def main(): Bool = {
+  def test(first: Int): ((e: Int) => {r: Bool | r == true}) = {
+    fun (e: Int): {r: Bool | r == true} {
+      val input = Cons(first,Cons(e,Nil()));
+      try {
+        def rec local selectFrom(xs: ListInt): (v: Bool) / ({r: Bool | r == v} => {r: Bool | r == contains(xs,e)}) = {
+          match (xs) {
+            case Nil() => { false }
+            case Cons(h,t) => {
+              val selected = choice.select((h,t));
+              if (selected) { h == e } else { selectFrom(t) }
+            }
+          }
+        }
+        selectFrom(input)
+      } with choice: {r: Bool | r == contains(input,e)} {
+        def select(ctx: (Int,ListInt)): (b: Bool) /
+          ({r: Bool | r == (if b then fst(ctx) == e else contains(snd(ctx),e))} =>
+           {r: Bool | r == contains(Cons(fst(ctx),snd(ctx)),e)}) = {
+          val first = resume(true);
+          if (first) { true } else { resume(false) }
+        }
+        return r => { r }
+      }
+    }
+  }
+  val run = test(2); run(4)
+}

@@ -1,0 +1,40 @@
+// coar d293ee6759bd285f4a496b727f1df85e70f30f3e: io-read-2-SAT.ml
+// Read carries its remaining count as explicit annotation context. The
+// handler still consumes one list element per read and aborts on an empty list.
+data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
+data Result { Ok(); Err() }
+measure readOutcome(xs: ListInt, n: Int): Result {
+  case Nil() => if n <= 0 then Ok() else Err();
+  case Cons(h,t) => if n <= 0 then Ok() else readOutcome(t, n - 1);
+}
+def main(): Bool = {
+  def test(n: {m: Int | m == 1}): ((input: {xs: ListInt | xs != Nil()}) => {r: Result | r == Ok()}) = {
+    fun (input: {xs: ListInt | xs != Nil()}): {r: Result | r == Ok()} {
+      type StateRegion = (local (Unit) => Unit);
+      val run = try {
+        def rec local go(m: Int): (v: Result) /
+          ((local[StateRegion] (xs: ListInt) => {r: Result | r == v}) =>
+           (local[StateRegion] (xs: ListInt) => {r: Result | r == readOutcome(xs, m)})) = {
+          if (m <= 0) { Ok() } else { inputHandler.read(m); go(m - 1) }
+        }
+        go(n)
+      } with inputHandler: (local (xs: ListInt) => {r: Result | r == readOutcome(xs, n)}) {
+        def read(remaining: {m: Int | m > 0}): Int /
+          ((local (xs: ListInt) => {r: Result | r == readOutcome(xs, remaining - 1)}) =>
+           (local (xs: ListInt) => {r: Result | r == readOutcome(xs, remaining)})) = {
+          fun local (xs: ListInt): {r: Result | r == readOutcome(xs, remaining)} {
+            match (xs) {
+              case Nil() => { Err() }
+              case Cons(h, t) => { val next = resume(h); next(t) }
+            }
+          }
+        }
+        return v => { fun local (xs: ListInt): {r: Result | r == v} { v } }
+      };
+      run(input)
+    }
+  }
+  val readList = test(1);
+  val result = readList(Cons(9, Nil()));
+  result == Ok()
+}

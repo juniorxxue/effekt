@@ -1,0 +1,95 @@
+// Pinned coar ARM: distribution-UNSAT.ml.
+// The pinned SAT and UNSAT sources have identical executable code AND assertions;
+// the latter only appends an unsat comment. Both therefore have the same outcome.
+// Higher-order map/foldRight invoke their supplied callbacks; their contracts and
+// the list datatype are instantiated to this benchmark, not fully polymorphic.
+data Dist { Empty(); Entry(head: (Int,Int), tail: Dist) }
+measure scale(xs: Dist, p: Int): Dist {
+  case Empty() => Empty();
+  case Entry(h,t) => Entry((fst(h),p * snd(h) / 100),scale(t,p));
+}
+measure insert(xs: Dist, e: (Int,Int)): Dist {
+  case Empty() => Entry(e,Empty());
+  case Entry(h,t) => if fst(e) == fst(h) then Entry((fst(e),snd(e)+snd(h)),t) else Entry(h,insert(t,e));
+}
+measure merge(xs: Dist, ys: Dist): Dist {
+  case Empty() => ys;
+  case Entry(h,t) => insert(merge(t,ys),h);
+}
+measure bounded(xs: Dist): Bool {
+  case Empty() => true;
+  case Entry(h,t) => 0 <= snd(h) && snd(h) <= 100 && bounded(t);
+}
+def main(): Bool = {
+  def scaleList(xs: Dist): ((p: Int) => {r: Dist | r == scale(xs,p)}) = {
+    fun (p: Int): {r: Dist | r == scale(xs,p)} {
+      def rec map(f: ((h: (Int,Int)) => {r: (Int,Int) | r == (fst(h),p * snd(h) / 100)})):
+        ((input: Dist) => {r: Dist | r == scale(input,p)}) = {
+        fun (input: Dist): {r: Dist | r == scale(input,p)} {
+          match (input) {
+            case Empty() => { Empty() }
+            case Entry(h,t) => {
+              val head = f(h); val rest = map(f); val tail = rest(t); Entry(head,tail)
+            }
+          }
+        }
+      }
+      val apply = map(fun (h: (Int,Int)): {r: (Int,Int) | r == (fst(h),p * snd(h) / 100)} {
+        (fst(h),p * snd(h) / 100)
+      });
+      apply(xs)
+    }
+  }
+  def rec insertList(xs: Dist): ((e: (Int,Int)) => {r: Dist | r == insert(xs,e)}) = {
+    fun (e: (Int,Int)): {r: Dist | r == insert(xs,e)} {
+      match (xs) {
+        case Empty() => { Entry(e,Empty()) }
+        case Entry(h,t) => {
+          if (fst(e) == fst(h)) { Entry((fst(e),snd(e)+snd(h)),t) }
+          else { val rest = insertList(t); val tail = rest(e); Entry(h,tail) }
+        }
+      }
+    }
+  }
+  def rec foldRight(f: ((h: (Int,Int)) => ((ys: Dist) => {r: Dist | r == insert(ys,h)}))):
+    ((xs: Dist) => ((initial: Dist) => {r: Dist | r == merge(xs,initial)})) = {
+    fun (xs: Dist): ((initial: Dist) => {r: Dist | r == merge(xs,initial)}) {
+      fun (initial: Dist): {r: Dist | r == merge(xs,initial)} {
+        match (xs) {
+          case Empty() => { initial }
+          case Entry(h,t) => {
+            val fold = foldRight(f); val rest = fold(t); val tail = rest(initial);
+            val addEntry = f(h); addEntry(tail)
+          }
+        }
+      }
+    }
+  }
+  def mergeList(xs: Dist): ((ys: Dist) => {r: Dist | r == merge(xs,ys)}) = {
+    val fold = foldRight(fun (h: (Int,Int)): ((ys: Dist) => {r: Dist | r == insert(ys,h)}) {
+      fun (ys: Dist): {r: Dist | r == insert(ys,h)} { val addEntry = insertList(ys); addEntry(h) }
+    });
+    fold(xs)
+  }
+  def test(p: {i: Int | 0 <= i && i <= 100}): ((a: Int) => ((b: Int) => {r: Dist | bounded(r)})) = {
+    fun (a: Int): ((b: Int) => {r: Dist | bounded(r)}) {
+      fun (b: Int): {r: Dist | bounded(r)} {
+        try {
+          val select = random.pick(p); if (select) { a } else { b }
+        } with random: {r: Dist | r == merge(scale(Entry((a,100),Empty()),p),scale(Entry((b,100),Empty()),100-p))} {
+          def pick(q: {i: Int | 0 <= i && i <= 100}): (select: Bool) /
+            ({r: Dist | r == Entry(((if select then a else b),100),Empty())} =>
+             {r: Dist | r == merge(scale(Entry((a,100),Empty()),q),scale(Entry((b,100),Empty()),100-q))}) = {
+            val left = resume(true); val right = resume(false);
+            val scaleLeft = scaleList(left); val scaledLeft = scaleLeft(q);
+            val scaleRight = scaleList(right); val scaledRight = scaleRight(100-q);
+            val combine = mergeList(scaledLeft); combine(scaledRight)
+          }
+          return v => { Entry((v,100),Empty()) }
+        }
+      }
+    }
+  }
+  val withA = test(25); val withB = withA(3); val result = withB(7);
+  result == Entry((7,75),Entry((3,25),Empty()))
+}

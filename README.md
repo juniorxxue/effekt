@@ -9,24 +9,27 @@ region/evidence algorithm, with explicit fixed-region functions and effectful
 handler-return forms. Its default backend is the adapted historical Lifted IR
 and Chez. Select the ATM frontend through `effekt.atm.Main`.
 
+For the complete benchmark outline in one file, read
+[BENCHMARKS.md](docs/atm/BENCHMARKS.md). Start with the [ATM guide](docs/atm/README.md),
+[artifact status](docs/atm/ARTIFACT-STATUS.md), and
+[paper-fidelity boundaries](docs/atm/FIDELITY.md). The verified 2026-11-06 snapshot
+has 58 accepted examples, 22 intentional negatives and three unsupported examples;
+all 52 pinned upstream ARM files have ports, with one documented upstream label discrepancy. See
+[example repairs](docs/atm/REJECTED-EXAMPLES.md),
+[paper coverage](docs/atm/PAPER-COVERAGE.md), and
+[validation](docs/atm/VALIDATION.md) for the distinct inventories and test results.
+
 Run from this checkout with its pinned Kiama submodule, Java/sbt, Z3 and Chez
-available. The differential test suite also requires Node:
+available. The full differential suite also requires Node:
 
 ```sh
-sbt 'effektJVM/runMain effekt.atm.Main --run examples/atm/int-to-bool.effekt'
-sbt 'effektJVM/testOnly effekt.Atm*Tests'
+sbt 'effektJVM/runMain effekt.atm.Main --run examples/atm/arm/state-easy-SAT.effekt'
+python3 docs/atm/check_examples.py
 ```
 
-The first command prints `false`. These commands use the local implementation;
-the upstream npm package below does not contain this ATM work. The frontend
-checks and elaborates source to a typed region/evidence core, then lowers it
-to the ATM-adapted Lifted backend. `--elaborate` displays that typed core.
-
-The inference regressions in `examples/atm/infer` cover nested handlers,
-residual obligations, and symbolic-distance cases where ATC inference is
-unsupported. Tests distinguish those limitations from type errors and failed
-refinement contracts. Clean-checkout release packaging and CI validation
-remain unfinished.
+The first command prints `8`. These commands use the local implementation;
+the upstream npm package below does not contain this ATM work. Clean-checkout
+release packaging and CI validation remain unfinished.
 
 ## Upstream Effekt overview
 

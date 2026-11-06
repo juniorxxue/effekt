@@ -1,0 +1,65 @@
+// Pinned coar ARM: bfs-SAT.ml.
+// Specialization to the benchmark's one Select: the private mutable queue is
+// threaded through runNext; Failure handling is moved from retc to the caller
+// of the dequeued continuation. FIFO order and actual resumptions are retained.
+// Select's argument supplies its two expected results as annotation context.
+data Result { Failure(); Success(value: Int) }
+data Jobs {
+  Empty();
+  Job(left: Result, right: Result,
+      run: (local (b: Bool) => {r: Result | r == (if b then left else right)}),
+      choice: Bool, tail: Jobs)
+}
+measure outcome(q: Jobs): Result {
+  case Empty() => Failure();
+  case Job(l,r,k,b,t) => if (if b then l else r) == Failure() then outcome(t) else (if b then l else r);
+}
+measure append(q: Jobs, rest: Jobs): Jobs {
+  case Empty() => rest;
+  case Job(l,r,k,b,t) => Job(l,r,k,b,append(t,rest));
+}
+def main(): Bool = {
+  def rec local appendJobs(q: Jobs): (local (rest: Jobs) => {r: Jobs | r == append(q,rest)}) = {
+    fun local (rest: Jobs): {r: Jobs | r == append(q,rest)} {
+      match (q) {
+        case Empty() => { rest }
+        case Job(l,r,k,b,t) => { val push = appendJobs(t); val tail = push(rest); Job(l,r,k,b,tail) }
+      }
+    }
+  }
+  def rec local runNext(q: Jobs): {r: Result | r == outcome(q)} = {
+    match (q) {
+      case Empty() => { Failure() }
+      case Job(l,r,k,b,t) => {
+        val result = k(b);
+        match (result) {
+          case Success(x) => { Success(x) }
+          case Failure() => { runNext(t) }
+        }
+      }
+    }
+  }
+  def local test(n: {i: Int | i == 2 || i == 3}): {r: Bool | r == true} = {
+    val left = if (4 == n * n) { Success(2) } else { Failure() };
+    val right = if (9 == n * n) { Success(3) } else { Failure() };
+    val result = try {
+      val select = search.select((left,right));
+      val cand = if (select) { 2 } else { 3 };
+      if (cand * cand == n * n) { Success(cand) } else { Failure() }
+    } with search: {r: Result | r == (if left == Failure() then right else left)} {
+      def select(ctx: (Result,Result)): (b: Bool) /
+        ({r: Result | r == (if b then fst(ctx) else snd(ctx))} =>
+         {r: Result | r == (if fst(ctx) == Failure() then snd(ctx) else fst(ctx))}) = {
+        val callback = fun local (b: Bool): {r: Result | r == (if b then fst(ctx) else snd(ctx))} { resume(b) };
+        val enqueueFirst = appendJobs(Empty());
+        val first = enqueueFirst(Job(fst(ctx),snd(ctx),callback,true,Empty()));
+        val enqueueSecond = appendJobs(first);
+        val queue = enqueueSecond(Job(fst(ctx),snd(ctx),callback,false,Empty()));
+        runNext(queue)
+      }
+      return r => { r }
+    };
+    result == Success(n)
+  }
+  test(3)
+}

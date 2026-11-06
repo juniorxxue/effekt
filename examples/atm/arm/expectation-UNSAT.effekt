@@ -1,0 +1,26 @@
+// Port of coar POPL24 ARM expectation-UNSAT.ml.
+// The definition is checked for all integer p, x and y; main only supplies a runtime witness.
+def main(): Int = {
+  def test(p: Int): ((x: Int) => ((y: Int) => {r: Int | r == (100 - p) * x + p * y})) = {
+    fun (x: Int): ((y: Int) => {r: Int | r == (100 - p) * x + p * y}) {
+      fun (y: Int): {r: Int | r == (100 - p) * x + p * y} {
+        try {
+          val selected = random.pick(p);
+          if (selected) { x } else { y }
+        } with random: {r: Int | r == p * x + (100 - p) * y} {
+          def pick(weight: Int): (choice: Bool) /
+            ({r: Int | r == (if choice then x else y)} =>
+             {r: Int | r == weight * x + (100 - weight) * y}) = {
+            val left = resume(true);
+            val right = resume(false);
+            weight * left + (100 - weight) * right
+          }
+          return value => { value }
+        }
+      }
+    }
+  }
+  val withProbability = test(25);
+  val withLeft = withProbability(3);
+  withLeft(7)
+}

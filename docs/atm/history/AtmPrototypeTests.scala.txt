@@ -1,0 +1,1195 @@
+package effekt
+
+import effekt.atm.{Checker, Lowering, Parser, Syntax}
+import java.nio.file.{Files, Path}
+
+class AtmTests extends munit.FunSuite {
+  // Source mutations match tokens across formatting, and must actually change
+  // the fixture: a no-op replacement would silently lose a rejection witness.
+  extension (source: String) {
+    private def replaceSyntax(before: String, after: String): String = {
+      val tokens = "=>|[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[^\\s]".r.findAllIn(before).toList
+      val pattern = ("(?<![a-zA-Z0-9_])" + tokens.map(java.util.regex.Pattern.quote).mkString("\\s*") +
+        "(?![a-zA-Z0-9_])").r
+      assert(pattern.findFirstIn(source).nonEmpty, s"Missing source fragment: $before")
+      pattern.replaceAllIn(source, _ => java.util.regex.Matcher.quoteReplacement(after))
+    }
+  }
+  private def fixtureBody(name: String): String = {
+    val input = Files.readString(Path.of("examples", "atm", s"$name.atm"))
+    val prefix = "def main(): Bool = {"
+    val start = input.indexOf(prefix)
+    assert(start >= 0)
+    input.substring(start + prefix.length, input.lastIndexOf('}'))
+  }
+
+  private def checked(name: String): Checker.CheckedProgram = {
+    val input = Files.readString(Path.of("examples", "atm", s"$name.atm"))
+    val result = Parser.parse(input).flatMap(Checker.check)
+    result.fold(error => fail(error.message), identity)
+  }
+
+  private def execute(program: Checker.CheckedProgram, optimized: Boolean): String =
+    AtmBackend.run(program, optimized).fold(fail(_), identity)
+
+  for (name, expected) <- List("int-to-bool" -> "false", "nested-outer" -> "false",
+    "file-protocol" -> "Open", "multishot" -> "true", "higher-order" -> "42", "stored-resumption" -> "42",
+    "effectful-callback" -> "false", "return-clause" -> "true", "return-effects" -> "false",
+    "callback-under-handler" -> "false", "capability-argument" -> "false",
+    "large-integer" -> "9007199254740995", "capability-polymorphic" -> "true",
+    "polymorphic-callback" -> "false", "effect-polymorphic" -> "false",
+    "repeatable-effect" -> "88", "composed-effects" -> "200",
+    "multiple-capabilities" -> "false") do {
+    test(s"$name: ATM checking, Effekt compilation and JavaScript execution") {
+      val program = checked(name)
+      assertEquals(AtmReference.run(program.source), expected)
+      assertEquals(execute(program, optimized = false), expected)
+      assertEquals(execute(program, optimized = true), expected)
+    }
+  }
+
+  test("read after close is rejected before lowering") {
+    val input = Files.readString(Path.of("examples", "atm", "file-protocol-invalid.atm"))
+    val result = Parser.parse(input).flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("file.read requires answer Open"))
+  }
+
+  test("a clause cannot silently use its final answer type for the continuation") {
+    val input = Files.readString(Path.of("examples", "atm", "int-to-bool.atm"))
+      .replaceSyntax("zero(n)", "not(n)")
+    val result = Parser.parse(input).flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("not expects Bool, found Int"))
+  }
+
+  test("a callback with an Int-to-Bool transition cannot be called twice sequentially") {
+    val input = Files.readString(Path.of("examples", "atm", "effectful-callback.atm"))
+      .replaceSyntax("f()", "{ val first = f(); f() }")
+    val result = Parser.parse(input).flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("Answer mismatch"))
+  }
+
+  test("normal completion applies a non-identity return clause") {
+    val input = Files.readString(Path.of("examples", "atm", "return-clause.atm"))
+      .replaceSyntax("{ h.ask() }", "{ 0 }")
+    val program = Parser.parse(input).flatMap(Checker.check).fold(error => fail(error.message), identity)
+    assertEquals(execute(program, optimized = true), "true")
+  }
+
+  test("an aborting operation does not evaluate the return clause") {
+    val input = """def main(): Bool = {
+        try {
+          h.abort()
+        } with h: Bool {
+          def abort(arg: Unit): Int / [Int => Bool] resume k = {
+            true
+          }
+          return x => {
+            add(x, 1)
+          }
+        }
+      }"""
+    val program = Parser.parse(input).flatMap(Checker.check).fold(error => fail(error.message), identity)
+    assertEquals(execute(program, optimized = true), "true")
+  }
+
+  test("a resumption depending on an outer capability cannot escape that capability") {
+    val input = """def main(): ((Int) => Int) = {
+        try {
+          try {
+            inner.suspend()
+          } with inner: ((Int) => Int) {
+            def suspend(x: Unit): Int / [Int => ((Int) => Int)] resume k = {
+              k
+            }
+            return x => {
+              x
+            }
+          }
+        } with outer: ((Int) => Int) {
+          def tick(x: Unit): Unit / [((Int) => Int) => ((Int) => Int)] resume k = {
+            k()
+          }
+          return f => {
+            f
+          }
+        }
+      }"""
+    // A parser failure must not masquerade as a scope rejection.
+    val parsed = Parser.parse(input)
+    assert(parsed.isRight, parsed.toString)
+    val result = parsed.flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("at {outer}"))
+  }
+
+  test("a stored pure resumption can be called below a new delimiter") {
+    val input = Files.readString(Path.of("examples", "atm", "stored-resumption.atm"))
+      .replaceSyntax("saved(42)", """try { saved(42) } with inner: Int { def tick(x: Unit): Unit / [Int => Int] resume k = { k() } return x => { x } }""")
+    val program = Parser.parse(input).flatMap(Checker.check).fold(error => fail(error.message), identity)
+    assertEquals(execute(program, optimized = false), "42")
+    assertEquals(execute(program, optimized = true), "42")
+  }
+
+  test("calling a callback under a handler cannot invent missing answer layers") {
+    val input = Files.readString(Path.of("examples", "atm", "callback-under-handler.atm"))
+      .replaceSyntax("with inner: Int / [Int => Bool]", "with inner: Bool")
+    val parsed = Parser.parse(input)
+    assert(parsed.isRight)
+    val result = parsed.flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("too few layers"))
+  }
+
+  test("contextual lifting preserves all caller-owned answer layers at depths one through four") {
+    import Syntax.*
+    import Syntax.Value.*
+    import Syntax.Term.*
+    val int = Computation(Type.Int)
+    val bool = Computation(Type.Bool)
+    val base = Computation(Type.Int, Effect.Change(int, bool))
+    val ask = Operation("ask", Type.Unit, Type.Int, int, bool, "arg", "k",
+      Let("n", Apply(Variable("k"), Integer(42)), Return(Primitive("zero", List(Variable("n"))))))
+    val callback = Lambda("u", Type.Unit, base, Perform("h", "ask", Unit))
+    for depth <- 1 to 4 do {
+      val pairs = (1 to depth).scanLeft((int, bool)) { case ((a, b), _) =>
+        (Computation(Type.Int, Effect.Change(a, a)), Computation(Type.Int, Effect.Change(a, b)))
+      }
+      val call: Term = Apply(Variable("callback"), Unit)
+      val nested = (1 to depth).reverse.foldLeft(call) { (body, index) =>
+        val answer = pairs(index)._2
+        val tick = Operation("tick", Type.Unit, Type.Unit, answer, answer, "arg", "k",
+          Apply(Variable("k"), Unit))
+        Handle(s"inner$index", answer, List(tick), body, "x", Return(Variable("x")))
+      }
+      val source = Program(bool, Handle("h", bool, List(ask),
+        Let("callback", Return(callback), nested), "x", Return(Variable("x"))))
+      val program = Checker.check(source).fold(error => fail(s"Depth $depth: ${error.message}"), identity)
+      assertEquals(AtmReference.run(source), "false", s"source semantics at depth $depth")
+      assertEquals(execute(program, optimized = false), "false", s"depth $depth")
+      assertEquals(execute(program, optimized = true), "false", s"depth $depth")
+    }
+  }
+
+  test("invoking an outer capability requires sufficient answer layers") {
+    val input = Files.readString(Path.of("examples", "atm", "nested-outer.atm"))
+      .replaceSyntax("with inner: Int / [Int => Bool]", "with inner: Bool")
+    val result = Parser.parse(input).flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("too few layers"))
+  }
+
+  test("unbound capability is rejected") {
+    val result = Parser.parse("def main(): Int = { missing.ask() }").flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("out-of-scope capability"))
+  }
+
+  test("capability aliases retain the original handler answer contract") {
+    val input = Files.readString(Path.of("examples", "atm", "int-to-bool.atm"))
+      .replaceSyntax("{ h.ask() }", "{ val alias = cap(h); alias.ask() }")
+    val program = Parser.parse(input).flatMap(Checker.check).fold(error => fail(error.message), identity)
+    assertEquals(execute(program, optimized = true), "false")
+  }
+
+  test("a capability argument still targets its handler below a same-operation inner handler") {
+    val input = Files.readString(Path.of("examples", "atm", "capability-argument.atm"))
+      .replaceSyntax("invoke(cap(h))", """try {
+        invoke(cap(h))
+      } with inner: Int / [Int => Bool] {
+        def ask(arg: Unit): Int / [Int / [Int => Bool] => Int / [Int => Bool]] resume k = {
+          k(0)
+        }
+        return x => {
+          x
+        }
+      }""")
+    val program = Parser.parse(input).flatMap(Checker.check).fold(error => fail(error.message), identity)
+    assertEquals(AtmReference.run(program.source), "false")
+    assertEquals(execute(program, optimized = false), "false")
+    assertEquals(execute(program, optimized = true), "false")
+  }
+
+  test("a non-capability value shadows a same-named operation receiver") {
+    val input = Files.readString(Path.of("examples", "atm", "int-to-bool.atm"))
+      .replaceSyntax("{ h.ask() }", "{ val h = 0; h.ask() }")
+    val parsed = Parser.parse(input)
+    assert(parsed.isRight)
+    val result = parsed.flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("non-capability type Int"))
+  }
+
+  test("a local capability cannot escape through the declared result type") {
+    val result = Parser.parse("""def main(): cap(h) = { try { cap(h) } with h: cap(h) { def ask(arg: Unit): Int / [Int => Int] resume k = { k(42) } return x => { x } } }""").flatMap(Checker.check)
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.message.contains("Unknown capability type h"))
+  }
+
+  test("parser rejects trailing input") {
+    assert(Parser.parse("def main(): Int = { 1 } ignored").isLeft)
+  }
+
+  test("integer arithmetic is exact beyond 64 bits and for negative operands") {
+    val input = """def main(): Int = { add(10000000000000000000000000000000000000000, -3) }"""
+    val program = Parser.parse(input).flatMap(Checker.check).fold(error => fail(error.message), identity)
+    val expected = "9999999999999999999999999999999999999997"
+    assertEquals(AtmReference.run(program.source), expected)
+    assertEquals(execute(program, optimized = false), expected)
+    assertEquals(execute(program, optimized = true), expected)
+  }
+
+  private val askContract = "{ def ask(): Int / [Int => Bool]; }"
+  private val invoke = s"""capfun (c: $askContract) { fun (u: Unit): Int / [Int => Bool] { c.ask() } }"""
+
+  private def checkText(input: String): Checker.CheckedProgram =
+    Parser.parse(input).flatMap(Checker.check).fold(error => fail(error.message), identity)
+
+  private def runText(input: String, expected: String): Unit = {
+    val program = checkText(input)
+    assertEquals(AtmReference.run(program.source), expected)
+    assertEquals(execute(program, optimized = false), expected)
+    assertEquals(execute(program, optimized = true), expected)
+  }
+
+  private def rejectText(input: String, message: String): Unit = {
+    val parsed = Parser.parse(input).fold(error => fail(error.message), identity)
+    val result = Checker.check(parsed)
+    assert(result.isLeft, "Ill-typed source was accepted")
+    assert(result.swap.toOption.get.message.contains(message), result.toString)
+  }
+
+  test("a capability abstraction instantiates with an abstract outer delimiter tail") {
+    val body = fixtureBody("int-to-bool").replaceSyntax("h.ask()", "((invoke){cap(h)})()")
+    runText(s"""def main(): Bool = {
+        val invoke = $invoke;
+        try {
+          $body
+        } with outside: Bool {
+          def tick(x: Unit): Unit / [Bool => Bool] resume k = {
+            k()
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "false")
+  }
+
+  test("instantiating an outer capability below an inner delimiter preserves its answer layer") {
+    val input = s"""def main(): Bool = {
+        val invoke = $invoke;
+        try {
+          try {
+            ((invoke){ cap(h)})()
+          } with inner: Int / [Int => Bool] {
+            def ask(x: Unit): Int / [Int / [Int => Bool] => Int / [Int => Bool]] resume k = {
+              k(0)
+            }
+            return x => {
+              x
+            }
+          }
+        } with h: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            val n = k(42);
+            zero(n)
+          }
+          return x => {
+            x
+          }
+        }
+      }"""
+    runText(input, "false")
+    rejectText(input.replaceSyntax("with inner: Int / [Int => Bool]", "with inner: Bool"),
+      "too few layers")
+  }
+
+  test("capability-polymorphic values can be passed at alpha-equivalent quantified types") {
+    val input = s"""def main(): Bool = {
+        (fun (helper: (forall cap other: $askContract. (((Unit) => Int / [Int => Bool]) at { other}))): Bool { try {
+          ((helper){ cap(h)})()
+        } with h: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            val n = k(42);
+            zero(n)
+          }
+          return x => {
+            x
+          }
+        }})($invoke)
+      }"""
+    runText(input, "false")
+  }
+
+  test("capability instantiation compares answer contracts as well as native interface types") {
+    val input = Files.readString(Path.of("examples", "atm", "capability-polymorphic.atm"))
+      .replaceSyntax("{ def ask(): Int / [Int => Bool]; }",
+        "{ def ask(): Int / [Bool => Int]; }")
+    rejectText(input, "requires answer Int")
+    val wrongContract = s"""def main(): Bool = {
+        val generic = capfun (c: { def ask(): Int / [Bool => Int];}) {
+          cap(c)
+        };
+        try {
+          val bad = (generic){ cap(h)};
+          0
+        } with h: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            true
+          }
+          return x => {
+            true
+          }
+        }
+      }"""
+    rejectText(wrongContract, "different operation or answer contract")
+  }
+
+  test("the body of an unused capability abstraction is still checked") {
+    rejectText(s"def main(): Int = { val unused = ${invoke.replaceSyntax("c.ask", "c.absent")}; 0 }",
+      "Unknown operation")
+  }
+
+  test("a capability abstraction cannot capture a concrete enclosing handler") {
+    val input = Files.readString(Path.of("examples", "atm", "int-to-bool.atm"))
+      .replaceSyntax("{ h.ask() }", s"""{ val hidden = ${invoke.replaceSyntax("c.ask", "h.ask")}; h.ask() }""")
+    rejectText(input, "out-of-scope capability h")
+  }
+
+  test("a specialized callback cannot escape the capability substituted into its captures") {
+    val input = s"""def main(): ((Unit) => Int / [Int => Bool]) = {
+        val generic = $invoke;
+        try {
+          (generic){ cap(h)}
+        } with h: ((Unit) => Int / [Int => Bool]) {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            true
+          }
+          return f => {
+            f
+          }
+        }
+      }"""
+    rejectText(input, "Expected")
+  }
+
+  test("shadowed handlers remain distinct when an alias targets the outer one") {
+    val input = """def main(): Bool = {
+        try {
+          val outer = cap(h);
+          try {
+            outer.ask()
+          } with h: Int / [Int => Bool] {
+            def ask(x: Unit): Int / [Int / [Int => Bool] => Int / [Int => Bool]] resume k = {
+              k(0)
+            }
+            return x => {
+              x
+            }
+          }
+        } with h: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            val n = k(42);
+            zero(n)
+          }
+          return x => {
+            x
+          }
+        }
+      }"""
+    runText(input, "false")
+  }
+
+  private def polyType(name: String): String =
+    s"(forall cap $name: $askContract. (((Unit) => Int / [Int => Bool]) at {$name}))"
+
+  test("quantified answer types are alpha-equivalent through invocation, resumption and lowering") {
+    val input = s"""def main(): ${polyType("result")} = {
+        try {
+          val ignored = h.hold();
+          $invoke
+        } with h: ${polyType("handler")} {
+          def hold(x: Unit): Unit / [${polyType("initial")} => ${polyType("final")}] resume k = {
+            k()
+          }
+          return f => {
+            f
+          }
+        }
+      }"""
+    runText(input, "<function>")
+  }
+
+  test("a nested capability quantifier shadows its name and can escape the outer instantiation") {
+    val inner = s"capfun (c: $askContract) { $invoke }"
+    val input = s"""def main(): Bool = {
+        val factory = $inner;
+        val generic = try {
+          (factory){ cap(h)}
+        } with h: ${polyType("escaped")} {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            true
+          }
+          return f => {
+            f
+          }
+        };
+        try {
+          ((generic){ cap(h)})()
+        } with h: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            val n = k(42);
+            zero(n)
+          }
+          return x => {
+            x
+          }
+        }
+      }"""
+    runText(input, "false")
+  }
+
+  test("normal-return decoding respects capture widening in the checked answer contract") {
+    val fn = "((Int) => Int) at {outer}"
+    runText(s"""def main(): Int = {
+        try {
+          val f = try {
+            fun (x: Int): Int { x}
+          } with inner: $fn {
+            def tick(x: Unit): Unit / [$fn => $fn] resume k = {
+              k()
+            }
+            return f => {
+              f
+            }
+          };
+          f(42)
+        } with outer: Int {
+          def tick(x: Unit): Unit / [Int => Int] resume k = {
+            k()
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "42")
+  }
+
+  test("shared generic interfaces preserve operation types across declaration orders") {
+    runText("""def main(): Bool = {
+        val generic = capfun (c: { def zzz(): Int / [Int => Bool]; def aaa(Bool): Bool / [Bool => Bool];}) {
+          fun (u: Unit): Int / [Int => Bool] {
+            val ignored = c.aaa(true);
+            c.zzz()
+          }
+        };
+        try {
+          ((generic){ cap(h)})()
+        } with h: Bool {
+          def aaa(x: Bool): Bool / [Bool => Bool] resume k = {
+            k(x)
+          }
+          def zzz(x: Unit): Int / [Int => Bool] resume k = {
+            val n = k(42);
+            zero(n)
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "false")
+  }
+
+  test("sharing a target interface does not identify distinct source capabilities") {
+    rejectText(s"""def main(): Bool = {
+        val generic = capfun (c: $askContract) {
+          fun (arg: cap(c)): Unit { ()}
+        };
+        try {
+          try {
+            ((generic){ cap(h)})(cap(g))
+          } with g: Bool {
+            def ask(x: Unit): Int / [Int => Bool] resume k = {
+              true
+            }
+            return x => {
+              true
+            }
+          }
+        } with h: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            true
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "Argument mismatch")
+  }
+
+  test("higher-order source subtyping elaborates contravariant arguments and covariant results") {
+    runText("""def main(): Int = {
+        try {
+          (fun (g: ((((Int) => Int)) => ((Int) => Int) at { h})): Int { val f = g(fun (x: Int): Int { x}); f(42)})(fun (input: ((Int) => Int) at { h}): ((Int) => Int) {
+            fun (x: Int): Int { x}
+          })
+        } with h: Int {
+          def tick(x: Unit): Unit / [Int => Int] resume k = {
+            k()
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "42")
+  }
+
+  test("subtyping a quantified helper adapts its result after capability instantiation") {
+    runText(s"""def main(): Int = {
+        (fun (helper: (forall cap a: $askContract. (((Unit) => Int) at { a}))): Int { try {
+          ((helper){ cap(h)})()
+        } with h: Int {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            true
+          }
+          return x => {
+            x
+          }
+        }})(capfun (c: $askContract) {
+          fun (u: Unit): Int { 42}
+        })
+      }""", "42")
+  }
+
+  private val effectHelper = """effectfun [E] { fun (f: ((Unit) => Int / E)): Int / E { f() } }"""
+
+  test("answer-effect quantification checks and accepts alpha-equivalent higher-order types") {
+    runText(s"""def main(): Int = {
+        (fun (helper: (forall effect F. (((((Unit) => Int / F)) => Int / F)))): Int { ((helper)[effect pure])(fun (u: Unit): Int { 42})})($effectHelper)
+      }""", "42")
+  }
+
+  test("an abstract effect cannot be used twice without a composition constraint") {
+    rejectText(s"def main(): Int = { val unused = ${effectHelper.replaceSyntax("f()", "{ val first = f(); f() }")}; 0 }",
+      "Cannot compose opaque answer effects")
+  }
+
+  test("pure identity lifting does not establish an arbitrary abstract answer transition") {
+    rejectText("""def main(): Int = { val invalid = effectfun [E] { fun (u: Unit): Int / E { 42 } }; 0 }""",
+      "Expected Int / E, found Int / pure")
+  }
+
+  test("unbound effect variables are rejected at kind checking") {
+    rejectText("""def main(): Int = { val f = fun (u: Unit): Int / Missing { 42 }; 0 }""",
+      "Unknown answer-effect variable Missing")
+  }
+
+  test("nested effect binders shadow names without capturing the outer instantiation") {
+    runText(s"""def main(): Int = {
+        val nested = effectfun [E] {
+          $effectHelper
+        };
+        (((nested)[effect [Bool => Int]])[effect pure])(fun (u: Unit): Int { 42})
+      }""", "42")
+  }
+
+  test("different abstract effects cannot be silently identified") {
+    rejectText("""def main(): Int = { val invalid = effectfun [E] { effectfun [F] { fun (f: ((Unit) => Int / E)): Int / F { f() } } }; 0 }""", "Expected Int / F, found Int / E")
+  }
+
+  test("capability and effect binders have separate namespaces") {
+    val input = Files.readString(Path.of("examples", "atm", "effect-polymorphic.atm"))
+      .replaceSyntax("capfun (c", "capfun (E").replaceSyntax("at {c}", "at {E}")
+    runText(input, "false")
+  }
+
+  test("effect-polymorphic values retain captured capability restrictions") {
+    val tpe = "(forall effect E. (((Unit) => Int / [Int => Bool])))"
+    rejectText(s"""def main(): $tpe = {
+        try {
+          effectfun [E] {
+            fun (u: Unit): Int / [Int => Bool] {
+              h.ask()
+            }
+          }
+        } with h: $tpe {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            true
+          }
+          return f => {
+            f
+          }
+        }
+      }""", "Expected")
+  }
+
+  test("a closed capability abstraction cannot import an ambient abstract effect") {
+    rejectText(s"""def main(): Int = { val invalid = effectfun [E] { capfun (c: $askContract) { fun (f: ((Unit) => Int / E) at {c}): Int / E { f() } } }; 0 }""", "Unknown answer-effect variable E")
+  }
+
+  test("an abstract effect propagates through pure sequencing and mutually exclusive branches") {
+    val input = Files.readString(Path.of("examples", "atm", "effect-polymorphic.atm"))
+      .replaceSyntax("f()", """{ val before = 0; val after = if (true) { f() } else { f() }; add(before, after) }""")
+    runText(input, "false")
+  }
+
+  test("abstract effects can occur inside operation answers and resumed return clauses") {
+    val input = Files.readString(Path.of("examples", "atm", "effect-polymorphic.atm"))
+      .replaceSyntax("f()", """try { inner.tick() } with inner: Int / E { def tick(x: Unit): Int / [Int / E => Int / E] resume k = { k(42) } return x => { f() } }""")
+    runText(input, "false")
+  }
+
+  test("an opaque effect cannot be lifted through an additional delimiter") {
+    val input = Files.readString(Path.of("examples", "atm", "effect-polymorphic.atm"))
+      .replaceSyntax("f()", """try { f() } with inner: Int / E { def tick(x: Unit): Int / [Int / E => Int / E] resume k = { k(42) } return x => { f() } }""")
+    rejectText(input, "Instantiate an opaque answer effect before calling it below new delimiters")
+  }
+
+  test("a known identity transition can be composed repeatedly after effect instantiation") {
+    val helper = effectHelper.replaceSyntax("((Unit) => Int / E)", "((Unit) => Int / E) at {c}")
+    runText(s"""def main(): Int = {
+        val generic = capfun (c: { def ask(): Int / [Int => Int];}) {
+          $helper
+        };
+        try {
+          val apply = ((generic){ cap(h)})[effect [Int => Int]];
+          val callback = fun (u: Unit): Int / [Int => Int] {
+            h.ask()
+          };
+          val first = apply(callback);
+          val second = apply(callback);
+          add(first, second)
+        } with h: Int {
+          def ask(x: Unit): Int / [Int => Int] resume k = {
+            k(42)
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "84")
+  }
+
+  private val repeatHelper = """effectfun [E: repeatable] { fun (f: ((Unit) => Int / E)): Int / E { val a = f(); val b = f(); add(a, b) } }"""
+
+  test("a nonidentity answer transition cannot instantiate a repeatable effect") {
+    rejectText(s"""def main(): Int = { val bad = ($repeatHelper)[effect [Int => Bool]]; 0 }""", "does not satisfy the repeatable bound")
+  }
+
+  test("repeatability compares nested answer effects and depth, not just value types") {
+    for effect <- List(
+      "[Int / [Int => Bool] => Int / [Int => Int]]",
+      "[Int => Int / [Int => Int]]") do {
+      rejectText(s"""def main(): Int = { val bad = ($repeatHelper)[effect $effect]; 0 }""", "does not satisfy the repeatable bound")
+    }
+  }
+
+  test("a repeatable effect can preserve a structured answer state under nested handlers") {
+    val state = "Int / [Int => Bool]"
+    val helper = repeatHelper.replaceSyntax("((Unit) => Int / E)", "((Unit) => Int / E) at {c}")
+    runText(s"""def main(): Bool = {
+        val generic = capfun (c: { def tick(): Unit / [$state => $state];}) {
+          $helper
+        };
+        try {
+          try {
+            (((generic){ cap(inner)})[effect [$state => $state]])(fun (u: Unit): Int / [$state => $state] {
+              42
+            })
+          } with inner: $state {
+            def tick(x: Unit): Unit / [$state => $state] resume k = {
+              k()
+            }
+            return x => {
+              val n = outer.ask();
+              add(add(x, n), -126)
+            }
+          }
+        } with outer: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            val n = k(42);
+            zero(n)
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "true")
+  }
+
+  test("an abstract repeatability bound can be forwarded to another quantified helper") {
+    runText(s"""def main(): Int = {
+        val twice = $repeatHelper;
+        val forward = effectfun [F: repeatable] {
+          fun (f: ((Unit) => Int / F)): Int / F { ((twice)[effect F])(f)}
+        };
+        ((forward)[effect pure])(fun (u: Unit): Int { 21})
+      }""", "42")
+  }
+
+  test("an unconstrained variable cannot acquire a repeatability bound by forwarding") {
+    rejectText(s"""def main(): Int = {
+        val twice = $repeatHelper;
+        val invalid = effectfun [E] {
+          fun (f: ((Unit) => Int / E)): Int / E { ((twice)[effect E])(f)}
+        };
+        0
+      }""", "does not satisfy the repeatable bound")
+  }
+
+  test("an unrestricted helper may be used through a repeatable-only interface") {
+    runText(s"""def main(): Int = {
+        (fun (helper: (forall effect F: repeatable. (((((Unit) => Int / F)) => Int / F)))): Int { ((helper)[effect pure])(fun (u: Unit): Int { 42})})($effectHelper)
+      }""", "42")
+  }
+
+  test("a repeatable-only helper cannot masquerade as unrestricted effect polymorphism") {
+    rejectText(s"""def main(): Int = { (fun (helper: (forall effect F. (((((Unit) => Int / F)) => Int / F)))): Int { 0 })($repeatHelper) }""", "Argument mismatch")
+  }
+
+  test("pure computations can lift to a bounded repeatable variable") {
+    runText("""def main(): Int = { val generic = effectfun [E: repeatable] { fun (u: Unit): Int / E { 42 } }; ((generic)[effect pure])() }""", "42")
+    // This use also needs the domain assumption inside quantified subtyping.
+    runText("""def main(): Int = {
+        (fun (generic: (forall effect E: repeatable. (((Unit) => Int / E)))): Int { ((generic)[effect pure])()})(effectfun [F] {
+          fun (u: Unit): Int { 42}
+        })
+      }""", "42")
+  }
+
+  test("a pure alternative joins an abstract repeatable callback effect") {
+    val input = Files.readString(Path.of("examples", "atm", "repeatable-effect.atm"))
+      .replaceSyntax("val b = f();", "val b = if (false) { f() } else { 0 };")
+    runText(input, "44")
+  }
+
+  test("two different repeatable effects cannot be assumed to share their answer state") {
+    rejectText("""def main(): Int = {
+        val invalid = effectfun [E: repeatable] {
+          effectfun [F: repeatable] {
+            fun (f: ((Unit) => Int / E)): ((((Unit) => Int / F)) => Int / E) {
+              fun (g: ((Unit) => Int / F)): Int / E { val a = f(); val b = g(); add(a, b)}
+            }
+          }
+        };
+        0
+      }""", "Cannot compose opaque answer effects")
+  }
+
+  test("shadowing an effect binder does not inherit the outer repeatability bound") {
+    rejectText(s"""def main(): Int = {
+        val twice = $repeatHelper;
+        val invalid = effectfun [E: repeatable] {
+          effectfun [E] {
+            fun (f: ((Unit) => Int / E)): Int / E { ((twice)[effect E])(f)}
+          }
+        };
+        0
+      }""", "does not satisfy the repeatable bound")
+  }
+
+  private val compositionHelper = """effectfun [E] {
+        effectfun [F: after(E)] {
+          fun (f: ((Unit) => Int / E)): ((((Unit) => Int / F)) => Int / (E;
+          F)) {
+            fun (g: ((Unit) => Int / F)): Int / (E;
+            F) {
+              val a = f();
+              val b = g();
+              add(a, b)
+            }
+          }
+        }
+      }"""
+
+  test("one composition helper supports pure and concrete identity arguments") {
+    for (first, second) <- List(
+      "pure" -> "pure",
+      "pure" -> "[Int => Int]",
+      "[Int => Int]" -> "pure",
+      "[Int => Int]" -> "[Int => Int]") do {
+      runText(s"""def main(): Int = {
+        try {
+          val local = (($compositionHelper)[effect $first])[effect $second];
+          val withFirst = local(fun (u: Unit): Int / $first { 20});
+          withFirst(fun (u: Unit): Int / $second { 22})
+        } with h: Int {
+          def tick(x: Unit): Int / [Int => Int] resume k = {
+            k(0)
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "42")
+    }
+  }
+
+  test("an incompatible composition argument is rejected even when the helper is unused") {
+    rejectText(s"""def main(): Int = { val invalid = (($compositionHelper)[effect [Bool => Int]])[effect [Int => Int]]; 0 }""", "cannot follow")
+  }
+
+  test("a declared composition constraint is directional") {
+    val helper = compositionHelper.replaceSyntax("(E; F)", "(F; E)")
+    rejectText(s"def main(): Int = { val invalid = $helper; 0 }",
+      "Cannot compose opaque answer effects")
+  }
+
+  test("composition annotations require a constraint, not merely opaque variables") {
+    rejectText(s"""def main(): Int = { val invalid = ${compositionHelper.replaceSyntax("after(E)", "any")}; 0 }""",
+      "Cannot compose opaque answer effects")
+  }
+
+  test("dependent composition bounds are alpha-equivalent and survive higher-order use") {
+    val expected = """(forall effect X. ((forall effect Y: after(X). (((((Unit) => Int / X)) => ((((Unit) => Int / Y)) => Int / (X; Y)))))))"""
+    runText(s"""def main(): Int = {
+        (fun (pair: $expected): Int { val local = ((pair)[effect pure])[effect pure]; val first = local(fun (u: Unit): Int { 20}); first(fun (u: Unit): Int { 22})})($compositionHelper)
+      }""", "42")
+  }
+
+  test("a constrained helper cannot masquerade as unrestricted composition") {
+    val harmless = """effectfun [E] { effectfun [F: after(E)] { fun (u: Unit): Int { 42 } } }"""
+    rejectText(s"""def main(): Int = { (fun (pair: (forall effect X. ((forall effect Y. (((Unit) => Int)))))): Int { 0 })($harmless) }""", "Argument mismatch")
+  }
+
+  test("composition bounds are checked in their outer scope and cannot refer to themselves") {
+    rejectText("""def main(): Int = { val invalid = effectfun [E: after(E)] { fun (u: Unit): Int { 0 } }; 0 }""", "Unknown answer-effect variable E")
+  }
+
+  test("a repeatable variable may instantiate both parameters of a composition helper") {
+    runText(s"""def main(): Int = {
+        val pair = $compositionHelper;
+        val bounded = effectfun [G: repeatable] {
+          fun (f: ((Unit) => Int / G)): Int / G { val first = (((pair)[effect G])[effect G])(f); first(f)}
+        };
+        ((bounded)[effect pure])(fun (u: Unit): Int { 21})
+      }""", "42")
+  }
+
+  test("composition constraints can be forwarded through abstract instantiation") {
+    runText(s"""def main(): Int = {
+        val pair = $compositionHelper;
+        val forward = effectfun [A] {
+          effectfun [B: after(A)] {
+            ((pair)[effect A])[effect B]
+          }
+        };
+        val first = (((forward)[effect pure])[effect pure])(fun (u: Unit): Int { 20});
+        first(fun (u: Unit): Int { 22})
+      }""", "42")
+  }
+
+  test("shadowing does not redirect the prefix of a dependent composition bound") {
+    rejectText(s"""def main(): Int = {
+        val pair = $compositionHelper;
+        val invalid = effectfun [E] {
+          effectfun [F: after(E)] {
+            effectfun [E] {
+              ((pair)[effect E])[effect F]
+            }
+          }
+        };
+        0
+      }""", "cannot follow")
+  }
+
+  test("an unrestricted implementation satisfies a constrained composition interface") {
+    runText("""def main(): Int = {
+        (fun (helper: (forall effect E. ((forall effect F: after(E). (((Unit) => Int)))))): Int { (((helper)[effect pure])[effect pure])()})(effectfun [A] {
+          effectfun [B] {
+            fun (u: Unit): Int { 42}
+          }
+        })
+      }""", "42")
+  }
+
+  test("a bound-only effect dependency cannot enter a closed capability abstraction") {
+    rejectText("""def main(): Int = {
+        val invalid = effectfun [E] {
+          fun (u: Unit): Int { val constrained = effectfun [F: after(E)] {
+            fun (x: Unit): Int { 42}
+          }; val closed = capfun (c: { def tick(): Int / [Int => Int];}) {
+            constrained
+          }; 0}
+        };
+        0
+      }""", "Unknown value constrained")
+  }
+
+  test("a whole-prefix constraint supports three sequential abstract effects") {
+    val helper = """effectfun [E] {
+        effectfun [F: after(E)] {
+          effectfun [G: after((E;
+          F))] {
+            fun (f: ((Unit) => Int / E)): ((((Unit) => Int / F)) => ((((Unit) => Int / G)) => Int / ((E;
+            F);
+            G))) {
+              fun (g: ((Unit) => Int / F)): ((((Unit) => Int / G)) => Int / ((E;
+              F);
+              G)) {
+                fun (h: ((Unit) => Int / G)): Int / ((E;
+                F);
+                G) {
+                  val a = f();
+                  val b = g();
+                  val c = h();
+                  add(add(a, b), c)
+                }
+              }
+            }
+          }
+        }
+      }"""
+    runText(s"""def main(): Int = {
+        val local = ((($helper)[effect pure])[effect pure])[effect pure];
+        val first = local(fun (u: Unit): Int { 10});
+        val second = first(fun (u: Unit): Int { 12});
+        second(fun (u: Unit): Int { 20})
+      }""", "42")
+  }
+
+  test("adjacent constraints do not justify a whole prefix when the middle effect can be pure") {
+    rejectText("""def main(): Int = {
+        val invalid = effectfun [E] {
+          effectfun [F: after(E)] {
+            effectfun [G: after(F)] {
+              fun (f: ((Unit) => Int / (E;
+              (F;
+              G)))): Int { 0}
+            }
+          }
+        };
+        0
+      }""", "Cannot compose opaque answer effects")
+    // E ; pure and pure ; G are individually defined, but E ; G is not.
+    rejectText(s"""def main(): Int = { val invalid = (($compositionHelper)[effect [Bool => Int]])[effect (pure; [Int => Int])]; 0 }""", "cannot follow")
+  }
+
+  test("composition implications agree with an independent finite answer-state model") {
+    // This model has two answer states and a polymorphic pure identity. It
+    // intentionally does not call the checker's algebra or equality helpers.
+    type Arrow = Option[(Int, Int)]
+    val domain: List[Arrow] = None :: (for a <- List(0, 1); b <- List(0, 1) yield Some((a, b)))
+    def followedBy(a: Arrow, b: Arrow): Either[Unit, Arrow] = (a, b) match {
+      case (None, x) => Right(x)
+      case (x, None) => Right(x)
+      case (Some((middle, out)), Some((in, middle2))) if middle == middle2 => Right(Some((in, out)))
+      case _ => Left(())
+    }
+    enum Expr {
+      case Variable(name: String)
+      case Then(a: Expr, b: Expr)
+    }
+    def render(e: Expr): String = e match {
+      case Expr.Variable(name) => name
+      case Expr.Then(a, b) => s"(${render(a)}; ${render(b)})"
+    }
+    def evaluate(e: Expr, assignment: Map[String, Arrow]): Either[Unit, Arrow] = e match {
+      case Expr.Variable(name) => Right(assignment(name))
+      case Expr.Then(a, b) => for x <- evaluate(a, assignment); y <- evaluate(b, assignment); z <- followedBy(x, y) yield z
+    }
+    val atoms = List("E", "F", "G").map(Expr.Variable.apply)
+    val expressions = (for a <- atoms; b <- atoms yield Expr.Then(a, b)) ++
+      (for a <- atoms; b <- atoms; c <- atoms; e <- List(Expr.Then(a, Expr.Then(b, c)), Expr.Then(Expr.Then(a, b), c)) yield e)
+    val assignments = for {
+      e <- domain; f <- domain; g <- domain
+      prefix <- followedBy(e, f).toOption
+      if followedBy(prefix, g).isRight
+    } yield Map("E" -> e, "F" -> f, "G" -> g)
+    var accepted = 0
+    for expression <- expressions do {
+      val input = s"""def main(): Int = {
+        val helper = effectfun [E] {
+          effectfun [F: after(E)] {
+            effectfun [G: after((E;
+            F))] {
+              fun (callback: ((Unit) => Int / ${render(expression)})): Int { 0}
+            }
+          }
+        };
+        0
+      }"""
+      val parsed = Parser.parse(input)
+      assert(parsed.isRight, parsed.toString)
+      if Checker.check(parsed.toOption.get).isRight then {
+        accepted += 1
+        for assignment <- assignments do
+          assert(evaluate(expression, assignment).isRight, s"Invalid implication: ${render(expression)} under $assignment")
+      }
+    }
+    assert(accepted >= 4, s"Expected valid pairs and both associations of E;F;G, found $accepted")
+
+    def syntax(arrow: Arrow): String = arrow match {
+      case None => "pure"
+      case Some((a, b)) => s"[State$a => State$b]"
+    }
+    for e <- domain; f <- domain do {
+      val input = s"""def main(): Int = { val helper = (($compositionHelper)[effect ${syntax(e)}])[effect ${syntax(f)}]; 0 }"""
+      val parsed = Parser.parse(input)
+      assert(parsed.isRight, parsed.toString)
+      assertEquals(Checker.check(parsed.toOption.get).isRight, followedBy(e, f).isRight,
+        s"Concrete instantiation: $e then $f")
+    }
+  }
+
+  private val identityContract = "{ def ask(): Int / [Int => Int]; }"
+  private def identityHandler(name: String, body: String): String =
+    s"""try { $body } with $name: Int { def ask(x: Unit): Int / [Int => Int] resume k = { k(42) } return x => { x } }"""
+  private val scopedPair = s"""capfun (c: $identityContract) { capfun here (d: $identityContract) { fun (u: Unit): Int { 42 } } }"""
+
+  test("scoped capability abstraction retains an opened outer tail") {
+    val body = fixtureBody("multiple-capabilities")
+    runText(s"""def main(): Bool = {
+        try {
+          $body
+        } with surrounding: Bool {
+          def noop(x: Unit): Bool / [Bool => Bool] resume k = {
+            k(true)
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "false")
+  }
+
+  test("scoped capability abstraction rejects aliasing, reversed order and intervening handlers") {
+    for (first, second, gap) <- List(("outer", "outer", false), ("inner", "outer", false), ("outer", "inner", true)) do {
+      val use = s"{ val unused = ((both){cap($first)}){cap($second)}; 0 }"
+      val inside = identityHandler("inner", use)
+      val body = identityHandler("outer", if gap then identityHandler("gap", inside) else inside)
+      rejectText(s"def main(): Int = { val both = $scopedPair; $body }",
+        "requires its recorded outer handler context")
+    }
+  }
+
+  test("three nested capability abstractions instantiate against distinct ordered handlers") {
+    val helper = s"""capfun (a: $identityContract) { capfun here (b: $identityContract) { capfun here (c: $identityContract) { fun (u: Unit): Int { 42 } } } }"""
+    val use = "((((generic){cap(first)}){cap(second)}){cap(third)})()"
+    val body = identityHandler("first", identityHandler("second", identityHandler("third", use)))
+    runText(s"def main(): Int = { val generic = $helper; $body }", "42")
+  }
+
+  test("scoped capability abstraction captures ambient values and capability aliases") {
+    val use = s"""{ val outerAlias = cap(outer); val local = capfun here (d: $identityContract) { fun (u: Unit): cap(outer) { outerAlias } }; ${identityHandler("inner", "{ val borrowed = ((local){cap(inner)})(); 42 }")} }"""
+    runText(s"def main(): Int = { ${identityHandler("outer", use)} }", "42")
+  }
+
+  test("scoped capability abstraction cannot satisfy an unrestricted capability interface") {
+    val use = s"""(fun (factory: (forall cap c: $identityContract. (((Unit) => Int)))): Int { 0 })(capfun here (d: $identityContract) { fun (u: Unit): Int { 42 } })"""
+    rejectText(s"def main(): Int = { ${identityHandler("outer", use)} }", "Argument mismatch")
+  }
+
+  test("a closed capability helper can be restricted to a scoped higher-order interface") {
+    val consumer = s"""fun (factory: (forall cap here c: $identityContract. (((Unit) => Int) at {c}) at {outer})): Int { ${identityHandler("inner", "((factory){cap(inner)})()")} }"""
+    val helper = s"capfun (d: $identityContract) { fun (u: Unit): Int { 42 } }"
+    runText(s"def main(): Int = { ${identityHandler("outer", s"$consumer($helper)")} }", "42")
+  }
+
+  test("scoped capability abstraction can retain an outer abstract answer effect") {
+    val helper = s"""effectfun [E] { capfun here (c: $askContract) { fun (f: ((Unit) => Int / E) at {c}): Int / E { f() } } }"""
+    runText(s"""def main(): Bool = {
+        val generic = $helper;
+        try {
+          (((generic)[effect [Int => Bool]]){ cap(h)})(fun (u: Unit): Int / [Int => Bool] {
+            h.ask()
+          })
+        } with h: Bool {
+          def ask(x: Unit): Int / [Int => Bool] resume k = {
+            val n = k(42);
+            zero(n)
+          }
+          return x => {
+            x
+          }
+        }
+      }""", "false")
+  }
+
+  test("scoped capability operation contracts may depend on another abstract capability") {
+    val helper = s"""capfun (c: $identityContract) {
+        capfun here (d: { def use(cap(c)): cap(c) / [Int => Int];}) {
+          fun (u: Unit): cap(c) / [Int => Int] {
+            d.use(cap(c))
+          }
+        }
+      }"""
+    val use = """try {
+        val borrowed = (((generic){ cap(outer)}){ cap(inner)})();
+        42
+      } with inner: Int {
+        def use(x: cap(outer)): cap(outer) / [Int => Int] resume k = {
+          k(x)
+        }
+        return x => {
+          x
+        }
+      }"""
+    runText(s"def main(): Int = { val generic = $helper; ${identityHandler("outer", use)} }", "42")
+  }
+
+  test("scoped capability instantiation preserves identities in dependent operation contracts") {
+    val use = """{ val generic = capfun here (c: { def use(cap(outer)): cap(outer) / [Int => Int]; }) { fun (u: Unit): Int { 42 } }; try { val ignored = (generic){cap(inner)}; 0 } with inner: Int { def use(x: cap(other)): cap(other) / [Int => Int] resume k = { k(x) } return x => { x } } }"""
+    rejectText(s"def main(): Int = { ${identityHandler("outer", identityHandler("other", use))} }",
+      "different operation or answer contract")
+  }
+
+  test("an empty-capture scoped capability abstraction cannot escape its recorded context") {
+    val result = s"(forall cap here c: $identityContract. (((Unit) => Int)))"
+    rejectText(s"""def main(): $result = {
+        try {
+          capfun here (d: $identityContract) {
+            fun (u: Unit): Int { 42}
+          }
+        } with outer: $result {
+          def hold(x: Unit): Unit / [$result => $result] resume k = {
+            k()
+          }
+          return f => {
+            f
+          }
+        }
+      }""", "Expected forall cap")
+  }
+
+  test("scoped capability binders preserve outer aliases when a source name is shadowed") {
+    val use = s"""{ val remembered = cap(outer); val generic = capfun here (outer: $identityContract) { fun (u: Unit): cap(outer) { remembered } }; 0 }"""
+    // The annotated result denotes the new abstract capability; remembered
+    // still denotes the enclosing handler and cannot be used in its place.
+    rejectText(s"def main(): Int = { ${identityHandler("outer", use)} }", "Expected cap(outer)")
+  }
+
+  test("nested scoped capability contracts remain alpha-equivalent in higher-order use") {
+    val helper = s"""capfun (c: $identityContract) {
+        capfun here (d: { def use(cap(c)): cap(c) / [Int => Int];}) {
+          fun (u: Unit): cap(c) / [Int => Int] {
+            d.use(cap(c))
+          }
+        }
+      }"""
+    val contract = s"""(forall cap a: $identityContract. ((forall cap here b: { def use(cap(a)): cap(a) / [Int => Int]; }. (((Unit) => cap(a) / [Int => Int]) at {a, b}) at {a})))"""
+    val use = """try {
+        val borrowed = (((generic){ cap(outer)}){ cap(inner)})();
+        42
+      } with inner: Int {
+        def use(x: cap(outer)): cap(outer) / [Int => Int] resume k = {
+          k(x)
+        }
+        return x => {
+          x
+        }
+      }"""
+    runText(s"""def main(): Int = { (fun (generic: $contract): Int { ${identityHandler("outer", use)} })($helper) }""", "42")
+  }
+
+  test("a function using multiple abstract capabilities can run below an additional handler") {
+    val result = "Int / [Int / [Int => Int] => Int / [Int => Bool]]"
+    val replacement = s"""try { local() } with extra: $result { def tick(x: Unit): Unit / [$result => $result] resume k = { k() } return x => { x } }"""
+    val input = Files.readString(Path.of("examples", "atm", "multiple-capabilities.atm"))
+      .replaceSyntax("local()", replacement)
+    runText(input, "false")
+  }
+}

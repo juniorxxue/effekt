@@ -1,0 +1,23 @@
+// Pinned coar ARM: shift-SAT.ml.
+// Benchmark-specific specialization: f and the resumed suffix contain no Shift,
+// so the recursive reset installed around f in the upstream helper is inert and
+// omitted. This is not a port of the general recursive shift/reset library.
+// The original Shift operation and all three actual continuation calls remain.
+def main(): Bool = {
+  type CallRegion = (local (Unit) => Unit);
+  def local test(n: Int): {v: Int | v == 8*n+7} = {
+    try {
+      val s = control.shift(fun local[CallRegion] (k: (local (x: Int) => {v: Int | v == 2*x+1})): {v: Int | v == 8*n+7} {
+        val first = k(n); val second = k(first); k(second)
+      });
+      s * 2 + 1
+    } with control: {v: Int | v == 8*n+7} {
+      def shift(f: (local (k: (local (x: Int) => {v: Int | v == 2*x+1})) => {v: Int | v == 8*n+7})): (s: Int) /
+        ({v: Int | v == 2*s+1} => {v: Int | v == 8*n+7}) = {
+        f(fun local (x: Int): {v: Int | v == 2*x+1} { resume(x) })
+      }
+      return v => { v }
+    }
+  }
+  val result = test(3); result == 31
+}

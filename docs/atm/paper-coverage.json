@@ -1,0 +1,1637 @@
+{
+  "schema_version": 1,
+  "paper_inputs": [
+    {
+      "name": "popl27-paper152.pdf",
+      "sha256": "7e3fbb568a55a2c303accb6ed41a9eb6014a9130c04b0520a8de71228fcbc982"
+    },
+    {
+      "name": "popl27-paper152-supplemental.pdf",
+      "sha256": "265152538b596bc0971b73df6ad413e17ff4735e1faa613cec4ab675e8038957"
+    }
+  ],
+  "inventory": "Supplement section 4, Table 1, pages 52-53: 59 ARM (30 SAT, 29 UNSAT) plus 22 Lexa. This is not the pinned 52-file coar inventory.",
+  "reference_checkout": {
+    "repository": "https://github.com/yzyzsun/lexa",
+    "head": "15b9073094cde063012e0e3b931728de104e9754",
+    "provenance": "Local working-tree candidate sources, individually hashed. Not established to be the paper submission snapshot. Modified files are explicitly marked; original timings are not reused."
+  },
+  "status_meanings": {
+    "upstream_port": "An ATM port targets the pinned coar property. This does not establish equivalence to the paper Lexa translation. Results are recorded by the runner, not inferred from this status.",
+    "blocked": "A preserved port is rejected for a documented unsupported feature; this is not a successful UNSAT result.",
+    "unported": "No corresponding supported ATM port.",
+    "illustration": "Related executable feature demonstration, not the exact paper example.",
+    "partial": "Only part of the paper example is represented."
+  },
+  "benchmarks": [
+    {
+      "suite": "ARM",
+      "paper_file": "amb-1-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/amb_1.lx",
+        "sha256": "7116025ac060e74f2d4edfe83ff335a7fa68720547def1253e6287044a9c200e",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "amb-1-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-1-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "a58216409f50aa12a22a739dbfadd796385dd5fca05d4c97bec0fea3da3c3c9b",
+      "port_adaptations": "Select receives head/tail annotation context; original first-success search and resumptions retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-1-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/amb_1_unsat.lx",
+        "sha256": "89cb546663f25376d9ef07bcd7f0a70f7bf2bd0a16d5f61c7b12666afdf4564a",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "amb-1-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-1-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "21724041cf8e2f66ddfadbadb09e62c4eba22e660835ec810f45e656c3a7d8a2",
+      "port_adaptations": "Select receives head/tail annotation context; original first-success search and resumptions retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-2-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/amb_2.lx",
+        "sha256": "84545d38495fcbf51807dc0556e98bf8cdb3b5319bd21a0a10ecd648a4c63ac0",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "amb-2-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-2-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "8357f85df7225c96d373acdc1609eb283183e76cba1a89da31394b25adaff402",
+      "port_adaptations": "Select receives head/tail annotation context; original first-success search and resumptions retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-2-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/amb_2_unsat.lx",
+        "sha256": "4d081f8c1731881e486c20a57edbcd7788e567afb6e781a41c500d9ed3fb28f8",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "amb-2-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-2-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "7607dfa52ff8803e96d13a4dc53a6414aedc3511515749a6835bac6c6df1b2ea",
+      "port_adaptations": "Select receives head/tail annotation context; original first-success search and resumptions retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-3-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/amb_3.lx",
+        "sha256": "4531573bd14aa3bc398cb449b5509bf9e45a611aa2c3a6bc1e8b2aeafc910066",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "amb-3-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-3-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "0dcf07145b7b4365a0ad66923b45496e9f8353e65dc5cfc161fed2ce1221b57a",
+      "port_adaptations": "Select receives head/tail annotation context; original first-success search and resumptions retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-3-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/amb_3_unsat.lx",
+        "sha256": "591aa0f3fa2939e2b49137bdb5edeea237d4ab495367779d055d8bf83f4f7036",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-3-simpl-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/amb_3_simpl.lx",
+        "sha256": "30488dd8da3a279ef968b0bd1be16f5789c60949362c99f434d172ce5bfd72a4",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "amb-3-simpl-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-3-simpl-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "61d1222fc074f26d0d05a74aea6d18fa731c0e5ee61f1b9674c2aad58f0718bf",
+      "port_adaptations": "Select receives head/tail annotation context; original first-success search and resumptions retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/bfs.lx",
+        "sha256": "7cecede3b6423f3ec7c4d1da92c06be33146d34471b528b3d9da201fbebeda24",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "bfs-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/bfs-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "2cfa0198fcd8b227ab4b70b4db67fc9b19dade87171eaf66547b5eaf3fd13b39",
+      "port_adaptations": "Specialized to the single Select in each benchmark. The private queue is threaded explicitly; Failure dispatch moves from the return clause to runNext after invoking the dequeued continuation. Actual continuations, true/false jobs, and FIFO order are retained. Select receives its expected branch results as annotation context.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/bfs_unsat.lx",
+        "sha256": "cae27561eeb781af7afbfd475bbe2f07690495f6e94c35d5f08fd4dae7ca3158",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "bfs-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/bfs-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "0457ae4de663be857de204212d1665fe3b528f0f1c301a5d0883b1201d699d03",
+      "port_adaptations": "Specialized to the single Select in each benchmark. The private queue is threaded explicitly; Failure dispatch moves from the return clause to runNext after invoking the dequeued continuation. Actual continuations, true/false jobs, and FIFO order are retained. Select receives its expected branch results as annotation context.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-simpl-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": true,
+      "reference": {
+        "path": "examples/arm/bfs_simpl.lx",
+        "sha256": "8934aa6575e8dc32b74890ba848b0847cbf9ab93e0bf7a758f6cbf16f03ffbf4",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "bfs-simpl-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/bfs-simpl-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "b09a1ed9fdaa1ae289ff9c35d71910d0daec937010a3ef52fb8d6a3480049605",
+      "port_adaptations": "Specialized to the single Select in each benchmark. The private queue is threaded explicitly; Failure dispatch moves from the return clause to runNext after invoking the dequeued continuation. Actual continuations, true/false jobs, and FIFO order are retained. Select receives its expected branch results as annotation context.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-simpl-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": true,
+      "reference": {
+        "path": "examples/arm/bfs_simpl_unsat.lx",
+        "sha256": "9d6d33b175b132c87b07af7290dec8035b00fa1edf64047c04572bd16811eda5",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-all-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/choose_all.lx",
+        "sha256": "8d47c1db67945efd09031abba9f2c8b51a5720b997f7d38b9d29dca8dfa44077",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "choose-all-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-all-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "reference_caveat": "Local Lexa result list is reconstructed explicitly; branch/resumption structure needs an independent equivalence audit.",
+      "port_sha256": "503df86ad771b2dd568914e3d1cf5c08c922f2e0c358b9efe22c3c6e39364a0b",
+      "port_adaptations": "Monomorphic lists and structural append; original two Decide context fields and all four outcomes retained.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-all-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/choose_all_unsat.lx",
+        "sha256": "2917c390131a043d41b0dc9534689255fac2e3f1eb29e438b1687c44fa4ccd31",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "choose-all-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-all-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "reference_caveat": "Local Lexa result list is reconstructed explicitly; branch/resumption structure needs an independent equivalence audit.",
+      "port_sha256": "dbd44652895e0d0ef70198d7750498b6e317111fa1e89df4b511f88b17b6b366",
+      "port_adaptations": "Monomorphic lists and structural append; original two Decide context fields and all four outcomes retained.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-max-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/choose_max.lx",
+        "sha256": "b6be60dd9875fa84eecfddd317e386dd55a4c2dd8fe922c64dbae5e173ac8caa",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "choose-max-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-max-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "54301bc582f7eed8fb2a72deed62b29eb81e1983b38084bcb6f095b59966261a",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-max-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/choose_max_unsat.lx",
+        "sha256": "606b4424479278d77b9ff805f990409c0946bc69bdda7dee10e5e9ce548460b4",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "choose-max-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-max-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "664e4f114236208dec82e1fd3af93bb7bf97b7c4c61809c83104cd30a54d02fe",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-sum-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/choose_sum.lx",
+        "sha256": "6cea2dd64f2e7642482964a622090f10372ff58c8526084f8ca1a2e6f3ca0a66",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "choose-sum-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-sum-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "3da20f153295100cdc42c31bdc1aefad974fa6dd02fe544a5663c8ed5696ef11",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-sum-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/choose_sum_unsat.lx",
+        "sha256": "4f24c2409b27766dc82c8786cdeb1e1213e81d069b94cd0716eb1c8dc1e42b9b",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "choose-sum-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-sum-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "b4d85cf03de9f0f9d26792fe94d16c1a00af7434f9084b1b68d6ae3b2ca98f90",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-1-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/deferred_1.lx",
+        "sha256": "85b37c7d6c243c32dedc1ef0ba48046c49f6700573ab704d67de3c34dbe6e40f",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "deferred-1-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/deferred-1-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "fc65d3c2b142f75e92730426a3745e82350a3aeb62af0b15fe1ba18863bbb2a7",
+      "port_adaptations": "Dependent function-valued constructor fields; stored thunk, lazy forcing, and memoized Value branch retained. Helpers use exact top-region arrows.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-1-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/deferred_1_unsat.lx",
+        "sha256": "5bc6d2e430ee34ef20a98287720c66739ab257a3641c4ab3a6bfb3401605aba4",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "deferred-1-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/deferred-1-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "d308943ae1b3aa2c18245c6d358ec2597501ae9e602fe194a85e589d5b77d5af",
+      "port_adaptations": "Dependent function-valued constructor fields; stored thunk, lazy forcing, and memoized Value branch retained. Helpers use exact top-region arrows.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-2-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/deferred_2.lx",
+        "sha256": "ff29f8c667af87d7ae029ef5f2879ce53938566a874065fd06b60c0aac38e083",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "deferred-2-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/deferred-2-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "9fbaea0b5102fbc419c504dd88eb0e22ca39e03f33a270dcafdec1bfa36b1285",
+      "port_adaptations": "Dependent function-valued constructor fields; stored thunk, lazy forcing, and memoized Value branch retained. Helpers use exact top-region arrows.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-2-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/deferred_2_unsat.lx",
+        "sha256": "9cb6f185c29ce682c69bdbcd8fed11ef381dfa475879a093706bbb5516f8f95d",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "distribution-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/distribution.lx",
+        "sha256": "a71cc025e40b19325629b72d23d5591cd33a961307bbe19c77e9f6dc3758dab1",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "distribution-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/distribution-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "f4df29373211681c627ae058850b9a744842ac1802c7a8a6648b65dcbfc5a682",
+      "port_adaptations": "Higher-order map/foldRight and supplied callback invocations restored; recursive scaling, insertion, merging, and integer division retained. List datatype and callback contracts remain instantiated to this benchmark, not fully polymorphic.",
+      "port_fidelity_class": "higher_order_monomorphic"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "distribution-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/distribution_unsat.lx",
+        "sha256": "6f605b4af249ae62672adce645cc68a431e258bb5e6574e9e94a53fe89a76c04",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "distribution-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/distribution-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "c29127dfaa818f2530015dc4ebe2152658a90bec083b88d3a6dfeaf23b9f81b7",
+      "port_adaptations": "Higher-order map/foldRight and supplied callback invocations restored; recursive scaling, insertion, merging, and integer division retained. List datatype and callback contracts remain instantiated to this benchmark, not fully polymorphic.",
+      "reviewed_expected": "accept",
+      "label_discrepancy": "Pinned distribution-SAT.ml and distribution-UNSAT.ml have identical executable code and assertion; the latter only adds (*unsat*). Both satisfy the bounded-weight assertion. Preserve the original reject label separately; do not count this as a successful UNSAT test.",
+      "reference_caveat": "Upstream filename says UNSAT, but its program/assertion equals the SAT file. The upstream port accepts; this does not validate the paper UNSAT row.",
+      "port_fidelity_class": "higher_order_monomorphic"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "expectation-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/expectation.lx",
+        "sha256": "a1c7f58422e995492b196b149f31445366a5cdd1f029c8a828257224904f7c1c",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "expectation-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/expectation-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "b54b2f0418c1e1e7ef98c459d4751982f2fdffb9531863a2b2ce72b8d3b8f44f",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "expectation-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/expectation_unsat.lx",
+        "sha256": "716253b9f1934cb40b1893dd1c731d6189be7ae078a19a248056b90f137688a7",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "expectation-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/expectation-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "303fa77b471d6b1586b5bb426b8b9a23c406a145edc3afb08a65faefe977a771",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-1-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_read_1.lx",
+        "sha256": "1cbb28d64a1287857c16d2c91de273fbb04f863f1540d9ed9e420808d8ea9545",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-read-1-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-1-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "5147688c5c07f31bbebcf7a24ce88e60f0c608ca81c07d1992a8bfc122242dca",
+      "port_adaptations": "Read receives the remaining read count as annotation context. State-passing input consumption and empty-input abort are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-1-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_read_1_unsat.lx",
+        "sha256": "6d4a96dec32c9ff3ed920692cc77bcbab823efda64fa0a385721ff5e9ee4e440",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-read-1-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-1-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "027c32e72244507a69d310e9abed33f05c4149d2666ae5007a40d4c82f8b6555",
+      "port_adaptations": "Read receives the remaining read count as annotation context. State-passing input consumption and empty-input abort are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-2-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_read_2.lx",
+        "sha256": "55d6f9da7ce0ceb21d5b942dad4074bf4ca0f475bddec5c82532042586f75977",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-read-2-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-2-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "aaff26d39cc19eaca1a197e0c0373d42c706ee09d9cdf9dcd62bd644bef534c0",
+      "port_adaptations": "Read receives the remaining read count as annotation context. State-passing input consumption and empty-input abort are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-2-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_read_2_unsat.lx",
+        "sha256": "1ae9fbbd503dc8e84c827dcb84fd943b37a74b31311f5c8972632e784a81ca5c",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-3-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_read_3.lx",
+        "sha256": "7da698abac0a5aca0949cabc502362b9c57a4b48fc0449972d09237623cbe580",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-read-3-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-3-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "0eda9f5fd04be5539145cd1ed166807638066bfd5443dc94c0e95d287281a1d0",
+      "port_adaptations": "Read receives the remaining read count as annotation context. State-passing input consumption and empty-input abort are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-3-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_read_3_unsat.lx",
+        "sha256": "06eef183cecc98819d9e30d0ba734bba88f72ed69cbaabdca745104ead74e5e2",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-1-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_write_1.lx",
+        "sha256": "a668cbf095d1162e6d64ac6e97e38772de860182d9486ea0ded8ae92fb31f124",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-write-1-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-1-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "161e44c53623d80aec883c9671eaf6fd805fbfac5ff694686e0a2b61e3f7af65",
+      "port_adaptations": "Write receives the remaining input tail as annotation context. All writes and the output accumulator are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-1-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_write_1_unsat.lx",
+        "sha256": "63066f5853afc151a2049d5ba4d675bb8342512e802faf1dacac40c7456c445a",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-write-1-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-1-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "47f8f073ced2448401274558967bf7e263868f2f08382cffb9f64f77a291038e",
+      "port_adaptations": "Write receives the remaining input tail as annotation context. All writes and the output accumulator are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-2-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_write_2.lx",
+        "sha256": "76ce281e05cc6332b91f28abe9effce52846abc2ea00c3774a8cee2b09770ede",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-write-2-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-2-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "c2de2d37a43075497320b6e0539e376a02e8d351efbc72ff2b0f22ca8581f390",
+      "port_adaptations": "Write receives the remaining input tail as annotation context. All writes and the output accumulator are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-2-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/io_write_2_unsat.lx",
+        "sha256": "4174b813fc59ea5cab2513eda3eb17d3fbd47699dc7039fdb4fb10afd5027d4e",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "io-write-2-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-2-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "2ec4c5a79078d2dd14b2114f0d36b3d538055591d267b0a0a4cade07fda32fdb",
+      "port_adaptations": "Write receives the remaining input tail as annotation context. All writes and the output accumulator are retained.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "modulus-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": true,
+      "reference": {
+        "path": "examples/arm/modulus.lx",
+        "sha256": "420fdcb5d4b45272b95884cba0b989b9c02bc46848cfe68b8d429efd8b4bdd27",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "modulus-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/modulus-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "0a6b39c875b8deb9724da666338f20a0a8251da13f68acf998e32b8c386f4e2b",
+      "port_adaptations": "mu is specialized to the actual f (zero times sequence(10)); both effect-mediated callbacks and maximum-index tracking remain. The general higher-order helper API is not ported.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "modulus-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": true,
+      "reference": {
+        "path": "examples/arm/modulus_unsat.lx",
+        "sha256": "3b09945d404f36564c991815e39e723ab042d09298eb5ec57ae8d4c6b3153d5d",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "modulus-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/modulus-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "1519e7ed2f2ce5d3477b072b6f74a6201229ba7e50b20b3b74c8dac0166d935d",
+      "port_adaptations": "mu is specialized to the actual f (zero times sequence(10)); both effect-mediated callbacks and maximum-index tracking remain. The general higher-order helper API is not ported.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-1-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/queue_1.lx",
+        "sha256": "2af2cfd54e5114c1d1910bc671c527075671479207851515f3702699187d479a",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "queue-1-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/queue-1-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "2fdf2094354ce196ec7ea0d6fe0adfcca87ac3f4a39959d6235a40de8cc816d3",
+      "port_adaptations": "Monomorphic FIFO lists with append; original operation context, two dequeues, and state-passing queue retained.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-1-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/queue_1_unsat.lx",
+        "sha256": "2ddf1101932d17b2c5bbe4084547017ee4263178af5d45ac2682921c15c0271a",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "queue-1-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/queue-1-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "5c3b7b6e1e70e85f85afcf96abe9548d3761bf01a91246d4bca40c1fa45e9a8b",
+      "port_adaptations": "Monomorphic FIFO lists with append; original operation context, two dequeues, and state-passing queue retained.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-2-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/queue_2.lx",
+        "sha256": "27278c447839e1e43e04ea6087255f7d4aaf320e01a666b2ed9dc7be596ffc89",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "queue-2-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/queue-2-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "ac9ea2eadad19bf1dc9ddd1eaab0229aedc45e745757a943bac49d3f842f541f",
+      "port_adaptations": "Monomorphic FIFO lists with append; original operation context, two dequeues, and state-passing queue retained.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-2-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/queue_2_unsat.lx",
+        "sha256": "488be0220e3d8cf01adb88ebc777ad8e8f93e0e88655885ad0973b3e8f2a69f8",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "round-robin-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/round_robin.lx",
+        "sha256": "8f0d3c322b9ad33940badbb0caf474429f7009d1a5bb5d0b4cf659688e84fdce",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "round-robin-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/round-robin-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "7df07018c52b02fec76d9b3368b2a5e793b61b7708b1143b4e9b27800e9155b5",
+      "port_adaptations": "Private queue and counter references become explicit scheduler state. Increment/Yield/Spawn are reified; child handlers are constructed separately. Actual continuation closures are enqueued and scheduled in FIFO order. This is a scheduler representation change, not native reference support.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "round-robin-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/round_robin_unsat.lx",
+        "sha256": "0a90a289b62f837a6fbbcb7ce05f10aef985fc7292805b7c55ede72a45d4c291",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "round-robin-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/round-robin-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "4fc9d9a369d72d6e19b7e2f07b03f12362927bcb701a23ef07d9b00799cae548",
+      "port_adaptations": "Private queue and counter references become explicit scheduler state. Increment/Yield/Spawn are reified; child handlers are constructed separately. Actual continuation closures are enqueued and scheduled in FIFO order. This is a scheduler representation change, not native reference support.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-1-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/safe_div_1.lx",
+        "sha256": "4f7ef367372f0ba25c05a3b2b85a1743b1cefb9018e422b8cb8af24d894cfd5b",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "safe-div-1-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-1-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "f6b524398987c326167a05efb4ecb291f833917b4b89574d32f76741d9e53da1",
+      "port_fidelity_class": "exception_encoding",
+      "port_adaptations": "MyExn is encoded as an aborting lexical operation; optionize is inlined at the benchmark instance and the unperformed polymorphic Dummy operation is omitted. The original division branches and universal assertion remain."
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-1-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/safe_div_1_unsat.lx",
+        "sha256": "873f839f22e039eb1ae5e682268ea933a94222864b9ce6b6039aa03889d259b1",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "safe-div-1-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-1-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "216a5d304dd5fc152598bc1fc115ae5efc5ede191496c68137396689eb2b43ba",
+      "port_fidelity_class": "exception_encoding",
+      "port_adaptations": "MyExn is encoded as an aborting lexical operation; optionize is inlined at the benchmark instance and the unperformed polymorphic Dummy operation is omitted. The original division branches and universal assertion remain."
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-2-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/safe_div_2.lx",
+        "sha256": "ed3e0f0e9c709ad26fec2e54a0ead23da97a74f1bdca2fe437fedbbf6c58f48f",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "safe-div-2-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-2-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "3fac5128d158a24b567d0ecf1ecebac5d7ec776ca58bb743d151beb89f981d9f",
+      "reference_caveat": "Local Lexa version uses a disjunctive None-or-Some contract; the Effekt port instead targets the exact upstream Some(n/m) property.",
+      "port_fidelity_class": "exception_encoding",
+      "port_adaptations": "MyExn is encoded as an aborting lexical operation; optionize is inlined at the benchmark instance and the unperformed polymorphic Dummy operation is omitted. The original division branches and universal assertion remain."
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-2-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/safe_div_2_unsat.lx",
+        "sha256": "37d270543a784bcd2071f7fc2ac28f35d78690a27f539accd2745b49cbf4f8a8",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "safe-div-2-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-2-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "5dcb7962a17c44b41bd643c9c78291b7054e1a3662772b08149a9b64ea57f1ab",
+      "reference_caveat": "Local Lexa variant checks None-or-Some(n/m+1); the Effekt port retains the upstream assertion that the exact Some(n/m) equality test is false.",
+      "port_fidelity_class": "exception_encoding",
+      "port_adaptations": "MyExn is encoded as an aborting lexical operation; optionize is inlined at the benchmark instance and the unperformed polymorphic Dummy operation is omitted. The original division branches and universal assertion remain."
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "select-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/select.lx",
+        "sha256": "d8c6110c731d6b6acfe95297a748218f8d0235e784f55a9754d3d88570fa00e7",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "select-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/select-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "41bb058cc1db4d94f56009cf9408a23299aedd8240bab66b82d7c07a380fba3d",
+      "port_adaptations": "Monomorphic lists/results and explicit recursive measures; both choices and the original first-success collector remain.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "select-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/select_unsat.lx",
+        "sha256": "b8358d3ec0005e7683228ab89c3c590cc261da5a86b22b9c728145f8a0407192",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "select-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/select-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "8488c4179acdc59e8d516708b9728799faeb0ec2367eb2981731637faa1cda72",
+      "port_adaptations": "Monomorphic lists/results and explicit recursive measures; both choices and the original first-success collector remain.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "shift-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/shift.lx",
+        "sha256": "7287a980d5f3a563c6e0508d355ad25f9713127135761923b45c950dbf9c189c",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "shift-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/shift-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "f7f171ab44d0e7e6b1857a8e9fb103530846a6f32db11e9144ac741be9616147",
+      "port_adaptations": "Benchmark-specific specialization: omit the recursive reset around f because f and the resumed suffix contain no further Shift. Preserve the Shift operation and all three actual continuation calls. General recursive shift/reset is not supported by this port.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "shift-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/shift_unsat.lx",
+        "sha256": "d692060ea0e73b7009a6556e5c0d62de8fb5eac958aeab0ade5012df0e134ea5",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "shift-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/shift-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "21e23883f92acd769bfd3e26ef1fdf8316bf47dff7a8e25570c667786f6b35db",
+      "port_adaptations": "Benchmark-specific specialization: omit the recursive reset around f because f and the resumed suffix contain no further Shift. Preserve the Shift operation and all three actual continuation calls. General recursive shift/reset is not supported by this port.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/state.lx",
+        "sha256": "60f8e457bb93a5d22baa4dcc9c49d0265a7ef7111d34927010f82c3bf0dbf0bb",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "state-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/state-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "7334897b89bec19e9527377150fd892ac8a95a2900de5a816e1cd0b99468b704",
+      "port_adaptations": "Retain original Lookup/Update context and recursive counter; use a local-arrow alias to anchor state-function answers and prove result equals initial state.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/state_unsat.lx",
+        "sha256": "816c939a4e8a3b9122bc00c03efc00c5db339f9a877e1834df4a0be134866bf2",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "state-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/state-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "20f1208215527b5d47978b83b9979b23f71f8ee7bc3aef65eb87f03d57c03346",
+      "port_adaptations": "Lookup/Update receive added counter context absent from the upstream UNSAT source. The recursive counter and original false result != init assertion remain; a local-arrow alias anchors state-function answers.",
+      "port_fidelity_class": "context_instrumented"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-easy-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/state_easy.lx",
+        "sha256": "5458d9b0931760f1ca2673d6b0ad410e9fd02f9366386bf0a62eff9b8873f1fc",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "state-easy-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/state-easy-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "09090776e1acdf063204081880fd9a9b1363da4a978ad8bac43f06f85dccff96",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-easy-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/state_easy_unsat.lx",
+        "sha256": "dd64419aa8412b93c8ad8f90b4c948e8ed7023b33254d3d3a9f2ba7b9cb91120",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "transaction-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/transaction.lx",
+        "sha256": "6aca9c2aa8cfb309d07158c22237b456d34bd0827134b7a0d39cf6d03968318a",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "transaction-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/transaction-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "ff469c2c3ac52d1a9033b191b6264621a2c65fa854c18ffc00a9b1287f4ee1b8",
+      "port_adaptations": "The private reference becomes the committed handler result; normal completion returns the final state and MyExn returns the initial zero. Both branches, lookups, and updates remain. This is state passing, not native reference support.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "transaction-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/transaction_unsat.lx",
+        "sha256": "fecf215e76fb2396ce11e4c024ff6975a98bd4c28b168b1abce2a73db07d6ff7",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "transaction-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/transaction-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "42d4b6e09a0ab1b3cd1d865dd7196a49e87c50aad1921c22f31f07bc0e2162f4",
+      "port_adaptations": "The private reference becomes the committed handler result; normal completion returns the final state and MyExn returns the initial zero. Both branches, lookups, and updates remain. This is state passing, not native reference support.",
+      "port_fidelity_class": "substantial_adaptation"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "yield-SAT.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/yield.lx",
+        "sha256": "0f41412e9ef0f95d4799b0c7a60b5e86d9cf16e743b2e8a5aa4ea4cd05356297",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "yield-SAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/yield-SAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "dc26be7fdc232918566fc8f303ecec4a4d8a2a9babcfb3e2f7759432be6db2f2",
+      "port_adaptations": "Recursive tree measures and dependent continuation fields. Susp stores and later invokes the actual continuation; depth-first traversal and every leaf increment remain. Helpers use exact top-region arrows.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "yield-UNSAT.lx",
+      "expected": "reject",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "examples/arm/yield_unsat.lx",
+        "sha256": "42fc412bebe75ceb27be7973aa767fc7d9658dcd6f45111ddc10c0fef795710a",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": "yield-UNSAT.ml",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/yield-UNSAT.effekt",
+      "remaining": null,
+      "paper_translation_equivalence": "not_audited",
+      "port_sha256": "2e0bd50e8d4fb737f4e3641b97dd9cf504a5f5b6a68af210cb113b4f0c210631",
+      "port_adaptations": "Recursive tree measures and dependent continuation fields. Susp stores and later invokes the actual continuation; depth-first traversal and every leaf increment remain. Helpers use exact top-region arrows.",
+      "port_fidelity_class": "structurally_close"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "ackermann.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/ackermann/main.lx",
+        "sha256": "c8cefe4a25bce5111d4db29abd539e3c2eb0bbd029544e73b85308ae725ac9fa",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "bezout.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/bezout/main.lx",
+        "sha256": "af8d4238c78aff1fc0918353e80527ccd24e33cee57fec83bc92082d5a9714b0",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "catalan.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/catalan/main.lx",
+        "sha256": "3397ed6d81d44cff9788cb34ed6393a053817cd732fac4b122fed61967e24c3c",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "countdown.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/countdown/main.lx",
+        "sha256": "8545833c39e59113302ffe26fe388e859038d78af094d3d8bcec394436468e92",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "fibonacci_recursive.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/fibonacci_recursive/main.lx",
+        "sha256": "4689dd6efe23b2547721f63ab02ed3b943528f137f1fcd128b3266f11ac379e6",
+        "tracked_at_head": true,
+        "differs_from_head": false
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "golomb.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/golomb/main.lx",
+        "sha256": "195cb9ec1cc44d73aaa8d5060816291fae0a5b04736345ab0d820c2aa4bdd865",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "handler_sieve.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/handler_sieve/main.lx",
+        "sha256": "b55778ec176b2694744f020a1b2d8f052dc6f4ebd94401117b1e88461ec38098",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "hofstadterq.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/hofstadterq/main.lx",
+        "sha256": "9559134ab3ce7221aa64290f681150aca28028027f155924c12127175f306813",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "interruptible_iterator.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/interruptible_iterator/main.lx",
+        "sha256": "e3b9b38acfa247d4c1cb9997d6268d39f1ee39a6a1518375c403a58e622cb171",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "iterator.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/iterator/main.lx",
+        "sha256": "d25ea9a0242ea09ce7e2db286c6a96f0418b24c194d8f8c49925bd87dcb0af88",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "karatsuba.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/karatsuba/main.lx",
+        "sha256": "3fbcd85a3aef1b6fb9c982abe592491d56f2c9d483dc5f355a2710bfe04e9063",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "latticepath.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/latticepath/main.lx",
+        "sha256": "93bb62ceedfb7256b3fe41a9411d8273e6e7adabb0160c676f0a84eeb8158b4c",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "listiter.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/listiter/main.lx",
+        "sha256": "e657a08e196464d00a4be0b88ad236ed8e578e0c626931b2e9a5da9453581d09",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "logger.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/logger/main.lx",
+        "sha256": "367d238016ff5ab0cfa6dd5552b60067d7fa6b97c03a1722cd89c747eade3b3b",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "nqueens.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/nqueens/main.lx",
+        "sha256": "d68fff90188808aa0b595490f815418a04d0fad57b95817415e77c203f326758",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "palindrome_partition.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/palindrome_partition/main.lx",
+        "sha256": "1bdd5ea008bcac8eeba6f172deb5cc8e903d60ef593f8c47b63cdf4de69bb012",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "product_early.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/product_early/main.lx",
+        "sha256": "2adbbe18dd6e167f1bee994086fd720fe84aa4533a78f4e59cb87fba0b76e28b",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "resume_nontail.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/resume_nontail/main.lx",
+        "sha256": "1d8effbbd424e97b91f2e5cbffb1fdffdaabf6e7ecbc0de321f5f3616e8c9a2c",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "resume_nontail_2.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/resume_nontail_2/main.lx",
+        "sha256": "f61b7289326ea78f588bd4aba28efb84314f905b1935ceb6a778e00b0e3623c0",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "tree_explore.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/tree_explore/main.lx",
+        "sha256": "97133cce1301be3a93685cc78fdb28b86d64f7e758368d879410a6af682ed94c",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "triples.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/triples/main.lx",
+        "sha256": "d7eac715794535ded7e3726f46ba69ffce6a7c712bbc733cec9762fcf3ef7caf",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "two_threads_ackermann.lx",
+      "expected": "accept",
+      "paper_table_starred": false,
+      "reference": {
+        "path": "benchmarks/lexa/two_threads_ackermann/main.lx",
+        "sha256": "0a11f4e0d04c8daefc70cb0f5e90347fd0d470679a99e73f5a20c5b32c9997d9",
+        "tracked_at_head": true,
+        "differs_from_head": true
+      },
+      "upstream_source": null,
+      "status": "unported",
+      "port": null,
+      "remaining": "Port and audit the complete original handler behavior and contracts; no ATM port exists",
+      "paper_translation_equivalence": "not_audited"
+    }
+  ],
+  "examples": [
+    {
+      "id": "lexical-selection",
+      "paper": "main section 2.1, Figure 1",
+      "status": "illustration",
+      "ports": [
+        "examples/atm/nested-outer.effekt"
+      ],
+      "remaining": "Audit correspondence to both lexical file capabilities in the paper; current port illustrates lexical dispatch only.",
+      "port_sha256": {
+        "examples/atm/nested-outer.effekt": "fce2333e7cbdd019021324ee9e880eb70d1bb03454a2431469200412ab1854ee"
+      }
+    },
+    {
+      "id": "atm-introduction",
+      "paper": "main section 2.2",
+      "status": "illustration",
+      "ports": [
+        "examples/atm/int-to-bool.effekt"
+      ],
+      "remaining": "Current program illustrates an answer-type change; not a transcription of the paper example.",
+      "port_sha256": {
+        "examples/atm/int-to-bool.effekt": "31ae5c9f247d01cc97e3d9cd43393f650e7226437b965723070053110b5acd52"
+      }
+    },
+    {
+      "id": "nested-lexical-atm",
+      "paper": "main section 2.3",
+      "status": "illustration",
+      "ports": [
+        "examples/atm/evidence-two-delimiters.effekt"
+      ],
+      "remaining": "Current regression covers composed evidence and a depth-two ATC; map the exact paper program separately.",
+      "port_sha256": {
+        "examples/atm/evidence-two-delimiters.effekt": "5cf2d39f9f10d1b0354632e4eceb9346870cc115d7dd0e001ae6de7b81168340"
+      }
+    },
+    {
+      "id": "file-management",
+      "paper": "main section 4.3",
+      "status": "partial",
+      "ports": [
+        "examples/atm/file-protocol.effekt",
+        "examples/atm/file-protocol-invalid.effekt"
+      ],
+      "remaining": "Existing token protocol omits the full nested state-passing handlers and their operation contracts; fixed-region functions are now supported.",
+      "port_sha256": {
+        "examples/atm/file-protocol.effekt": "82affc88c5caffffbe13901cba12bf587c1c054a65dd5b0b2ae917e9da3478fc",
+        "examples/atm/file-protocol-invalid.effekt": "9aa732963ed74060f5cf663d34bb29ede956f66721d6d3e3e3d0cc6a467fafcf"
+      }
+    },
+    {
+      "id": "polymorphic-close",
+      "paper": "main section 5.1",
+      "status": "unported",
+      "ports": [],
+      "remaining": "Full Reg/Dist/ATC/Ev/Cty kinded abstraction/application and polymorphic operation contracts are absent; capability polymorphism alone is insufficient.",
+      "port_sha256": {}
+    },
+    {
+      "id": "nested-state-refinements",
+      "paper": "main section 5.2; supplement section 5.2",
+      "status": "unported",
+      "ports": [],
+      "remaining": "Preserve both state handlers and prove result exactly 3; polymorphic operation contracts remain missing. Fixed-region state functions are now available; state-easy is a different, weaker benchmark.",
+      "port_sha256": {}
+    },
+    {
+      "id": "gui-interactor",
+      "paper": "main Figure 6; supplement section 5.1",
+      "status": "unported",
+      "ports": [],
+      "remaining": "Port nested file and GUI state-passing handlers, including rejection of invalid start/stop ordering.",
+      "port_sha256": {}
+    }
+  ]
+}

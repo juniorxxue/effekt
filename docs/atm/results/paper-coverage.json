@@ -1,0 +1,1194 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-05T23:58:30.978864+00:00",
+  "inventory_sha256": "2a8c3b989e461f967bbea91a14f6e2dba9924d503159ad8bf5092fc285068fea",
+  "compiler_sha256": "7c778f63ccc5f5f3d2e91dbb3c1e8d1902198b2dd4265133e8218724605c90f7",
+  "compiler_digest_scope": "Main Scala sources, historical Chez lift runtime, Kiama main sources, build.sbt and project build/plugin definitions",
+  "effekt_base": "cd18ad896b9f1c856a9d6002fd0a5733e5cb9a15",
+  "kiama_commit": "ab6aef78fc4ce99a9ad2db8555718d00b03f7b8a",
+  "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)",
+  "solver_command": "z3",
+  "solver_version": "Z3 version 5.1.0 - 64 bit",
+  "build_command": null,
+  "classpath_supplied": true,
+  "scope": "Checker acceptance only. Runtime differential tests are in AtmArmTests. Checking times include cold checker/solver startup and are not Table 1 performance comparisons.",
+  "results": [
+    {
+      "suite": "ARM",
+      "paper_file": "amb-1-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-1-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/amb-1-SAT.effekt",
+        "checking_ms": 611.210792,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "ef8b06f08b958f4836d1c7041ace549cf62e2b03ff5ea409982bc968e1236a0b",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-1-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-1-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/amb-1-UNSAT.effekt",
+        "checking_ms": 496.448042,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Result | (r == Failure())} / pure, found {r: Result | (r == search(input, e))} / pure"
+      },
+      "port_sha256": "aa931a0248028180fed1f76beea637ede957a0073d2d1205275ec6eeb98c429f",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-2-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-2-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/amb-2-SAT.effekt",
+        "checking_ms": 472.898875,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "b196961eb8364953c70139555f83820eac48b9b590e139e163614e2c0c6ade2e",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-2-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-2-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/amb-2-UNSAT.effekt",
+        "checking_ms": 468.962583,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists r: Data(Result). exists result: Data(Result). ((((r == search(Cons(first, input), e)) && (r == result)) && (result == search(Cons(first, input), e))) && (value == (r == Success(e))))} / pure"
+      },
+      "port_sha256": "4c97b19b99f37aca76dec5efe5c6d47eb1a3fb6b881f9c6418218cc11ef6aa6e",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-3-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-3-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/amb-3-SAT.effekt",
+        "checking_ms": 502.66875,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "f25bc2f663037b86e9f4c1ad3f65771369a7d411c3bacce30e43298ec8d82282",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-3-UNSAT.lx",
+      "expected": "reject",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "amb-3-simpl-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/amb-3-simpl-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/amb-3-simpl-SAT.effekt",
+        "checking_ms": 369.667875,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "3dc6f4f4ace7ff8991ced2351c6952c4bef1aa6596a34b3f61e05e623cd6d0d8",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/bfs-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/bfs-SAT.effekt",
+        "checking_ms": 914.298792,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "7393a0df5e39f39ee4720a1ef4673eee92dce633ba94d840a719667a2f2e1404",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/bfs-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/bfs-UNSAT.effekt",
+        "checking_ms": 1117.888708,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists left: Data(Result). ((((((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure())) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && exists right: Data(Result). (((((((((((9 == (n * n)) && (right == Success(3))) || (!((9 == (n * n))) && (right == Failure()))) && (right == if (9 == (n * n)) then Success(3) else Failure())) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && ((9 == (n * n)) => (((((9 == (n * n)) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (!((9 == (n * n))) => ((((!((9 == (n * n))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && exists result: Data(Result). exists result: Data(Result). (((((((((((result == if (left == Failure()) then right else left) && (result == result)) && (result == if (left == Failure()) then right else left)) && ((((9 == (n * n)) && (right == Success(3))) || (!((9 == (n * n))) && (right == Failure()))) && (right == if (9 == (n * n)) then Success(3) else Failure()))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && ((9 == (n * n)) => (((((9 == (n * n)) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (!((9 == (n * n))) => ((((!((9 == (n * n))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (value == (result == Failure())))))} / pure"
+      },
+      "port_sha256": "7cd075241301acaec49346f0a036c1ed783c53e2f8430996b9ba2681e27fd5cb",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-simpl-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/bfs-simpl-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/bfs-simpl-SAT.effekt",
+        "checking_ms": 841.241833,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "75abb2d7a1e8fceb3af0a4d6b0fa07ddd4e2fc085312e7675a086ae7d0a6c866",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "bfs-simpl-UNSAT.lx",
+      "expected": "reject",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-all-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-all-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/choose-all-SAT.effekt",
+        "checking_ms": 857.307792,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "cf49e0483ace9ac570da414036ed09cfb82d76c302fe78546e856c28650d2a66",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-all-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-all-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/choose-all-UNSAT.effekt",
+        "checking_ms": 764.407583,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists result: Data(ListInt). exists result: Data(ListInt). ((((result == Cons(0, Cons((x - y), Cons((y - x), Cons(0, Nil()))))) && (result == result)) && (result == Cons(0, Cons((x - y), Cons((y - x), Cons(0, Nil())))))) && (value == (result == Cons(0, Cons((y - x), Cons((x - y), Cons(0, Nil())))))))} / pure"
+      },
+      "port_sha256": "e655d486ec3c20fe4db6c19ce9c4c54dc460cc16a707f0eac35e1ba929cf8f6b",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-max-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-max-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/choose-max-SAT.effekt",
+        "checking_ms": 647.899625,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "port_sha256": "4d8e0d4c3258fc0932c8133ac5ab7f559c3a1c5753a62a86e9bdd5797309dc21",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-max-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-max-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/choose-max-UNSAT.effekt",
+        "checking_ms": 598.563,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == (u - y))} / pure, found {r: Int | (r == (v - x))} / pure"
+      },
+      "port_sha256": "5dec2dc6f1701421143ee245d517a4649b8e9b4fd23368fa82ab3855d7d5fed5",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-sum-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-sum-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/choose-sum-SAT.effekt",
+        "checking_ms": 589.236708,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "port_sha256": "1695301c753ddd0aaf45e5985e1272226815157b32f3d81dc9a2e305a03e54ab",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "choose-sum-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/choose-sum-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/choose-sum-UNSAT.effekt",
+        "checking_ms": 578.527875,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == (x + y))} / pure, found {r: Int | (r == 0)} / pure"
+      },
+      "port_sha256": "6ff2ffbdf06fe8570a9364c322b0505836e496e782f92b93f374b19d4d001bf5",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-1-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/deferred-1-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/deferred-1-SAT.effekt",
+        "checking_ms": 310.636542,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "92e7597a3eac9f3a7a990472455ba45f2b016e9b304da2de1980c0aaa90ba53e",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-1-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/deferred-1-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/deferred-1-UNSAT.effekt",
+        "checking_ms": 294.2895,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {v: Int | (v == (r + 1))} / pure, found {v: Int | (v == r)} / pure"
+      },
+      "port_sha256": "a6240834a41fd9ef3930d5becfe7430c3d6323c70fe6a9520cb22f7e6114ee39",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-2-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/deferred-2-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/deferred-2-SAT.effekt",
+        "checking_ms": 297.551417,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "fc570a9cefc63dcebf4be5c3c0691136a8300a9addfe8caa5fc7a46e9cd88390",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "deferred-2-UNSAT.lx",
+      "expected": "reject",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "distribution-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/distribution-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/distribution-SAT.effekt",
+        "checking_ms": 680.196083,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "ba36e452508cf607fc385552cfc8c89a0bf66907767e5bf7c09b4386ee17a009",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "distribution-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/distribution-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/distribution-UNSAT.effekt",
+        "checking_ms": 658.572708,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "fa3722a53eb0968d00101b185a6d8eb9c64a8b38c2be456fdb1708ecefbcc718",
+      "outcome": "accepted",
+      "matches_expected": false,
+      "matches_reviewed_expectation": true,
+      "reviewed_expected": "accept",
+      "label_discrepancy": "Pinned distribution-SAT.ml and distribution-UNSAT.ml have identical executable code and assertion; the latter only adds (*unsat*). Both satisfy the bounded-weight assertion. Preserve the original reject label separately; do not count this as a successful UNSAT test."
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "expectation-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/expectation-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/expectation-SAT.effekt",
+        "checking_ms": 254.319167,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "port_sha256": "e71eb0e592e6254f4e417d3aaee8af07a9518fd22931451430b13e3e1482513d",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "expectation-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/expectation-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/expectation-UNSAT.effekt",
+        "checking_ms": 310.51375,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == (((100 - p) * x) + (p * y)))} / pure, found {r: Int | (r == ((p * x) + ((100 - p) * y)))} / pure"
+      },
+      "port_sha256": "395067650ebfb0d77bc403aefdefad7a7d78f85cca2a4435c48ca2841ab8df65",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-1-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-1-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-read-1-SAT.effekt",
+        "checking_ms": 345.318541,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "bbd15b6ce301b63d99b38ec778ba2aefaf6c57d6e4c1379be7ea8c3fd5c3f425",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-1-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-1-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-read-1-UNSAT.effekt",
+        "checking_ms": 274.1845,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Result | (r == Err())} / pure, found {r: Result | (r == readOutcome(input, n))} / pure"
+      },
+      "port_sha256": "671841677572159203c581b7811d973d65eee1722dcd2553320309995a585029",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-2-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-2-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-read-2-SAT.effekt",
+        "checking_ms": 326.48,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "50e6de31c52762aded213df9e54f43beb94995f40291e103a8506002a2b0741c",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-2-UNSAT.lx",
+      "expected": "reject",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-3-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-read-3-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-read-3-SAT.effekt",
+        "checking_ms": 312.640375,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "fe35271795ada9fdbc9b2932dd1a6879d096b524ce68276a8a004485a0c32011",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-read-3-UNSAT.lx",
+      "expected": "reject",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-1-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-1-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-write-1-SAT.effekt",
+        "checking_ms": 290.130958,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "e6310c7747a3804879453a5b17ce18cca55d637638bff58cb1b7d3777ff98a28",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-1-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-1-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-write-1-UNSAT.effekt",
+        "checking_ms": 263.022083,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: (Unit, ListInt) | (snd(r) != Nil())} / pure, found (Unit, {r: ListInt | (r == input)}) / pure"
+      },
+      "port_sha256": "e4a22c06776cd437115eaa5e4c7691b6b0e9b31ebc3aa3835e8d49cf56993727",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-2-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-2-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-write-2-SAT.effekt",
+        "checking_ms": 297.238709,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "b7c2a0f2661c4198c14c65630ef08d4673a982fc0f3090273d08b81589ea1ef5",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "io-write-2-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/io-write-2-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/io-write-2-UNSAT.effekt",
+        "checking_ms": 276.74325,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: (Unit, ListInt) | (snd(r) == Nil())} / pure, found (Unit, {r: ListInt | (r == input)}) / pure"
+      },
+      "port_sha256": "4e2f843a0f7c5d97f6d40bba15f385e8551c13d2db33b18d5cc04045369dff12",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "modulus-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/modulus-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/modulus-SAT.effekt",
+        "checking_ms": 320.087916,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "2560bcd247fdc1d60708d688dce0312b2657a4a63f310196a72bf9e6d0f4a962",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "modulus-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/modulus-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/modulus-UNSAT.effekt",
+        "checking_ms": 293.977291,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {v: Bool | (v == false)} / pure, found {value: Bool | exists left: Int. exists result: Int. ((((left == 10) && (left == result)) && (result == 10)) && exists result: Int. exists right: Int. ((((((right == 10) && (right == result)) && (result == 10)) && ((left == 10) && (left == result))) && (result == 10)) && (value == (left == right))))} / pure"
+      },
+      "port_sha256": "b9d24f21e491a23ddfa5265393e7160c7a7a8b112fd14f157a446182c0bbf8b8",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-1-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/queue-1-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/queue-1-SAT.effekt",
+        "checking_ms": 387.496792,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "05b5efb52c389a012c1bece1873c40234360756e4dcd4cb53e3001115f80c812",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-1-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/queue-1-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/queue-1-UNSAT.effekt",
+        "checking_ms": 366.102542,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: OptionInt | (r != None())} / pure, found {r: OptionInt | (r == secondOf(append(init, Cons(42, Nil()))))} / pure"
+      },
+      "port_sha256": "84d6d2725bdd29a710c9c474e2a6c725c00f618d7f7888d59231f99e6ca8e923",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-2-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/queue-2-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/queue-2-SAT.effekt",
+        "checking_ms": 421.024,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "74ba24840892769c19e2a4c727c44925c141fd3bc0dd00e5cb2ff2cce68db5f5",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "queue-2-UNSAT.lx",
+      "expected": "reject",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "round-robin-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/round-robin-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/round-robin-SAT.effekt",
+        "checking_ms": 254.358458,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "e98709ea0a8acdc565a94f542a60cdd3a6defaa87ba0279ab15bb1891efcc082",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "round-robin-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/round-robin-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/round-robin-UNSAT.effekt",
+        "checking_ms": 240.91125,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == init)} / pure, found {r: Int | (r >= init)} / pure"
+      },
+      "port_sha256": "4af599cb08ab3e5513118d02ced0d87199d8ddc50ec7bb1294238f2df7a0bc8e",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-1-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-1-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/safe-div-1-SAT.effekt",
+        "checking_ms": 203.66325,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "af13a9594b4b1e4e7e5d6c5fe2b7ed572311653b58b2e39eed446e135dc0bf94",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-1-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-1-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/safe-div-1-UNSAT.effekt",
+        "checking_ms": 187.710834,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {z: OptionInt | (z != None())}, found {value: OptionInt | (value == None())}"
+      },
+      "port_sha256": "64edbd19845c2bc652ebbbcf99371521f14ef8718e9af3b02efcd493e4f83bb7",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-2-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-2-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/safe-div-2-SAT.effekt",
+        "checking_ms": 284.676209,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "e2a6fa8a898661f0caa805d031a52591ed95e9d482087f9eefcc3fa9bdf0bb52",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "safe-div-2-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/safe-div-2-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/safe-div-2-UNSAT.effekt",
+        "checking_ms": 257.200042,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {z: Bool | (z == false)} / pure, found {value: Bool | exists result: Data(OptionInt). exists result: Data(OptionInt). (((((result == Some((n / m))) && (result == result)) && (result == Some((n / m)))) && (m != 0)) && (value == (result == Some((n / m)))))} / pure"
+      },
+      "port_sha256": "1cf8f9bb45b4c8954593dc238c8a948eddef6e70923560ec64c18dbb9dff3920",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "select-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/select-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/select-SAT.effekt",
+        "checking_ms": 423.849125,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "c41ec58c95a82ae0b39f27319396adfb9261e8f0d23c73e0096788babade5521",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "select-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/select-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/select-UNSAT.effekt",
+        "checking_ms": 407.161042,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == false)} / pure, found {value: Bool | exists result: Data(Result). exists result: Data(Result). ((((result == Success(Cons(x, Nil()))) && (result == result)) && (result == Success(Cons(x, Nil())))) && (value == (result == Success(Cons(x, Nil())))))} / pure"
+      },
+      "port_sha256": "c94c955cf9a2424134c7fa5afb9f8e2b76d1c93af952f754b56f1e29fb656b14",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "shift-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/shift-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/shift-SAT.effekt",
+        "checking_ms": 283.420291,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "1349315f89b4f4a7b712ae9bfa470d7388f68d9f75965a20878ba61d2ef599b2",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "shift-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/shift-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/shift-UNSAT.effekt",
+        "checking_ms": 261.381709,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {v: Int | (v == ((4 * n) + 3))} / pure, found {v: Int | (v == ((8 * n) + 7))} / pure"
+      },
+      "port_sha256": "5e7dc2b039b6c2a13334c25525b48ce28fd9f12fd56235b5c7e5f78fb5aa7cb6",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/state-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/state-SAT.effekt",
+        "checking_ms": 425.952667,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "port_sha256": "8516975df3886064e6da79a745a68769c21affb5f98de0716b6785319cb30961",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/state-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/state-UNSAT.effekt",
+        "checking_ms": 387.300416,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r != init)} / pure, found {r: Int | (r == init)} / pure"
+      },
+      "port_sha256": "6ad917e811164cb16c189b187dda3eff3d361860ba4dbe2369177de6f6cf2af9",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-easy-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/state-easy-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/state-easy-SAT.effekt",
+        "checking_ms": 395.039417,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "port_sha256": "1bfb03aa972f24bc1b34a5663a3c4c38ca0d11f2c1a850bcd2570b09af101955",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "state-easy-UNSAT.lx",
+      "expected": "reject",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "transaction-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/transaction-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/transaction-SAT.effekt",
+        "checking_ms": 453.478875,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "0440a168dd09c510dc7d89545958bb24f6db1556a2896db0de9af7f6b8baf60f",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "transaction-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/transaction-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/transaction-UNSAT.effekt",
+        "checking_ms": 409.822,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == 2)} / pure, found {r: Int | ((r == 0) || (r == 42))} / pure"
+      },
+      "port_sha256": "fdc132399dbebe063a0628d167e88412023a08475331a5a3ebd5517e4c6d3d8c",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "yield-SAT.lx",
+      "expected": "accept",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/yield-SAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/yield-SAT.effekt",
+        "checking_ms": 423.688917,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "port_sha256": "e43c47cb533e35852c1690f7ed796ef16bc634d29fa0a15c3a42fb9dd42742e5",
+      "outcome": "accepted",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "ARM",
+      "paper_file": "yield-UNSAT.lx",
+      "expected": "reject",
+      "status": "upstream_port",
+      "port": "examples/atm/arm/yield-UNSAT.effekt",
+      "check": {
+        "file": "examples/atm/arm/yield-UNSAT.effekt",
+        "checking_ms": 377.858541,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {tree: Tree | allEqual(tree, 2)} / pure, found {t: Tree | allEqual(t, 1)} / pure"
+      },
+      "port_sha256": "341e27449b6e2859209b11b6dc2065d72c61bed82bdc00dc3d808fbd17b4ad7e",
+      "outcome": "ContractFailure",
+      "matches_expected": true,
+      "matches_reviewed_expectation": true
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "ackermann.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "bezout.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "catalan.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "countdown.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "fibonacci_recursive.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "golomb.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "handler_sieve.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "hofstadterq.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "interruptible_iterator.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "iterator.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "karatsuba.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "latticepath.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "listiter.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "logger.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "nqueens.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "palindrome_partition.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "product_early.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "resume_nontail.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "resume_nontail_2.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "tree_explore.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "triples.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    },
+    {
+      "suite": "Lexa",
+      "paper_file": "two_threads_ackermann.lx",
+      "expected": "accept",
+      "status": "unported",
+      "port": null,
+      "outcome": "unported",
+      "matches_expected": null
+    }
+  ],
+  "counts": {
+    "accepted": 31,
+    "ContractFailure": 21,
+    "unported": 29
+  },
+  "validated_upstream_ports": 51,
+  "known_label_discrepancies": 1,
+  "validated_reviewed_ports": 52,
+  "failed_upstream_ports": 0
+}

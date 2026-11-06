@@ -1,0 +1,53 @@
+// Pinned coar ARM: queue-1-UNSAT.ml. The queue remains a FIFO state-passing handler.
+data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
+data OptionInt { None(); Some(value: Int) }
+measure append(xs: ListInt, ys: ListInt): ListInt {
+  case Nil() => ys;
+  case Cons(h,t) => Cons(h,append(t,ys));
+}
+measure headOf(xs: ListInt): OptionInt {
+  case Nil() => None(); case Cons(h,t) => Some(h);
+}
+measure secondOf(xs: ListInt): OptionInt {
+  case Nil() => None(); case Cons(h,t) => headOf(t);
+}
+def main(): Bool = {
+  def rec appendList(xs: ListInt): ((ys: ListInt) => {r: ListInt | r == append(xs,ys)}) = {
+    fun (ys: ListInt): {r: ListInt | r == append(xs,ys)} {
+      match (xs) {
+        case Nil() => { ys }
+        case Cons(h,t) => { val more = appendList(t); val tail = more(ys); Cons(h,tail) }
+      }
+    }
+  }
+  def test(init: {xs: ListInt | xs == Nil()}): {r: OptionInt | r != None()} = {
+    type StateRegion = (local (Unit) => Unit);
+    val run = try {
+      queue.enqueue(42);
+      queue.get(1);
+      queue.get(2)
+    } with queue: (local (xs: ListInt) => {r: OptionInt | r == secondOf(append(xs,Cons(42,Nil())))}) {
+      def get(ctx: {i: Int | i == 1 || i == 2}): (v: OptionInt) /
+        ((local (xs: ListInt) => {r: OptionInt | r == (if ctx == 1 then headOf(xs) else v)}) =>
+         (local (xs: ListInt) => {r: OptionInt | r == (if ctx == 1 then secondOf(xs) else headOf(xs))})) = {
+        fun local (xs: ListInt): {r: OptionInt | r == (if ctx == 1 then secondOf(xs) else headOf(xs))} {
+          match (xs) {
+            case Nil() => { val next = resume(None()); next(Nil()) }
+            case Cons(h,t) => { val next = resume(Some(h)); next(t) }
+          }
+        }
+      }
+      def enqueue(value: Int): Unit /
+        ((local (xs: ListInt) => {r: OptionInt | r == secondOf(xs)}) =>
+         (local (xs: ListInt) => {r: OptionInt | r == secondOf(append(xs,Cons(value,Nil())))})) = {
+        fun local (xs: ListInt): {r: OptionInt | r == secondOf(append(xs,Cons(value,Nil())))} {
+          val next = resume(); val push = appendList(xs); val updated = push(Cons(value,Nil())); next(updated)
+        }
+      }
+      return v => { fun local (xs: ListInt): {r: OptionInt | r == v} { v } }
+    };
+    run(init)
+  }
+  val result = test(Nil());
+  result == None()
+}

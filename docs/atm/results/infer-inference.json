@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "suite": "infer",
+  "created_utc": "2026-11-06T02:12:32.877210+00:00",
+  "compiler_sha256": "0be5eed7c8e97556594a428d71f69d390deb1ee8fc47c0b687e6eae0bf998fe5",
+  "runner_sha256": "fc4633ae4d4f38f1d6ac09c44a0a6db73ebbc0b2723f6e8edb9e08e7af2ed415",
+  "results": [
+    {
+      "file": "examples/atm/infer/active-three-counts.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 3,
+      "layered_atcs": 2,
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "atc_structures": [
+        "Hole",
+        "Layer(Int,Computation(Int,Pure,None),Hole,None)",
+        "Layer(Int,Computation(Int,Pure,None),Layer(Int,Computation(Int,Pure,None),Hole,None),None)"
+      ],
+      "source_sha256": "d5e6eaa0ff6706690b05a9441c58a6ee322c073c6f22350e7f625bb7b31165cb",
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/infer/active-three-multishot.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 3,
+      "layered_atcs": 2,
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "atc_structures": [
+        "Hole",
+        "Layer(Int,Computation(Int,Pure,None),Hole,None)",
+        "Layer(Int,Computation(Int,Pure,None),Layer(Int,Computation(Int,Pure,None),Hole,None),None)"
+      ],
+      "source_sha256": "1c1292fa946f66c5adf9c70edc03a84a7b0fda7914239c11bf469fd5c204b83b",
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/infer/mixed-answer-layers.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 3,
+      "layered_atcs": 2,
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "atc_structures": [
+        "Hole",
+        "Layer(Bool,Computation(Int,Pure,None),Hole,None)",
+        "Layer(Bool,Computation(Int,Pure,None),Layer(Int,Computation(Int,Pure,None),Hole,None),None)"
+      ],
+      "source_sha256": "50451e51d4b7e65557603b90a34d618917e56b8a9618e34e4ab33bc1b7cb4963",
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/infer/nested-residuals.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 6,
+      "operation_atcs": 3,
+      "layered_atcs": 2,
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "atc_structures": [
+        "Hole",
+        "Layer(Int,Computation(Int,Pure,None),Hole,None)",
+        "Layer(Int,Computation(Int,Pure,None),Layer(Int,Computation(Int,Pure,None),Hole,None),None)"
+      ],
+      "source_sha256": "c44452267de062ad590c6d012c88ea6dd95978b579442834d07160c401f4d48a",
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/infer/polymorphic-outer-call.effekt",
+      "outcome": "Unsupported",
+      "message": "A_Do: ATC inference requires a concrete evidence distance; an enclosing handler used inside a function has symbolic distance",
+      "operation_failure": {
+        "receiver": "outer#1",
+        "operation": "ask",
+        "evidence": "Use(Binding(evidence#6,Constraint(bodyRegion#4,outer#1),Variable(distance(evidence#6))))",
+        "from": "bodyRegion#4",
+        "to": "outer#1",
+        "distance": null,
+        "residuals": [
+          "Obligation(evidence#6,Constraint(bodyRegion#4,outer#1))"
+        ]
+      },
+      "source_sha256": "2e75c2331818f7a9514656278a14bb15e2605ea4cc87401b1d903ff40f2d4c7c",
+      "evidence_inferred": true,
+      "atcs_inferred": false,
+      "inference_status": "operation_evidence_only"
+    },
+    {
+      "file": "examples/atm/infer/shadowed-capabilities.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 3,
+      "layered_atcs": 2,
+      "operation_distances": [
+        0,
+        1,
+        2
+      ],
+      "atc_depths": [
+        0,
+        1,
+        2
+      ],
+      "atc_structures": [
+        "Hole",
+        "Layer(Int,Computation(Int,Pure,None),Hole,None)",
+        "Layer(Int,Computation(Int,Pure,None),Layer(Int,Computation(Int,Pure,None),Hole,None),None)"
+      ],
+      "source_sha256": "127abf4837d3348299296f00f26b524369c23239ec68a0bf405b930aecb91f0e",
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    }
+  ],
+  "scope": "Accepted programs: evidence/ATC certificates in validated Core. If an operation fails ATC inference, the optional checker observation records the reconstructed witness and residuals for that failed attempt; this partial result is not a complete elaboration. Other rejections have no inference-success claim."
+}

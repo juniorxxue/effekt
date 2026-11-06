@@ -1,0 +1,1042 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-06T00:42:54.547340+00:00",
+  "compiler_sha256": "5e99a83cd4f1b843a94534f7c33f559d529401a50079d552513dc84420fa1709",
+  "build_command": null,
+  "classpath_supplied": true,
+  "scope": "All existing examples/atm/**/*.effekt files. Unsupported entries are limitations, not successful negative tests. Runtime checks are separate.",
+  "counts": {
+    "accepted": 53,
+    "contract_rejection": 21,
+    "unsupported": 2,
+    "type_rejection": 1
+  },
+  "inventory_mismatches": 0,
+  "results": [
+    {
+      "file": "examples/atm/arm/amb-1-SAT.effekt",
+      "sha256": "fcd1f3a09ec459a66a282eca6a7bca798142f940a7e1f0b02302f939fe45a109",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/amb-1-SAT.effekt",
+        "checking_ms": 1241.639917,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/amb-1-UNSAT.effekt",
+      "sha256": "bf61c16ea774da35ad4f6fba4f39a1462b62ef047bc4202a7c948ec5c8751bc2",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/amb-1-UNSAT.effekt",
+        "checking_ms": 678.740834,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Result | (r == Failure())} / pure, found {r: Result | (r == search(input, e))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/amb-2-SAT.effekt",
+      "sha256": "40aefb37c597dc9508505ad7f03b2e45bebf1efbbf9ee1f8a2aa19614cbb588f",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/amb-2-SAT.effekt",
+        "checking_ms": 575.342333,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/amb-2-UNSAT.effekt",
+      "sha256": "3a5b48f756c6ab4621d8e8e57061b9e24af895fc979e4fb20139bbd4a8128e4c",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/amb-2-UNSAT.effekt",
+        "checking_ms": 642.512875,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists r: Data(Result). exists result: Data(Result). ((((r == search(Cons(first, input), e)) && (r == result)) && (result == search(Cons(first, input), e))) && (value == (r == Success(e))))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/amb-3-SAT.effekt",
+      "sha256": "4f515a717dd82095cde05f5c4bd668e651286a14519f2b6cd2298433dea38ea6",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/amb-3-SAT.effekt",
+        "checking_ms": 526.008209,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/amb-3-simpl-SAT.effekt",
+      "sha256": "a198ec4abb41ff0c861fc9f3faaabe4c5a99b96eadf6d0bf066dc140cf15d1e4",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/amb-3-simpl-SAT.effekt",
+        "checking_ms": 677.667542,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/bfs-SAT.effekt",
+      "sha256": "54d621a011484ae97cb123caa2559f3a96714e3f4ffb16fd799882551088f341",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/bfs-SAT.effekt",
+        "checking_ms": 1175.403167,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/bfs-UNSAT.effekt",
+      "sha256": "2804d760a532802e5964eea0df786ca60fe2202d203f0bed6e0052c2eb532f7e",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/bfs-UNSAT.effekt",
+        "checking_ms": 930.265916,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists left: Data(Result). ((((((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure())) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && exists right: Data(Result). (((((((((((9 == (n * n)) && (right == Success(3))) || (!((9 == (n * n))) && (right == Failure()))) && (right == if (9 == (n * n)) then Success(3) else Failure())) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && ((9 == (n * n)) => (((((9 == (n * n)) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (!((9 == (n * n))) => ((((!((9 == (n * n))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && exists result: Data(Result). exists result: Data(Result). (((((((((((result == if (left == Failure()) then right else left) && (result == result)) && (result == if (left == Failure()) then right else left)) && ((((9 == (n * n)) && (right == Success(3))) || (!((9 == (n * n))) && (right == Failure()))) && (right == if (9 == (n * n)) then Success(3) else Failure()))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && ((9 == (n * n)) => (((((9 == (n * n)) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (!((9 == (n * n))) => ((((!((9 == (n * n))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (value == (result == Failure())))))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/bfs-simpl-SAT.effekt",
+      "sha256": "be484e382257bd1c121aec04024ba5515a99f3eb2e2821732d66232fbb7020d1",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/bfs-simpl-SAT.effekt",
+        "checking_ms": 1010.011209,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/choose-all-SAT.effekt",
+      "sha256": "b417b4ae5f1c8650ab26c2bfea4ab85eaff471294eda4ffee03d1a5fa3e8a5dd",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/choose-all-SAT.effekt",
+        "checking_ms": 945.694625,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/choose-all-UNSAT.effekt",
+      "sha256": "5f692f71b8d284a1371733cd486239505aa144fae0dd1882339491ada0e69f13",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/choose-all-UNSAT.effekt",
+        "checking_ms": 907.3355,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists result: Data(ListInt). exists result: Data(ListInt). ((((result == Cons(0, Cons((x - y), Cons((y - x), Cons(0, Nil()))))) && (result == result)) && (result == Cons(0, Cons((x - y), Cons((y - x), Cons(0, Nil())))))) && (value == (result == Cons(0, Cons((y - x), Cons((x - y), Cons(0, Nil())))))))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/choose-max-SAT.effekt",
+      "sha256": "2462ef4f9f9c319c6b83595dc58ad65d418f3373249b85671111bb9a580e934a",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/choose-max-SAT.effekt",
+        "checking_ms": 805.041166,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/choose-max-UNSAT.effekt",
+      "sha256": "b4b2a7071d6866e6ea6c25b49cb43e35cf1c4ed23a80faa9b6c61f808df90d9c",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/choose-max-UNSAT.effekt",
+        "checking_ms": 1052.350834,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == (u - y))} / pure, found {r: Int | (r == (v - x))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/choose-sum-SAT.effekt",
+      "sha256": "a70c0ebf33fc302d0a5aa4685019decb30916fbcfe045261e50d790f50cf8330",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/choose-sum-SAT.effekt",
+        "checking_ms": 843.189958,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/choose-sum-UNSAT.effekt",
+      "sha256": "990c472a51e092dff2f2777b5bb9b6d41f957cdafecc65a72576cb1cdd3a094d",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/choose-sum-UNSAT.effekt",
+        "checking_ms": 896.181875,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == (x + y))} / pure, found {r: Int | (r == 0)} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/deferred-1-SAT.effekt",
+      "sha256": "9276a967c4b3a37bec4e0901cc7f48d404113e002c4b059b820ca6cdaa64f1ac",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/deferred-1-SAT.effekt",
+        "checking_ms": 590.731958,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/deferred-1-UNSAT.effekt",
+      "sha256": "59c6c822acc6fd08bb30f77a6dc899c9e2a1d2b5c59fe2cbc1414304b7537457",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/deferred-1-UNSAT.effekt",
+        "checking_ms": 308.137917,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {v: Int | (v == (r + 1))} / pure, found {v: Int | (v == r)} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/deferred-2-SAT.effekt",
+      "sha256": "0dfde69b7f29083c1a619591a3acd3f2443392e25f4fc017161e7678f6b27224",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/deferred-2-SAT.effekt",
+        "checking_ms": 397.593208,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/distribution-SAT.effekt",
+      "sha256": "5bfc80570fa57d6b15ebbbc5fdb5ae75b7a08018afdc103f438de4896ae8967a",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/distribution-SAT.effekt",
+        "checking_ms": 756.796167,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/distribution-UNSAT.effekt",
+      "sha256": "63e1eb054e6e3df11dd3873817f985cbfc1b6c148f4b537505e59bc0b6b67602",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/distribution-UNSAT.effekt",
+        "checking_ms": 717.31275,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/expectation-SAT.effekt",
+      "sha256": "baea1b65ae7f77f122c569e3477c659ba9bd9053275111d5a88e5655352de037",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/expectation-SAT.effekt",
+        "checking_ms": 310.59225,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/expectation-UNSAT.effekt",
+      "sha256": "4bf4d790dafb915aa7bc1df7e93a240e49bd331300758165582644b9a1d1b2be",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/expectation-UNSAT.effekt",
+        "checking_ms": 313.8615,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == (((100 - p) * x) + (p * y)))} / pure, found {r: Int | (r == ((p * x) + ((100 - p) * y)))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-read-1-SAT.effekt",
+      "sha256": "0258db2725edca92114053e8bfd891737b9a05ba8f327c7b3730530006912984",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-read-1-SAT.effekt",
+        "checking_ms": 391.147166,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-read-1-UNSAT.effekt",
+      "sha256": "872db46d4a1d3638751fbbab6a3a16d755a6fbabf7de04547b06b75270d435a9",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-read-1-UNSAT.effekt",
+        "checking_ms": 337.688459,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Result | (r == Err())} / pure, found {r: Result | (r == readOutcome(input, n))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-read-2-SAT.effekt",
+      "sha256": "8e2a9f6dcc333fb7bfdeb49f3cd51c90e875b8f2844287bff34240e34e7eb194",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-read-2-SAT.effekt",
+        "checking_ms": 384.263834,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-read-3-SAT.effekt",
+      "sha256": "0fc4edee0fe5a97c67d53e534205f89951b15a200480b4202889cd8441a9c05c",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-read-3-SAT.effekt",
+        "checking_ms": 382.219834,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-write-1-SAT.effekt",
+      "sha256": "a79839b465a5485af87a69718e227a6d63b74f53ca1b4e5a79b6120bc6a489ab",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-write-1-SAT.effekt",
+        "checking_ms": 379.500625,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-write-1-UNSAT.effekt",
+      "sha256": "24c4bf12e8329d14753e8c9850263344d8ab03aeb714b68067d37a48d306c627",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-write-1-UNSAT.effekt",
+        "checking_ms": 301.195333,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: (Unit, ListInt) | (snd(r) != Nil())} / pure, found (Unit, {r: ListInt | (r == input)}) / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-write-2-SAT.effekt",
+      "sha256": "d92ac81f153c987ed83f551b7df8c68d5193e502975a838143a844bba6f0d964",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-write-2-SAT.effekt",
+        "checking_ms": 349.164917,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/io-write-2-UNSAT.effekt",
+      "sha256": "3b90351c046a81f7bd4a2a03444718d61c5737e2ecb6cf7c00d4dde766660254",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/io-write-2-UNSAT.effekt",
+        "checking_ms": 602.72275,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: (Unit, ListInt) | (snd(r) == Nil())} / pure, found (Unit, {r: ListInt | (r == input)}) / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/modulus-SAT.effekt",
+      "sha256": "b9f82bb4ebecab02bec2b5ad1b92519923df1ba2f7fa3cd8ee3b3f99ac63617a",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/modulus-SAT.effekt",
+        "checking_ms": 453.24475,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/modulus-UNSAT.effekt",
+      "sha256": "04bcdd204b64a83ad81abcdee09721585fcb97480717bea2ece99ef2371e84bf",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/modulus-UNSAT.effekt",
+        "checking_ms": 312.222916,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {v: Bool | (v == false)} / pure, found {value: Bool | exists left: Int. exists result: Int. ((((left == 10) && (left == result)) && (result == 10)) && exists result: Int. exists right: Int. ((((((right == 10) && (right == result)) && (result == 10)) && ((left == 10) && (left == result))) && (result == 10)) && (value == (left == right))))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/queue-1-SAT.effekt",
+      "sha256": "7319d36bdc1341215b489703a6bcffadf075330f610c6bccf70eec4e2c4045a8",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/queue-1-SAT.effekt",
+        "checking_ms": 463.286875,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/queue-1-UNSAT.effekt",
+      "sha256": "59cde059b137fd6af8c847803932a35a93d5656fb1de598a0047199fe430f975",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/queue-1-UNSAT.effekt",
+        "checking_ms": 511.870959,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: OptionInt | (r != None())} / pure, found {r: OptionInt | (r == secondOf(append(init, Cons(42, Nil()))))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/queue-2-SAT.effekt",
+      "sha256": "969d23be4676bcef51fe327690ea5d9b89c51b4b7a8c6cc279eb6f58ce840338",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/queue-2-SAT.effekt",
+        "checking_ms": 483.696334,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/round-robin-SAT.effekt",
+      "sha256": "0f582529201a56fca882ce3a5525b8bdb20889fdd743a9a5578796edf99a5961",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/round-robin-SAT.effekt",
+        "checking_ms": 295.293542,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/round-robin-UNSAT.effekt",
+      "sha256": "b55fe0c27c133529aba03243187a5d125a5786a408facd6cf2934842759fea6a",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/round-robin-UNSAT.effekt",
+        "checking_ms": 236.891792,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == init)} / pure, found {r: Int | (r >= init)} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/safe-div-1-SAT.effekt",
+      "sha256": "3ad2953e67f2b7bee47114bf431bef87c3887c34cd0bf97dcc1f07e21e837d58",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/safe-div-1-SAT.effekt",
+        "checking_ms": 311.957125,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/safe-div-1-UNSAT.effekt",
+      "sha256": "31d8026f5be9d6f6270161961c06f5093a06f9dac3e0910fe0103ad7b610c21b",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/safe-div-1-UNSAT.effekt",
+        "checking_ms": 251.358625,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {z: OptionInt | (z != None())}, found {value: OptionInt | (value == None())}"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/safe-div-2-SAT.effekt",
+      "sha256": "a68b0dc99e6ce97bd6f310a34bc37aab3ea669ceae3e348efe6100ec8236ff60",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/safe-div-2-SAT.effekt",
+        "checking_ms": 271.219542,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/safe-div-2-UNSAT.effekt",
+      "sha256": "9ac17fc7957b88a195602253e1f6ca6c1f6e24ecab91c488ccb75cb1d0c17c6a",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/safe-div-2-UNSAT.effekt",
+        "checking_ms": 281.596458,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {z: Bool | (z == false)} / pure, found {value: Bool | exists result: Data(OptionInt). exists result: Data(OptionInt). (((((result == Some((n / m))) && (result == result)) && (result == Some((n / m)))) && (m != 0)) && (value == (result == Some((n / m)))))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/select-SAT.effekt",
+      "sha256": "26dbc20761278432858bed096f0afd23cc69dd55eef2ccaac0d5d6a556c57c19",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/select-SAT.effekt",
+        "checking_ms": 503.809875,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/select-UNSAT.effekt",
+      "sha256": "0095999a7d182c4f745202255a0ee71a8bc2d6282499453c9733bc66887c40e9",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/select-UNSAT.effekt",
+        "checking_ms": 484.352834,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Bool | (r == false)} / pure, found {value: Bool | exists result: Data(Result). exists result: Data(Result). ((((result == Success(Cons(x, Nil()))) && (result == result)) && (result == Success(Cons(x, Nil())))) && (value == (result == Success(Cons(x, Nil())))))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/shift-SAT.effekt",
+      "sha256": "78a20a12f548715033ad81f83038ac7e3c3dc6aec6943f54a13088025503a472",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/shift-SAT.effekt",
+        "checking_ms": 760.022167,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/shift-UNSAT.effekt",
+      "sha256": "087ed55c86c13671a44b1e3b250cefffd3db187a6e4a38bac31c1cf7122763d0",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/shift-UNSAT.effekt",
+        "checking_ms": 345.047916,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {v: Int | (v == ((4 * n) + 3))} / pure, found {v: Int | (v == ((8 * n) + 7))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/state-SAT.effekt",
+      "sha256": "76d105cfc51728a98ce0d8ff24a86d7778e561e1478504280443e01599efb92d",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/state-SAT.effekt",
+        "checking_ms": 468.571416,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/state-UNSAT.effekt",
+      "sha256": "c25695102b0dcb2574ab232c29682db695f79bb98265ddeec90f7e8145f088fa",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/state-UNSAT.effekt",
+        "checking_ms": 408.283625,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r != init)} / pure, found {r: Int | (r == init)} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/state-easy-SAT.effekt",
+      "sha256": "21c895716b6c415561aff5ae3716eb4f0831fb29acf6eae5bea8ba5c98e53242",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/state-easy-SAT.effekt",
+        "checking_ms": 380.940292,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/transaction-SAT.effekt",
+      "sha256": "5ba4046f6715a2b46b410a2d9783806d377599f5f77510fcfd2ee2c9ed847a15",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/transaction-SAT.effekt",
+        "checking_ms": 455.525667,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/transaction-UNSAT.effekt",
+      "sha256": "ad960fa66b1ed89876a13a131458fc4f965d704a4491712bb836d369973e1f29",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/transaction-UNSAT.effekt",
+        "checking_ms": 391.825541,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {r: Int | (r == 2)} / pure, found {r: Int | ((r == 0) || (r == 42))} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/yield-SAT.effekt",
+      "sha256": "e8884e9940ef6d94f02bf81888c13624645aad36444579bbf962b0a12f112a56",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/yield-SAT.effekt",
+        "checking_ms": 403.867958,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/arm/yield-UNSAT.effekt",
+      "sha256": "8a5fc3e7d4c9656b6069adab61c221b32b701b0a2023bc0b4668d44aecb08fc3",
+      "expected": "contract_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/arm/yield-UNSAT.effekt",
+        "checking_ms": 418.616458,
+        "status": "rejected",
+        "kind": "ContractFailure",
+        "message": "Expected {tree: Tree | allEqual(tree, 2)} / pure, found {t: Tree | allEqual(t, 1)} / pure"
+      },
+      "outcome": "contract_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/callback-under-handler.effekt",
+      "sha256": "9441e87ef82b50479227de2f304695d709dfedda0fc29acca6130da325538433",
+      "expected": "unsupported",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/callback-under-handler.effekt",
+        "checking_ms": 95.135,
+        "status": "rejected",
+        "kind": "Unsupported",
+        "message": "A_Do: ATC inference requires a concrete evidence distance; an enclosing handler used inside a function has symbolic distance"
+      },
+      "outcome": "unsupported",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/capability-argument.effekt",
+      "sha256": "99b63173c9138974d086d2cf24aadd23ae2983698fa289551b5ec9d0904daaae",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/capability-argument.effekt",
+        "checking_ms": 112.43425,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/capability-polymorphic.effekt",
+      "sha256": "27e9278e5c7ead19a2aa764648b65c884b67e8a4a062c9c53fe34fe3724e980c",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/capability-polymorphic.effekt",
+        "checking_ms": 129.335834,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/composed-effects.effekt",
+      "sha256": "d229f7d2fadf42853673080fabd245a53f276ffe754eed0a93bd65c23b9cf2a6",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/composed-effects.effekt",
+        "checking_ms": 141.094667,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/effect-polymorphic.effekt",
+      "sha256": "c70ea0a9a7ed097aa7405113b709456c51435959547788e0b0829070577b19d5",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/effect-polymorphic.effekt",
+        "checking_ms": 139.2765,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/effectful-callback.effekt",
+      "sha256": "6297fa13c8e55911f5c5dc7aaec7a08090a26a02a8a47783ef842022fbd93549",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/effectful-callback.effekt",
+        "checking_ms": 109.113709,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/evidence-functions.effekt",
+      "sha256": "7313d3d79fc6cd906b3f9a32816fe3ae1cae0042189e8979e59074d9779a6f6e",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/evidence-functions.effekt",
+        "checking_ms": 108.965417,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/evidence-two-delimiters.effekt",
+      "sha256": "f76125b331f9b33739b7368fb708059c99c30ce24d7a6b27279c4c8c246ad276",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/evidence-two-delimiters.effekt",
+        "checking_ms": 112.793667,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/fidelity/mixed-guard-dependent.effekt",
+      "sha256": "b24623551556ae5720f274e0cdf8b8eedd53127aa558e2de2f1e707bfdfbc5c7",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/fidelity/mixed-guard-dependent.effekt",
+        "checking_ms": 173.781666,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/fidelity/operation-checked-lambda.effekt",
+      "sha256": "04466594e76ddb2506ad5f8aa22022ae1c5e49736faff8feea2b5149fbd4e2d4",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/fidelity/operation-checked-lambda.effekt",
+        "checking_ms": 116.423375,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/fidelity/recursive-extra-capture.effekt",
+      "sha256": "8a7836c43cd39eb30473543545f22e39f85bce3a16a2ac97237e060373de58db",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/fidelity/recursive-extra-capture.effekt",
+        "checking_ms": 115.063333,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/file-protocol-invalid.effekt",
+      "sha256": "e2a6b07c71073f7d829feba02f4ee6cebce7ecf5edc580e6002462d446423542",
+      "expected": "type_rejection",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/file-protocol-invalid.effekt",
+        "checking_ms": 91.215,
+        "status": "rejected",
+        "kind": "TypeError",
+        "message": "A_Do: operation requires answer Open / pure, found Closed / pure"
+      },
+      "outcome": "type_rejection",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/file-protocol.effekt",
+      "sha256": "674da0944c1a4641a656ca11cf2d88878125581b00c73a9bd873a5aac4c389fa",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/file-protocol.effekt",
+        "checking_ms": 135.190333,
+        "status": "accepted",
+        "type": "Open / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/higher-order.effekt",
+      "sha256": "53139da00ca86d12f781601a78576ea785c76465148596b61ad08ad2a3c8031a",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/higher-order.effekt",
+        "checking_ms": 128.771834,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/int-to-bool.effekt",
+      "sha256": "dbb920fdd4d49b954166213a92a5c7db26f82c7acdee9e13ca473e8300059531",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/int-to-bool.effekt",
+        "checking_ms": 148.977958,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/large-integer.effekt",
+      "sha256": "561111b46ad3abed7d0f1422d5d7671efff9c90951e725d375dfc8e243ffd7c9",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/large-integer.effekt",
+        "checking_ms": 101.015625,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/multiple-capabilities.effekt",
+      "sha256": "582b0ada80b31ba138cf4134f7ed09df0455d79dcacef8720b0d6db46248e1ec",
+      "expected": "unsupported",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/multiple-capabilities.effekt",
+        "checking_ms": 78.607,
+        "status": "rejected",
+        "kind": "Unsupported",
+        "message": "Scoped capability tails are a prototype extension, not part of the paper algorithm"
+      },
+      "outcome": "unsupported",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/multishot.effekt",
+      "sha256": "2db0c04feac9d52207da6b116d460512ce46aad3f4eb1b32aba64a38f2088762",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/multishot.effekt",
+        "checking_ms": 101.181375,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/nested-outer.effekt",
+      "sha256": "c7e61e1151a87d9362c0fef64625543a0b4cb005bf5db2046527532adafb583d",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/nested-outer.effekt",
+        "checking_ms": 108.22375,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/polymorphic-callback.effekt",
+      "sha256": "6d64db5d62fcd4bb3863b4e12ca298eada48e84f4c7196fbb63e7d978a49a8ce",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/polymorphic-callback.effekt",
+        "checking_ms": 132.064125,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/refinement-polymorphic.effekt",
+      "sha256": "46a37b530ee663d5b197f660da4a8bda49f93a46dccf068f7b9b940baa672d40",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/refinement-polymorphic.effekt",
+        "checking_ms": 196.684875,
+        "status": "accepted",
+        "type": "{r: Int | (r >= 0)} / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/repeatable-effect.effekt",
+      "sha256": "41f3b8b127df82d84c025cc734fd8c6a807ca47b4930e73dbe85b733ddeaf671",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/repeatable-effect.effekt",
+        "checking_ms": 140.326917,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/return-clause.effekt",
+      "sha256": "698041eb48d03bcb5508ae079564cc9740b5e04b9481c3ff9b8991d7f828713a",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/return-clause.effekt",
+        "checking_ms": 147.745209,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/return-effects.effekt",
+      "sha256": "d02cf025927955aaf372a8ce8d38752d3690bf9d19c3224ebc8639981cd333c8",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/return-effects.effekt",
+        "checking_ms": 102.744833,
+        "status": "accepted",
+        "type": "Bool / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    },
+    {
+      "file": "examples/atm/stored-resumption.effekt",
+      "sha256": "54cacfb689c8826ce258963c8168e51a17ea762653b42ee3c6ca2325e11500b6",
+      "expected": "accepted",
+      "check": {
+        "file": "/Users/yzsun/Developer/effekt/examples/atm/stored-resumption.effekt",
+        "checking_ms": 116.851834,
+        "status": "accepted",
+        "type": "Int / pure"
+      },
+      "outcome": "accepted",
+      "matches_inventory": true
+    }
+  ]
+}

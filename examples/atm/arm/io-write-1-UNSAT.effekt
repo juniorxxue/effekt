@@ -1,0 +1,29 @@
+// coar d293ee6759bd285f4a496b727f1df85e70f30f3e: io-write-1-UNSAT.ml
+// The output list and universal upstream assertion are retained.
+// Write receives the remaining input as annotation context; the clause uses
+// only the original written integer when constructing its runtime result.
+data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
+def main(): Bool = {
+  def test(input: {xs: ListInt | xs == Nil()}): {r: (Unit, ListInt) | snd(r) != Nil()} = {
+    try {
+      def rec local go(xs: ListInt): Unit /
+        ((Unit, {r: ListInt | r == Nil()}) => (Unit, {r: ListInt | r == xs})) = {
+        match (xs) {
+          case Nil() => { () }
+          case Cons(h, t) => { output.write((h, t)); go(t) }
+        }
+      }
+      go(input)
+    } with output: (Unit, {r: ListInt | r == input}) {
+      def write(context: (Int, ListInt)): Unit /
+        ((Unit, {r: ListInt | r == snd(context)}) =>
+         (Unit, {r: ListInt | r == Cons(fst(context), snd(context))})) = {
+        val result = resume();
+        (fst(result), Cons(fst(context), snd(result)))
+      }
+      return u => { (u, Nil()) }
+    }
+  }
+  val result = test(Nil());
+  snd(result) == Nil()
+}

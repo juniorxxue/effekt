@@ -1,0 +1,33 @@
+// Port of coar POPL24 ARM choose-max-SAT.ml, retaining both context fields and preconditions.
+def main(): Int = {
+  def test(u: Int): ((v: {n: Int | n >= u}) => ((x: Int) => ((y: {n: Int | n >= x}) => {r: Int | r == v - x}))) = {
+    fun (v: {n: Int | n >= u}): ((x: Int) => ((y: {n: Int | n >= x}) => {r: Int | r == v - x})) {
+      fun (x: Int): ((y: {n: Int | n >= x}) => {r: Int | r == v - x}) {
+        fun (y: {n: Int | n >= x}): {r: Int | r == v - x} {
+          try {
+            val first = choice.decide((false, 0));
+            val a = if (first) { u } else { v };
+            val second = choice.decide((true, a));
+            val b = if (second) { x } else { y };
+            a - b
+          } with choice: {r: Int | r == v - x} {
+            def decide(ctx: (Bool, Int)): (selected: Bool) /
+              ({r: Int | r == (if fst(ctx)
+                  then snd(ctx) - (if selected then x else y)
+                  else (if selected then u else v) - x)} =>
+               {r: Int | r == (if fst(ctx) then snd(ctx) - x else v - x)}) = {
+              val left = resume(true);
+              val right = resume(false);
+              if (left >= right) { left } else { right }
+            }
+            return value => { value }
+          }
+        }
+      }
+    }
+  }
+  val withU = test(1);
+  val withV = withU(4);
+  val withX = withV(2);
+  withX(9)
+}

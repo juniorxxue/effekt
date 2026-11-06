@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "suite": "infer",
+  "created_utc": "2026-11-06T02:13:21.306293+00:00",
+  "compiler_sha256": "0be5eed7c8e97556594a428d71f69d390deb1ee8fc47c0b687e6eae0bf998fe5",
+  "runner_sha256": "fc4633ae4d4f38f1d6ac09c44a0a6db73ebbc0b2723f6e8edb9e08e7af2ed415",
+  "results": [
+    {
+      "file": "examples/atm/infer/active-three-counts.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        1.92875,
+        1.020541,
+        0.818583,
+        0.662292,
+        0.714417
+      ],
+      "source_sha256": "d5e6eaa0ff6706690b05a9441c58a6ee322c073c6f22350e7f625bb7b31165cb",
+      "median_ms": 0.818583,
+      "min_ms": 0.662292,
+      "max_ms": 1.92875
+    },
+    {
+      "file": "examples/atm/infer/active-three-multishot.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        1.281875,
+        1.643875,
+        1.064458,
+        0.795917,
+        1.237
+      ],
+      "source_sha256": "1c1292fa946f66c5adf9c70edc03a84a7b0fda7914239c11bf469fd5c204b83b",
+      "median_ms": 1.237,
+      "min_ms": 0.795917,
+      "max_ms": 1.643875
+    },
+    {
+      "file": "examples/atm/infer/mixed-answer-layers.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        1.0655,
+        1.215417,
+        1.526083,
+        1.028958,
+        0.945208
+      ],
+      "source_sha256": "50451e51d4b7e65557603b90a34d618917e56b8a9618e34e4ab33bc1b7cb4963",
+      "median_ms": 1.0655,
+      "min_ms": 0.945208,
+      "max_ms": 1.526083
+    },
+    {
+      "file": "examples/atm/infer/nested-residuals.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        2.592083,
+        2.039291,
+        1.329333,
+        1.503959,
+        1.45575
+      ],
+      "source_sha256": "c44452267de062ad590c6d012c88ea6dd95978b579442834d07160c401f4d48a",
+      "median_ms": 1.503959,
+      "min_ms": 1.329333,
+      "max_ms": 2.592083
+    },
+    {
+      "file": "examples/atm/infer/polymorphic-outer-call.effekt",
+      "outcome": "Unsupported",
+      "samples_ms": [
+        0.186084,
+        0.141209,
+        0.275708,
+        0.110833,
+        0.136541
+      ],
+      "source_sha256": "2e75c2331818f7a9514656278a14bb15e2605ea4cc87401b1d903ff40f2d4c7c",
+      "median_ms": 0.141209,
+      "min_ms": 0.110833,
+      "max_ms": 0.275708
+    },
+    {
+      "file": "examples/atm/infer/shadowed-capabilities.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        1.06225,
+        1.296042,
+        0.793625,
+        0.727042,
+        0.822542
+      ],
+      "source_sha256": "127abf4837d3348299296f00f26b524369c23239ec68a0bf405b930aecb91f0e",
+      "median_ms": 0.822542,
+      "min_ms": 0.727042,
+      "max_ms": 1.296042
+    }
+  ],
+  "warmup_rounds": 2,
+  "measured_rounds": 5,
+  "order": "deterministic shuffle per round, seed 152 + round",
+  "scope": "Wall-clock Checker.check on parsed sources, including refinement solving and fresh checker caches; excludes parsing, JVM startup, Core lowering, and backend execution.",
+  "environment": {
+    "os": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "architecture": "arm64",
+    "cpu": "Apple M1 Pro",
+    "memory_bytes": "17179869184",
+    "java": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)",
+    "z3_executable": "z3",
+    "z3": "Z3 version 5.1.0 - 64 bit"
+  }
+}

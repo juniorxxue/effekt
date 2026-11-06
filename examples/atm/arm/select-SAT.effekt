@@ -1,0 +1,46 @@
+// Pinned coar ARM: select-SAT.ml. Both choices and the first-success collector remain.
+data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
+data Result { Failure(); Success(values: ListInt) }
+measure roots(xs: ListInt, x: Int): Bool {
+  case Nil() => true;
+  case Cons(h,t) => h * h == x * x && roots(t,x);
+}
+measure firstResult(xs: ListInt, selected: ListInt): Result {
+  case Nil() => Failure();
+  case Cons(h,t) => Success(Cons(h,selected));
+}
+def main(): Bool = {
+  def test(x: Int): {r: Bool | r == true} = {
+    val run = try {
+      val a = choices.select(Cons(x,Cons(-x,Nil())));
+      a * a == x * x
+    } with choices: (local (selected: ListInt) => {r: Result | r == Success(Cons(x,selected))}) {
+      def select(options: {xs: ListInt | roots(xs,x)}): {i: Int | i * i == x * x} /
+        ((local (selected: ListInt) => {r: Result | r == Success(selected)}) =>
+         (local (selected: ListInt) => {r: Result | r == firstResult(options,selected)})) = {
+        fun local (selected: ListInt): {r: Result | r == firstResult(options,selected)} {
+          def rec local tryChoice(xs: {ys: ListInt | roots(ys,x)}): {r: Result | r == firstResult(xs,selected)} = {
+            match (xs) {
+              case Nil() => { Failure() }
+              case Cons(y,ys) => {
+                val next = resume(y); val result = next(Cons(y,selected));
+                match (result) {
+                  case Success(values) => { Success(values) }
+                  case Failure() => { tryChoice(ys) }
+                }
+              }
+            }
+          }
+          tryChoice(options)
+        }
+      }
+      return outcome => {
+        fun local (selected: ListInt): {r: Result | r == (if outcome then Success(selected) else Failure())} {
+          if (outcome) { Success(selected) } else { Failure() }
+        }
+      }
+    };
+    val result = run(Nil()); result == Success(Cons(x,Nil()))
+  }
+  test(4)
+}

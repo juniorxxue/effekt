@@ -1,0 +1,33 @@
+// Pinned coar ARM: modulus-SAT.ml.
+// mu is specialized to the benchmark's f. It still calls the supplied sequence
+// through Call, multiplies its result by zero, and tracks the largest index.
+def main(): Bool = {
+  def local test(r: Int): (local (a: ((x: Int) => {v: Int | x != 10 || v == r})) =>
+    (local (b: ((x: Int) => {v: Int | x != 10 || v == r})) => {v: Bool | v == true})) = {
+    fun local (a: ((x: Int) => {v: Int | x != 10 || v == r})):
+      (local (b: ((x: Int) => {v: Int | x != 10 || v == r})) => {v: Bool | v == true}) {
+      fun local (b: ((x: Int) => {v: Int | x != 10 || v == r})): {v: Bool | v == true} {
+        def local mu(sequence: ((x: Int) => {v: Int | x != 10 || v == r})): {v: Int | v == 10} = {
+          val run = try {
+            val value = calls.call(10); 0 * value
+          } with calls: (local (i: Int) => {v: Int | v == (if i >= 10 then i else 10)}) {
+            def call(n: Int): Int /
+              ((local (i: Int) => {v: Int | v == i}) =>
+               (local (i: Int) => {v: Int | v == (if i >= n then i else n)})) = {
+              fun local (i: Int): {v: Int | v == (if i >= n then i else n)} {
+                val j = if (i >= n) { i } else { n };
+                val value = sequence(n); val next = resume(value); next(j)
+              }
+            }
+            return unused => { fun local (i: Int): {v: Int | v == i} { i } }
+          };
+          run(0)
+        }
+        val left = mu(a); val right = mu(b); left == right
+      }
+    }
+  }
+  val withA = test(7);
+  val withB = withA(fun (x: Int): {v: Int | x != 10 || v == 7} { 7 });
+  withB(fun (x: Int): {v: Int | x != 10 || v == 7} { if (x == 10) { 7 } else { 11 } })
+}

@@ -1,0 +1,30 @@
+// Pinned coar ARM: deferred-1-UNSAT.ml. The thunk is stored and forced in the handler.
+// Helpers use exact top-region arrows; the supplied thunk remains an ordinary arrow.
+data Deferred { Value(value: Int); Thunk(context: Int, thunk: ((Unit) => {v: Int | v == context})) }
+measure content(s: Deferred): Int {
+  case Value(v) => v; case Thunk(c,f) => c;
+}
+def main(): Bool = {
+  def local test(r: Int): (local (thunk: ((Unit) => {v: Int | v == r})) => {v: Int | v == r + 1}) = {
+    fun local (thunk: ((Unit) => {v: Int | v == r})): {v: Int | v == r + 1} {
+      val run = try {
+        val result = lazyValue.force(); result
+      } with lazyValue: (local (s: {d: Deferred | content(d) == r}) => {v: Int | v == r}) {
+        def force(u: Unit): {v: Int | v == r} /
+          ((local (s: Deferred) => {v: Int | v == r}) =>
+           (local (s: {d: Deferred | content(d) == r}) => {v: Int | v == r})) = {
+          fun local (s: {d: Deferred | content(d) == r}): {v: Int | v == r} {
+            match (s) {
+              case Value(v) => { val next = resume(v); next(Value(v)) }
+              case Thunk(c,f) => { val v = f(); val next = resume(v); next(Value(v)) }
+            }
+          }
+        }
+        return y => { fun local (s: Deferred): {v: Int | v == y} { y } }
+      };
+      run(Thunk(r,thunk))
+    }
+  }
+  val run = test(7);
+  val result = run(fun (u: Unit): {v: Int | v == 7} { 7 }); result == 7
+}

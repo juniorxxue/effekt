@@ -1,0 +1,41 @@
+// Port of coar POPL24 ARM state-easy-SAT.ml.
+// The original nonnegative postcondition is checked for every nonnegative init.
+def main(): Int = {
+  def test(init: {n: Int | n >= 0}): {r: Int | r >= 0} = {
+    type StateAnswer = (local ({s: Int | s >= 0}) => {r: Int | r >= 0});
+    val run = try {
+      def rec local counter(c: {n: Int | n >= 0}): {r: Int | r >= 0} /
+        (StateAnswer =>
+         StateAnswer) = {
+        val i = state.lookup();
+        if (i == 0) { c } else {
+          state.update(i - 1);
+          counter(c + 1)
+        }
+      }
+      counter(0)
+    } with state: StateAnswer {
+      def lookup(u: Unit): {i: Int | i >= 0} /
+        (StateAnswer =>
+         StateAnswer) = {
+        fun local (s: {n: Int | n >= 0}): {r: Int | r >= 0} {
+          val next = resume(s);
+          next(s)
+        }
+      }
+      def update(next: {n: Int | n >= 0}): Unit /
+        (StateAnswer =>
+         StateAnswer) = {
+        fun local (s: {n: Int | n >= 0}): {r: Int | r >= 0} {
+          val continuation = resume();
+          continuation(next)
+        }
+      }
+      return value => {
+        fun local (s: {n: Int | n >= 0}): {r: Int | r >= 0} { value }
+      }
+    };
+    run(init)
+  }
+  test(8)
+}

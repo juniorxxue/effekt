@@ -1,0 +1,995 @@
+{
+  "schema_version": 1,
+  "suite": "arm",
+  "created_utc": "2026-11-06T00:56:09.359372+00:00",
+  "compiler_sha256": "0be5eed7c8e97556594a428d71f69d390deb1ee8fc47c0b687e6eae0bf998fe5",
+  "runner_sha256": "fc4633ae4d4f38f1d6ac09c44a0a6db73ebbc0b2723f6e8edb9e08e7af2ed415",
+  "results": [
+    {
+      "file": "examples/atm/arm/amb-1-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 5,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "a58216409f50aa12a22a739dbfadd796385dd5fca05d4c97bec0fea3da3c3c9b",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/amb-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Result | (r == Failure())} / pure, found {r: Result | (r == search(input, e))} / pure",
+      "source_sha256": "21724041cf8e2f66ddfadbadb09e62c4eba22e660835ec810f45e656c3a7d8a2",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/amb-2-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 5,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "8357f85df7225c96d373acdc1609eb283183e76cba1a89da31394b25adaff402",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/amb-2-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists r: Data(Result). exists result: Data(Result). ((((r == search(Cons(first, input), e)) && (r == result)) && (result == search(Cons(first, input), e))) && (value == (r == Success(e))))} / pure",
+      "source_sha256": "7607dfa52ff8803e96d13a4dc53a6414aedc3511515749a6835bac6c6df1b2ea",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/amb-3-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 6,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "0dcf07145b7b4365a0ad66923b45496e9f8353e65dc5cfc161fed2ce1221b57a",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/amb-3-simpl-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "61d1222fc074f26d0d05a74aea6d18fa731c0e5ee61f1b9674c2aad58f0718bf",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/bfs-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 1,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "2cfa0198fcd8b227ab4b70b4db67fc9b19dade87171eaf66547b5eaf3fd13b39",
+      "fidelity_notes": [
+        1,
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/bfs-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists left: Data(Result). ((((((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure())) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && exists right: Data(Result). (((((((((((9 == (n * n)) && (right == Success(3))) || (!((9 == (n * n))) && (right == Failure()))) && (right == if (9 == (n * n)) then Success(3) else Failure())) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && ((9 == (n * n)) => (((((9 == (n * n)) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (!((9 == (n * n))) => ((((!((9 == (n * n))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && exists result: Data(Result). exists result: Data(Result). (((((((((((result == if (left == Failure()) then right else left) && (result == result)) && (result == if (left == Failure()) then right else left)) && ((((9 == (n * n)) && (right == Success(3))) || (!((9 == (n * n))) && (right == Failure()))) && (right == if (9 == (n * n)) then Success(3) else Failure()))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))) && ((9 == (n * n)) => (((((9 == (n * n)) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (!((9 == (n * n))) => ((((!((9 == (n * n))) && ((((4 == (n * n)) && (left == Success(2))) || (!((4 == (n * n))) && (left == Failure()))) && (left == if (4 == (n * n)) then Success(2) else Failure()))) && ((n == 2) || (n == 3))) && ((4 == (n * n)) => ((4 == (n * n)) && ((n == 2) || (n == 3))))) && (!((4 == (n * n))) => (!((4 == (n * n))) && ((n == 2) || (n == 3))))))) && (value == (result == Failure())))))} / pure",
+      "source_sha256": "0457ae4de663be857de204212d1665fe3b528f0f1c301a5d0883b1201d699d03",
+      "fidelity_notes": [
+        1,
+        6
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/bfs-simpl-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 1,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "b09a1ed9fdaa1ae289ff9c35d71910d0daec937010a3ef52fb8d6a3480049605",
+      "fidelity_notes": [
+        1,
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/choose-all-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 8,
+      "operation_atcs": 2,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "503df86ad771b2dd568914e3d1cf5c08c922f2e0c358b9efe22c3c6e39364a0b",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/choose-all-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Bool | (r == true)} / pure, found {value: Bool | exists result: Data(ListInt). exists result: Data(ListInt). ((((result == Cons(0, Cons((x - y), Cons((y - x), Cons(0, Nil()))))) && (result == result)) && (result == Cons(0, Cons((x - y), Cons((y - x), Cons(0, Nil())))))) && (value == (result == Cons(0, Cons((y - x), Cons((x - y), Cons(0, Nil())))))))} / pure",
+      "source_sha256": "dbd44652895e0d0ef70198d7750498b6e317111fa1e89df4b511f88b17b6b366",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/choose-max-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 6,
+      "operation_atcs": 2,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "54301bc582f7eed8fb2a72deed62b29eb81e1983b38084bcb6f095b59966261a",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/choose-max-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Int | (r == (u - y))} / pure, found {r: Int | (r == (v - x))} / pure",
+      "source_sha256": "664e4f114236208dec82e1fd3af93bb7bf97b7c4c61809c83104cd30a54d02fe",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/choose-sum-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 4,
+      "operation_atcs": 2,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "3da20f153295100cdc42c31bdc1aefad974fa6dd02fe544a5663c8ed5696ef11",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/choose-sum-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Int | (r == (x + y))} / pure, found {r: Int | (r == 0)} / pure",
+      "source_sha256": "b4d85cf03de9f0f9d26792fe94d16c1a00af7434f9084b1b68d6ae3b2ca98f90",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/deferred-1-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 2,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "fc65d3c2b142f75e92730426a3745e82350a3aeb62af0b15fe1ba18863bbb2a7",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/deferred-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {v: Int | (v == (r + 1))} / pure, found {v: Int | (v == r)} / pure",
+      "source_sha256": "d308943ae1b3aa2c18245c6d358ec2597501ae9e602fe194a85e589d5b77d5af",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/deferred-2-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 2,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "9fbaea0b5102fbc419c504dd88eb0e22ca39e03f33a270dcafdec1bfa36b1285",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/distribution-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 26,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "f4df29373211681c627ae058850b9a744842ac1802c7a8a6648b65dcbfc5a682",
+      "fidelity_notes": [
+        8
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/distribution-UNSAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 26,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "c29127dfaa818f2530015dc4ebe2152658a90bec083b88d3a6dfeaf23b9f81b7",
+      "fidelity_notes": [
+        8
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/expectation-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 4,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "b54b2f0418c1e1e7ef98c459d4751982f2fdffb9531863a2b2ce72b8d3b8f44f",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/expectation-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Int | (r == (((100 - p) * x) + (p * y)))} / pure, found {r: Int | (r == ((p * x) + ((100 - p) * y)))} / pure",
+      "source_sha256": "303fa77b471d6b1586b5bb426b8b9a23c406a145edc3afb08a65faefe977a771",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-read-1-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "5147688c5c07f31bbebcf7a24ce88e60f0c608ca81c07d1992a8bfc122242dca",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-read-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Result | (r == Err())} / pure, found {r: Result | (r == readOutcome(input, n))} / pure",
+      "source_sha256": "027c32e72244507a69d310e9abed33f05c4149d2666ae5007a40d4c82f8b6555",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-read-2-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "aaff26d39cc19eaca1a197e0c0373d42c706ee09d9cdf9dcd62bd644bef534c0",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-read-3-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "0eda9f5fd04be5539145cd1ed166807638066bfd5443dc94c0e95d287281a1d0",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-write-1-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 2,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "161e44c53623d80aec883c9671eaf6fd805fbfac5ff694686e0a2b61e3f7af65",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-write-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: (Unit, ListInt) | (snd(r) != Nil())} / pure, found (Unit, {r: ListInt | (r == input)}) / pure",
+      "source_sha256": "47f8f073ced2448401274558967bf7e263868f2f08382cffb9f64f77a291038e",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-write-2-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 2,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "c2de2d37a43075497320b6e0539e376a02e8d351efbc72ff2b0f22ca8581f390",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/io-write-2-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: (Unit, ListInt) | (snd(r) == Nil())} / pure, found (Unit, {r: ListInt | (r == input)}) / pure",
+      "source_sha256": "2ec4c5a79078d2dd14b2114f0d36b3d538055591d267b0a0a4cade07fda32fdb",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/modulus-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 2,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "0a6b39c875b8deb9724da666338f20a0a8251da13f68acf998e32b8c386f4e2b",
+      "fidelity_notes": [
+        2
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/modulus-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {v: Bool | (v == false)} / pure, found {value: Bool | exists left: Int. exists result: Int. ((((left == 10) && (left == result)) && (result == 10)) && exists result: Int. exists right: Int. ((((((right == 10) && (right == result)) && (result == 10)) && ((left == 10) && (left == result))) && (result == 10)) && (value == (left == right))))} / pure",
+      "source_sha256": "1519e7ed2f2ce5d3477b072b6f74a6201229ba7e50b20b3b74c8dac0166d935d",
+      "fidelity_notes": [
+        2
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/queue-1-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 8,
+      "operation_atcs": 3,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "2fdf2094354ce196ec7ea0d6fe0adfcca87ac3f4a39959d6235a40de8cc816d3",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/queue-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: OptionInt | (r != None())} / pure, found {r: OptionInt | (r == secondOf(append(init, Cons(42, Nil()))))} / pure",
+      "source_sha256": "5c3b7b6e1e70e85f85afcf96abe9548d3761bf01a91246d4bca40c1fa45e9a8b",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/queue-2-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 8,
+      "operation_atcs": 3,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "ac9ea2eadad19bf1dc9ddd1eaab0229aedc45e745757a943bac49d3f842f541f",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/round-robin-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 6,
+      "operation_atcs": 6,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole",
+        "Hole",
+        "Hole",
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "7df07018c52b02fec76d9b3368b2a5e793b61b7708b1143b4e9b27800e9155b5",
+      "fidelity_notes": [
+        4
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/round-robin-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Int | (r == init)} / pure, found {r: Int | (r >= init)} / pure",
+      "source_sha256": "4fc9d9a369d72d6e19b7e2f07b03f12362927bcb701a23ef07d9b00799cae548",
+      "fidelity_notes": [
+        4
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/safe-div-1-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "f6b524398987c326167a05efb4ecb291f833917b4b89574d32f76741d9e53da1",
+      "fidelity_notes": [
+        7
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/safe-div-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {z: OptionInt | (z != None())}, found {value: OptionInt | (value == None())}",
+      "source_sha256": "216a5d304dd5fc152598bc1fc115ae5efc5ede191496c68137396689eb2b43ba",
+      "fidelity_notes": [
+        7
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/safe-div-2-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "3fac5128d158a24b567d0ecf1ecebac5d7ec776ca58bb743d151beb89f981d9f",
+      "fidelity_notes": [
+        7
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/safe-div-2-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {z: Bool | (z == false)} / pure, found {value: Bool | exists result: Data(OptionInt). exists result: Data(OptionInt). (((((result == Some((n / m))) && (result == result)) && (result == Some((n / m)))) && (m != 0)) && (value == (result == Some((n / m)))))} / pure",
+      "source_sha256": "5dcb7962a17c44b41bd643c9c78291b7054e1a3662772b08149a9b64ea57f1ab",
+      "fidelity_notes": [
+        7
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/select-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 2,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "41bb058cc1db4d94f56009cf9408a23299aedd8240bab66b82d7c07a380fba3d",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/select-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Bool | (r == false)} / pure, found {value: Bool | exists result: Data(Result). exists result: Data(Result). ((((result == Success(Cons(x, Nil()))) && (result == result)) && (result == Success(Cons(x, Nil())))) && (value == (result == Success(Cons(x, Nil())))))} / pure",
+      "source_sha256": "8488c4179acdc59e8d516708b9728799faeb0ec2367eb2981731637faa1cda72",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/shift-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 1,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "f7f171ab44d0e7e6b1857a8e9fb103530846a6f32db11e9144ac741be9616147",
+      "fidelity_notes": [
+        3
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/shift-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {v: Int | (v == ((4 * n) + 3))} / pure, found {v: Int | (v == ((8 * n) + 7))} / pure",
+      "source_sha256": "21e23883f92acd769bfd3e26ef1fdf8316bf47dff7a8e25570c667786f6b35db",
+      "fidelity_notes": [
+        3
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/state-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 2,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "7334897b89bec19e9527377150fd892ac8a95a2900de5a816e1cd0b99468b704",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/state-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Int | (r != init)} / pure, found {r: Int | (r == init)} / pure",
+      "source_sha256": "20f1208215527b5d47978b83b9979b23f71f8ee7bc3aef65eb87f03d57c03346",
+      "fidelity_notes": [
+        6
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/state-easy-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 3,
+      "operation_atcs": 2,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "09090776e1acdf063204081880fd9a9b1363da4a978ad8bac43f06f85dccff96",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/transaction-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 8,
+      "operation_atcs": 6,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "atc_depths": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "atc_structures": [
+        "Hole",
+        "Hole",
+        "Hole",
+        "Hole",
+        "Hole",
+        "Hole"
+      ],
+      "source_sha256": "ff469c2c3ac52d1a9033b191b6264621a2c65fa854c18ffc00a9b1287f4ee1b8",
+      "fidelity_notes": [
+        5
+      ],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/transaction-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {r: Int | (r == 2)} / pure, found {r: Int | ((r == 0) || (r == 42))} / pure",
+      "source_sha256": "42d4b6e09a0ab1b3cd1d865dd7196a49e87c50aad1921c22f31f07bc0e2162f4",
+      "fidelity_notes": [
+        5
+      ],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/yield-SAT.effekt",
+      "outcome": "accepted",
+      "evidence_uses": 1,
+      "operation_atcs": 1,
+      "layered_atcs": 0,
+      "operation_distances": [
+        0
+      ],
+      "atc_depths": [
+        0
+      ],
+      "atc_structures": [
+        "Hole"
+      ],
+      "source_sha256": "dc26be7fdc232918566fc8f303ecec4a4d8a2a9babcfb3e2f7759432be6db2f2",
+      "fidelity_notes": [],
+      "evidence_inferred": true,
+      "atcs_inferred": true,
+      "inference_status": "complete_elaboration"
+    },
+    {
+      "file": "examples/atm/arm/yield-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "message": "Expected {tree: Tree | allEqual(tree, 2)} / pure, found {t: Tree | allEqual(t, 1)} / pure",
+      "source_sha256": "2e0bd50e8d4fb737f4e3641b97dd9cf504a5f5b6a68af210cb113b4f0c210631",
+      "fidelity_notes": [],
+      "evidence_inferred": null,
+      "atcs_inferred": null,
+      "inference_status": "no_complete_elaboration"
+    }
+  ],
+  "scope": "Accepted programs: evidence/ATC certificates in validated Core. If an operation fails ATC inference, the optional checker observation records the reconstructed witness and residuals for that failed attempt; this partial result is not a complete elaboration. Other rejections have no inference-success claim."
+}

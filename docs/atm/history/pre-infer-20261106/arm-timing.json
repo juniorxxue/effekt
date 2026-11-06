@@ -1,0 +1,920 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-06T00:35:05.612168+00:00",
+  "compiler_sha256": "7c778f63ccc5f5f3d2e91dbb3c1e8d1902198b2dd4265133e8218724605c90f7",
+  "runner_sha256": "832cc70f32e8afe686398d60628ceb963238166d07af4c11f9fd5e181c66df46",
+  "results": [
+    {
+      "file": "examples/atm/arm/amb-1-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        175.697583,
+        186.27425,
+        177.80425,
+        168.457084,
+        184.582291
+      ],
+      "source_sha256": "ef8b06f08b958f4836d1c7041ace549cf62e2b03ff5ea409982bc968e1236a0b",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 177.80425,
+      "min_ms": 168.457084,
+      "max_ms": 186.27425
+    },
+    {
+      "file": "examples/atm/arm/amb-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        177.26175,
+        173.806666,
+        163.277041,
+        183.653,
+        168.603083
+      ],
+      "source_sha256": "aa931a0248028180fed1f76beea637ede957a0073d2d1205275ec6eeb98c429f",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 173.806666,
+      "min_ms": 163.277041,
+      "max_ms": 183.653
+    },
+    {
+      "file": "examples/atm/arm/amb-2-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        176.062292,
+        190.791792,
+        185.837834,
+        185.028209,
+        188.653917
+      ],
+      "source_sha256": "b196961eb8364953c70139555f83820eac48b9b590e139e163614e2c0c6ade2e",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 185.837834,
+      "min_ms": 176.062292,
+      "max_ms": 190.791792
+    },
+    {
+      "file": "examples/atm/arm/amb-2-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        184.058083,
+        178.380417,
+        187.779417,
+        166.602125,
+        181.199
+      ],
+      "source_sha256": "4c97b19b99f37aca76dec5efe5c6d47eb1a3fb6b881f9c6418218cc11ef6aa6e",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 181.199,
+      "min_ms": 166.602125,
+      "max_ms": 187.779417
+    },
+    {
+      "file": "examples/atm/arm/amb-3-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        178.136542,
+        192.493292,
+        178.714875,
+        187.543458,
+        176.31825
+      ],
+      "source_sha256": "f25bc2f663037b86e9f4c1ad3f65771369a7d411c3bacce30e43298ec8d82282",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 178.714875,
+      "min_ms": 176.31825,
+      "max_ms": 192.493292
+    },
+    {
+      "file": "examples/atm/arm/amb-3-simpl-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        94.339708,
+        86.765417,
+        86.963667,
+        86.686875,
+        94.223917
+      ],
+      "source_sha256": "3dc6f4f4ace7ff8991ced2351c6952c4bef1aa6596a34b3f61e05e623cd6d0d8",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 86.963667,
+      "min_ms": 86.686875,
+      "max_ms": 94.339708
+    },
+    {
+      "file": "examples/atm/arm/bfs-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        313.579541,
+        303.915708,
+        321.108584,
+        312.548167,
+        301.537708
+      ],
+      "source_sha256": "7393a0df5e39f39ee4720a1ef4673eee92dce633ba94d840a719667a2f2e1404",
+      "fidelity_notes": [
+        1,
+        6
+      ],
+      "median_ms": 312.548167,
+      "min_ms": 301.537708,
+      "max_ms": 321.108584
+    },
+    {
+      "file": "examples/atm/arm/bfs-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        324.732959,
+        303.830416,
+        299.607917,
+        302.411709,
+        300.908708
+      ],
+      "source_sha256": "7cd075241301acaec49346f0a036c1ed783c53e2f8430996b9ba2681e27fd5cb",
+      "fidelity_notes": [
+        1,
+        6
+      ],
+      "median_ms": 302.411709,
+      "min_ms": 299.607917,
+      "max_ms": 324.732959
+    },
+    {
+      "file": "examples/atm/arm/bfs-simpl-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        238.702334,
+        252.824166,
+        233.073792,
+        229.056584,
+        236.9475
+      ],
+      "source_sha256": "75abb2d7a1e8fceb3af0a4d6b0fa07ddd4e2fc085312e7675a086ae7d0a6c866",
+      "fidelity_notes": [
+        1,
+        6
+      ],
+      "median_ms": 236.9475,
+      "min_ms": 229.056584,
+      "max_ms": 252.824166
+    },
+    {
+      "file": "examples/atm/arm/choose-all-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        244.981875,
+        256.687666,
+        259.933,
+        234.463666,
+        237.713084
+      ],
+      "source_sha256": "cf49e0483ace9ac570da414036ed09cfb82d76c302fe78546e856c28650d2a66",
+      "fidelity_notes": [],
+      "median_ms": 244.981875,
+      "min_ms": 234.463666,
+      "max_ms": 259.933
+    },
+    {
+      "file": "examples/atm/arm/choose-all-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        235.123958,
+        241.13575,
+        246.42575,
+        244.806333,
+        244.335041
+      ],
+      "source_sha256": "e655d486ec3c20fe4db6c19ce9c4c54dc460cc16a707f0eac35e1ba929cf8f6b",
+      "fidelity_notes": [],
+      "median_ms": 244.335041,
+      "min_ms": 235.123958,
+      "max_ms": 246.42575
+    },
+    {
+      "file": "examples/atm/arm/choose-max-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        234.261083,
+        223.580625,
+        226.868583,
+        230.655416,
+        222.1365
+      ],
+      "source_sha256": "4d8e0d4c3258fc0932c8133ac5ab7f559c3a1c5753a62a86e9bdd5797309dc21",
+      "fidelity_notes": [],
+      "median_ms": 226.868583,
+      "min_ms": 222.1365,
+      "max_ms": 234.261083
+    },
+    {
+      "file": "examples/atm/arm/choose-max-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        208.447667,
+        219.796833,
+        217.717542,
+        218.829292,
+        216.132375
+      ],
+      "source_sha256": "5dec2dc6f1701421143ee245d517a4649b8e9b4fd23368fa82ab3855d7d5fed5",
+      "fidelity_notes": [],
+      "median_ms": 217.717542,
+      "min_ms": 208.447667,
+      "max_ms": 219.796833
+    },
+    {
+      "file": "examples/atm/arm/choose-sum-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        192.758458,
+        187.54425,
+        196.441583,
+        177.586625,
+        185.431875
+      ],
+      "source_sha256": "1695301c753ddd0aaf45e5985e1272226815157b32f3d81dc9a2e305a03e54ab",
+      "fidelity_notes": [],
+      "median_ms": 187.54425,
+      "min_ms": 177.586625,
+      "max_ms": 196.441583
+    },
+    {
+      "file": "examples/atm/arm/choose-sum-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        208.251834,
+        198.465791,
+        185.93325,
+        187.293208,
+        190.355375
+      ],
+      "source_sha256": "6ff2ffbdf06fe8570a9364c322b0505836e496e782f92b93f374b19d4d001bf5",
+      "fidelity_notes": [],
+      "median_ms": 190.355375,
+      "min_ms": 185.93325,
+      "max_ms": 208.251834
+    },
+    {
+      "file": "examples/atm/arm/deferred-1-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        70.340209,
+        71.761,
+        72.878292,
+        72.154917,
+        72.284041
+      ],
+      "source_sha256": "92e7597a3eac9f3a7a990472455ba45f2b016e9b304da2de1980c0aaa90ba53e",
+      "fidelity_notes": [],
+      "median_ms": 72.154917,
+      "min_ms": 70.340209,
+      "max_ms": 72.878292
+    },
+    {
+      "file": "examples/atm/arm/deferred-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        70.457833,
+        74.944833,
+        73.223708,
+        69.10275,
+        71.291042
+      ],
+      "source_sha256": "a6240834a41fd9ef3930d5becfe7430c3d6323c70fe6a9520cb22f7e6114ee39",
+      "fidelity_notes": [],
+      "median_ms": 71.291042,
+      "min_ms": 69.10275,
+      "max_ms": 74.944833
+    },
+    {
+      "file": "examples/atm/arm/deferred-2-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        68.642083,
+        72.401792,
+        71.653333,
+        74.076917,
+        69.557541
+      ],
+      "source_sha256": "fc570a9cefc63dcebf4be5c3c0691136a8300a9addfe8caa5fc7a46e9cd88390",
+      "fidelity_notes": [],
+      "median_ms": 71.653333,
+      "min_ms": 68.642083,
+      "max_ms": 74.076917
+    },
+    {
+      "file": "examples/atm/arm/distribution-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        284.129917,
+        280.325333,
+        282.296667,
+        282.837334,
+        286.465167
+      ],
+      "source_sha256": "ba36e452508cf607fc385552cfc8c89a0bf66907767e5bf7c09b4386ee17a009",
+      "fidelity_notes": [
+        8
+      ],
+      "median_ms": 282.837334,
+      "min_ms": 280.325333,
+      "max_ms": 286.465167
+    },
+    {
+      "file": "examples/atm/arm/distribution-UNSAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        288.874583,
+        278.222541,
+        267.587958,
+        293.807834,
+        271.768792
+      ],
+      "source_sha256": "fa3722a53eb0968d00101b185a6d8eb9c64a8b38c2be456fdb1708ecefbcc718",
+      "fidelity_notes": [
+        8
+      ],
+      "median_ms": 278.222541,
+      "min_ms": 267.587958,
+      "max_ms": 293.807834
+    },
+    {
+      "file": "examples/atm/arm/expectation-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        65.793375,
+        62.483834,
+        65.003292,
+        62.681917,
+        62.630666
+      ],
+      "source_sha256": "e71eb0e592e6254f4e417d3aaee8af07a9518fd22931451430b13e3e1482513d",
+      "fidelity_notes": [],
+      "median_ms": 62.681917,
+      "min_ms": 62.483834,
+      "max_ms": 65.793375
+    },
+    {
+      "file": "examples/atm/arm/expectation-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        118.480083,
+        131.024875,
+        128.543791,
+        123.31775,
+        123.62075
+      ],
+      "source_sha256": "395067650ebfb0d77bc403aefdefad7a7d78f85cca2a4435c48ca2841ab8df65",
+      "fidelity_notes": [],
+      "median_ms": 123.62075,
+      "min_ms": 118.480083,
+      "max_ms": 131.024875
+    },
+    {
+      "file": "examples/atm/arm/io-read-1-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        56.841167,
+        62.876,
+        60.681417,
+        59.485416,
+        55.264375
+      ],
+      "source_sha256": "bbd15b6ce301b63d99b38ec778ba2aefaf6c57d6e4c1379be7ea8c3fd5c3f425",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 59.485416,
+      "min_ms": 55.264375,
+      "max_ms": 62.876
+    },
+    {
+      "file": "examples/atm/arm/io-read-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        50.7935,
+        55.080959,
+        50.619583,
+        51.278709,
+        53.985542
+      ],
+      "source_sha256": "671841677572159203c581b7811d973d65eee1722dcd2553320309995a585029",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 51.278709,
+      "min_ms": 50.619583,
+      "max_ms": 55.080959
+    },
+    {
+      "file": "examples/atm/arm/io-read-2-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        69.807083,
+        64.918958,
+        69.6855,
+        67.817833,
+        79.383291
+      ],
+      "source_sha256": "50e6de31c52762aded213df9e54f43beb94995f40291e103a8506002a2b0741c",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 69.6855,
+      "min_ms": 64.918958,
+      "max_ms": 79.383291
+    },
+    {
+      "file": "examples/atm/arm/io-read-3-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        68.05075,
+        64.960541,
+        71.783084,
+        69.8445,
+        72.186208
+      ],
+      "source_sha256": "fe35271795ada9fdbc9b2932dd1a6879d096b524ce68276a8a004485a0c32011",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 69.8445,
+      "min_ms": 64.960541,
+      "max_ms": 72.186208
+    },
+    {
+      "file": "examples/atm/arm/io-write-1-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        76.334375,
+        86.932083,
+        74.427542,
+        81.5575,
+        79.451333
+      ],
+      "source_sha256": "e6310c7747a3804879453a5b17ce18cca55d637638bff58cb1b7d3777ff98a28",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 79.451333,
+      "min_ms": 74.427542,
+      "max_ms": 86.932083
+    },
+    {
+      "file": "examples/atm/arm/io-write-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        68.12275,
+        66.107666,
+        70.11,
+        69.476542,
+        65.807666
+      ],
+      "source_sha256": "e4a22c06776cd437115eaa5e4c7691b6b0e9b31ebc3aa3835e8d49cf56993727",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 68.12275,
+      "min_ms": 65.807666,
+      "max_ms": 70.11
+    },
+    {
+      "file": "examples/atm/arm/io-write-2-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        82.93975,
+        86.220208,
+        82.305792,
+        89.382917,
+        86.027333
+      ],
+      "source_sha256": "b7c2a0f2661c4198c14c65630ef08d4673a982fc0f3090273d08b81589ea1ef5",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 86.027333,
+      "min_ms": 82.305792,
+      "max_ms": 89.382917
+    },
+    {
+      "file": "examples/atm/arm/io-write-2-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        70.936041,
+        73.521083,
+        72.74925,
+        68.437083,
+        66.258209
+      ],
+      "source_sha256": "4e2f843a0f7c5d97f6d40bba15f385e8551c13d2db33b18d5cc04045369dff12",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 70.936041,
+      "min_ms": 66.258209,
+      "max_ms": 73.521083
+    },
+    {
+      "file": "examples/atm/arm/modulus-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        103.894417,
+        125.084208,
+        104.970708,
+        107.350708,
+        102.136833
+      ],
+      "source_sha256": "2560bcd247fdc1d60708d688dce0312b2657a4a63f310196a72bf9e6d0f4a962",
+      "fidelity_notes": [
+        2
+      ],
+      "median_ms": 104.970708,
+      "min_ms": 102.136833,
+      "max_ms": 125.084208
+    },
+    {
+      "file": "examples/atm/arm/modulus-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        80.572209,
+        88.429167,
+        89.784792,
+        77.963583,
+        86.678
+      ],
+      "source_sha256": "b9d24f21e491a23ddfa5265393e7160c7a7a8b112fd14f157a446182c0bbf8b8",
+      "fidelity_notes": [
+        2
+      ],
+      "median_ms": 86.678,
+      "min_ms": 77.963583,
+      "max_ms": 89.784792
+    },
+    {
+      "file": "examples/atm/arm/queue-1-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        148.549625,
+        122.262458,
+        140.550958,
+        131.283,
+        133.401334
+      ],
+      "source_sha256": "05b5efb52c389a012c1bece1873c40234360756e4dcd4cb53e3001115f80c812",
+      "fidelity_notes": [],
+      "median_ms": 133.401334,
+      "min_ms": 122.262458,
+      "max_ms": 148.549625
+    },
+    {
+      "file": "examples/atm/arm/queue-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        134.250166,
+        133.702792,
+        131.051833,
+        117.754208,
+        125.987083
+      ],
+      "source_sha256": "84d6d2725bdd29a710c9c474e2a6c725c00f618d7f7888d59231f99e6ca8e923",
+      "fidelity_notes": [],
+      "median_ms": 131.051833,
+      "min_ms": 117.754208,
+      "max_ms": 134.250166
+    },
+    {
+      "file": "examples/atm/arm/queue-2-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        148.499833,
+        152.151166,
+        150.874541,
+        144.340583,
+        137.095667
+      ],
+      "source_sha256": "74ba24840892769c19e2a4c727c44925c141fd3bc0dd00e5cb2ff2cce68db5f5",
+      "fidelity_notes": [],
+      "median_ms": 148.499833,
+      "min_ms": 137.095667,
+      "max_ms": 152.151166
+    },
+    {
+      "file": "examples/atm/arm/round-robin-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        43.778166,
+        58.026958,
+        47.6205,
+        43.518583,
+        43.69775
+      ],
+      "source_sha256": "e98709ea0a8acdc565a94f542a60cdd3a6defaa87ba0279ab15bb1891efcc082",
+      "fidelity_notes": [
+        4
+      ],
+      "median_ms": 43.778166,
+      "min_ms": 43.518583,
+      "max_ms": 58.026958
+    },
+    {
+      "file": "examples/atm/arm/round-robin-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        44.287083,
+        43.913292,
+        43.619792,
+        44.109208,
+        41.03925
+      ],
+      "source_sha256": "4af599cb08ab3e5513118d02ced0d87199d8ddc50ec7bb1294238f2df7a0bc8e",
+      "fidelity_notes": [
+        4
+      ],
+      "median_ms": 43.913292,
+      "min_ms": 41.03925,
+      "max_ms": 44.287083
+    },
+    {
+      "file": "examples/atm/arm/safe-div-1-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        23.983375,
+        24.477333,
+        26.125375,
+        23.01,
+        25.400625
+      ],
+      "source_sha256": "af13a9594b4b1e4e7e5d6c5fe2b7ed572311653b58b2e39eed446e135dc0bf94",
+      "fidelity_notes": [
+        7
+      ],
+      "median_ms": 24.477333,
+      "min_ms": 23.01,
+      "max_ms": 26.125375
+    },
+    {
+      "file": "examples/atm/arm/safe-div-1-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        23.595417,
+        22.855084,
+        23.998542,
+        21.9965,
+        25.50225
+      ],
+      "source_sha256": "64edbd19845c2bc652ebbbcf99371521f14ef8718e9af3b02efcd493e4f83bb7",
+      "fidelity_notes": [
+        7
+      ],
+      "median_ms": 23.595417,
+      "min_ms": 21.9965,
+      "max_ms": 25.50225
+    },
+    {
+      "file": "examples/atm/arm/safe-div-2-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        69.360875,
+        67.376625,
+        60.872834,
+        60.544417,
+        69.21125
+      ],
+      "source_sha256": "e2a6fa8a898661f0caa805d031a52591ed95e9d482087f9eefcc3fa9bdf0bb52",
+      "fidelity_notes": [
+        7
+      ],
+      "median_ms": 67.376625,
+      "min_ms": 60.544417,
+      "max_ms": 69.360875
+    },
+    {
+      "file": "examples/atm/arm/safe-div-2-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        54.207333,
+        61.0945,
+        60.45075,
+        60.193292,
+        58.782875
+      ],
+      "source_sha256": "1cf8f9bb45b4c8954593dc238c8a948eddef6e70923560ec64c18dbb9dff3920",
+      "fidelity_notes": [
+        7
+      ],
+      "median_ms": 60.193292,
+      "min_ms": 54.207333,
+      "max_ms": 61.0945
+    },
+    {
+      "file": "examples/atm/arm/select-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        142.334416,
+        138.644792,
+        149.239583,
+        140.410666,
+        153.990458
+      ],
+      "source_sha256": "c41ec58c95a82ae0b39f27319396adfb9261e8f0d23c73e0096788babade5521",
+      "fidelity_notes": [],
+      "median_ms": 142.334416,
+      "min_ms": 138.644792,
+      "max_ms": 153.990458
+    },
+    {
+      "file": "examples/atm/arm/select-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        147.927709,
+        160.177459,
+        146.358041,
+        140.97775,
+        137.728958
+      ],
+      "source_sha256": "c94c955cf9a2424134c7fa5afb9f8e2b76d1c93af952f754b56f1e29fb656b14",
+      "fidelity_notes": [],
+      "median_ms": 146.358041,
+      "min_ms": 137.728958,
+      "max_ms": 160.177459
+    },
+    {
+      "file": "examples/atm/arm/shift-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        73.65725,
+        78.776542,
+        74.776291,
+        70.820417,
+        71.594792
+      ],
+      "source_sha256": "1349315f89b4f4a7b712ae9bfa470d7388f68d9f75965a20878ba61d2ef599b2",
+      "fidelity_notes": [
+        3
+      ],
+      "median_ms": 73.65725,
+      "min_ms": 70.820417,
+      "max_ms": 78.776542
+    },
+    {
+      "file": "examples/atm/arm/shift-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        69.90825,
+        67.779417,
+        73.634875,
+        70.156959,
+        76.30375
+      ],
+      "source_sha256": "5e7dc2b039b6c2a13334c25525b48ce28fd9f12fd56235b5c7e5f78fb5aa7cb6",
+      "fidelity_notes": [
+        3
+      ],
+      "median_ms": 70.156959,
+      "min_ms": 67.779417,
+      "max_ms": 76.30375
+    },
+    {
+      "file": "examples/atm/arm/state-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        165.550042,
+        168.835375,
+        159.319208,
+        149.431708,
+        156.801416
+      ],
+      "source_sha256": "8516975df3886064e6da79a745a68769c21affb5f98de0716b6785319cb30961",
+      "fidelity_notes": [],
+      "median_ms": 159.319208,
+      "min_ms": 149.431708,
+      "max_ms": 168.835375
+    },
+    {
+      "file": "examples/atm/arm/state-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        153.985167,
+        160.698958,
+        160.28175,
+        162.085667,
+        156.035416
+      ],
+      "source_sha256": "6ad917e811164cb16c189b187dda3eff3d361860ba4dbe2369177de6f6cf2af9",
+      "fidelity_notes": [
+        6
+      ],
+      "median_ms": 160.28175,
+      "min_ms": 153.985167,
+      "max_ms": 162.085667
+    },
+    {
+      "file": "examples/atm/arm/state-easy-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        148.963125,
+        141.050625,
+        157.004625,
+        153.508458,
+        146.256792
+      ],
+      "source_sha256": "1bfb03aa972f24bc1b34a5663a3c4c38ca0d11f2c1a850bcd2570b09af101955",
+      "fidelity_notes": [],
+      "median_ms": 148.963125,
+      "min_ms": 141.050625,
+      "max_ms": 157.004625
+    },
+    {
+      "file": "examples/atm/arm/transaction-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        185.331542,
+        184.878417,
+        191.894458,
+        168.722875,
+        186.904125
+      ],
+      "source_sha256": "0440a168dd09c510dc7d89545958bb24f6db1556a2896db0de9af7f6b8baf60f",
+      "fidelity_notes": [
+        5
+      ],
+      "median_ms": 185.331542,
+      "min_ms": 168.722875,
+      "max_ms": 191.894458
+    },
+    {
+      "file": "examples/atm/arm/transaction-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        164.493416,
+        153.550209,
+        158.928041,
+        166.970708,
+        164.241417
+      ],
+      "source_sha256": "fdc132399dbebe063a0628d167e88412023a08475331a5a3ebd5517e4c6d3d8c",
+      "fidelity_notes": [
+        5
+      ],
+      "median_ms": 164.241417,
+      "min_ms": 153.550209,
+      "max_ms": 166.970708
+    },
+    {
+      "file": "examples/atm/arm/yield-SAT.effekt",
+      "outcome": "accepted",
+      "samples_ms": [
+        140.127875,
+        131.511042,
+        152.663875,
+        137.207125,
+        145.775875
+      ],
+      "source_sha256": "e43c47cb533e35852c1690f7ed796ef16bc634d29fa0a15c3a42fb9dd42742e5",
+      "fidelity_notes": [],
+      "median_ms": 140.127875,
+      "min_ms": 131.511042,
+      "max_ms": 152.663875
+    },
+    {
+      "file": "examples/atm/arm/yield-UNSAT.effekt",
+      "outcome": "ContractFailure",
+      "samples_ms": [
+        125.009125,
+        124.908459,
+        133.258875,
+        136.130542,
+        129.908292
+      ],
+      "source_sha256": "341e27449b6e2859209b11b6dc2065d72c61bed82bdc00dc3d808fbd17b4ad7e",
+      "fidelity_notes": [],
+      "median_ms": 129.908292,
+      "min_ms": 124.908459,
+      "max_ms": 136.130542
+    }
+  ],
+  "warmup_rounds": 2,
+  "measured_rounds": 5,
+  "order": "deterministic shuffle per round, seed 152 + round",
+  "scope": "Wall-clock Checker.check on parsed sources, including refinement solving and fresh checker caches; excludes parsing, JVM startup, Core lowering, and backend execution.",
+  "environment": {
+    "os": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "architecture": "arm64",
+    "cpu": "Apple M1 Pro",
+    "memory_bytes": "17179869184",
+    "java": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)",
+    "z3_executable": "z3",
+    "z3": "Z3 version 5.1.0 - 64 bit"
+  }
+}

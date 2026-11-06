@@ -1,0 +1,70 @@
+// Pinned coar ARM: round-robin-UNSAT.ml.
+// Explicit scheduler state replaces the private queue/counter references.
+// Yield/Spawn store actual captured continuations. Increment is reified so the
+// shared counter advances when the scheduler executes that thread's step.
+// Child handlers are reified separately; dequeue and FIFO scheduling are explicit.
+data Thread {
+  Done();
+  Increment(next: (local (Unit) => Thread));
+  Yielded(next: (local (Unit) => Thread));
+  Spawned(child: (local (Unit) => Thread), next: (local (Unit) => Thread))
+}
+data Queue { Empty(); Enqueued(task: (local (Unit) => Thread), tail: Queue) }
+def main(): Bool = {
+  type TaskRegion = (local (Unit) => Unit);
+  def rec local appendQueue(q: Queue): (local (rest: Queue) => Queue) = {
+    fun local (rest: Queue): Queue {
+      match (q) {
+        case Empty() => { rest }
+        case Enqueued(task,t) => { val appendRest = appendQueue(t); val tail = appendRest(rest); Enqueued(task,tail) }
+      }
+    }
+  }
+  def rec local schedule(work: (Thread,Queue)): (local (count: Int) => {r: Int | r >= count}) = {
+    fun local (count: Int): {r: Int | r >= count} {
+      match (fst(work)) {
+        case Done() => {
+          match (snd(work)) {
+            case Empty() => { count }
+            case Enqueued(task,tail) => { val active = task(); val run = schedule((active,tail)); run(count) }
+          }
+        }
+        case Increment(next) => { val active = next(); val run = schedule((active,snd(work))); run(count+1) }
+        case Yielded(next) => {
+          val append = appendQueue(snd(work)); val queue = append(Enqueued(next,Empty()));
+          val run = schedule((Done(),queue)); run(count)
+        }
+        case Spawned(child,next) => {
+          val append = appendQueue(snd(work)); val queue = append(Enqueued(next,Empty()));
+          val active = child(); val run = schedule((active,queue)); run(count)
+        }
+      }
+    }
+  }
+  def local child(u: Unit): Thread = {
+    try {
+      runtime.increment(); runtime.yield(); runtime.increment(); runtime.yield()
+    } with runtime: Thread {
+      def increment(u: Unit): Unit / (Thread => Thread) = {
+        Increment(fun local (u: Unit): Thread { resume() })
+      }
+      def yield(u: Unit): Unit / (Thread => Thread) = {
+        Yielded(fun local (u: Unit): Thread { resume() })
+      }
+      return u => { Done() }
+    }
+  }
+  def local test(init: Int): {r: Int | r == init} = {
+    val parent = try {
+      runtime.spawn(fun local[TaskRegion] (u: Unit): Thread { child() });
+      runtime.spawn(fun local[TaskRegion] (u: Unit): Thread { child() })
+    } with runtime: Thread {
+      def spawn(thread: (local (Unit) => Thread)): Unit / (Thread => Thread) = {
+        Spawned(thread,fun local (u: Unit): Thread { resume() })
+      }
+      return u => { Done() }
+    };
+    val run = schedule((parent,Empty())); run(init)
+  }
+  val result = test(8); result == 12
+}

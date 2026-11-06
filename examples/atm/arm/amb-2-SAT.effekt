@@ -1,0 +1,54 @@
+// Pinned coar ARM: amb-2-SAT.ml
+// Select carries the current head and tail as annotation context; the handler
+// ignores that context at runtime and retains the original first-success search.
+data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
+data OptionInt { None(); Some(value: Int) }
+data Result { Failure(); Success(value: Int) }
+measure accept(o: OptionInt, e: Int): Result {
+  case None() => Failure();
+  case Some(x) => if x == e then Success(x) else Failure();
+}
+measure search(xs: ListInt, e: Int): Result {
+  case Nil() => Failure();
+  case Cons(h,t) => if h == e then Success(h) else search(t,e);
+}
+def main(): Bool = {
+  def ambFind(e: Int): ((input: ListInt) => {r: Result | r == search(input,e)}) = {
+    fun (input: ListInt): {r: Result | r == search(input,e)} {
+      try {
+        def rec local selectFrom(xs: ListInt): (o: OptionInt) /
+          ({r: Result | r == accept(o,e)} => {r: Result | r == search(xs,e)}) = {
+          match (xs) {
+            case Nil() => { None() }
+            case Cons(h,t) => {
+              val selected = choice.select((h,t));
+              if (selected) { Some(h) } else { selectFrom(t) }
+            }
+          }
+        }
+        val selected = selectFrom(input);
+        match (selected) {
+          case None() => { Failure() }
+          case Some(x) => { if (x == e) { Success(x) } else { Failure() } }
+        }
+      } with choice: {r: Result | r == search(input,e)} {
+        def select(ctx: (Int,ListInt)): (selected: Bool) /
+          ({r: Result | r == (if selected then (if fst(ctx) == e then Success(fst(ctx)) else Failure()) else search(snd(ctx),e))} =>
+           {r: Result | r == search(Cons(fst(ctx),snd(ctx)),e)}) = {
+          val first = resume(true);
+          match (first) {
+            case Success(y) => { Success(y) }
+            case Failure() => { resume(false) }
+          }
+        }
+        return r => { r }
+      }
+    }
+  }
+  def test(e: Int): ((input: ListInt) => {r: Bool | r == true}) = {
+    fun (input: ListInt): {r: Bool | r == true} {
+      val find = ambFind(e); val r = find(Cons(e,input)); r == Success(e)
+    }
+  }
+  val run = test(4); run(Cons(2,Nil()))
+}
