@@ -2,6 +2,7 @@ package effekt.atm
 
 import Syntax.*
 import Evidence.*
+import Annotations.{Kind, Argument, Proof}
 
 /** Bidirectional algorithmic checking (supplement, Figures 9--15).
  * Checked trees retain explicit evidence applications, abstractions and ATCs
@@ -101,7 +102,10 @@ object Checker {
       s"$name#$nextIdentity"
     }
 
-    private case class Environment(values: Map[String, Type] = Map.empty,
+    private case class Environment(blockDefinitions: Map[String, BlockScheme] = Map.empty,
+                                   blockUses: Map[String, BlockUse] = Map.empty,
+                                   blockResults: Map[String, Type] = Map.empty,
+                                   values: Map[String, Type] = Map.empty,
                                    capabilities: Map[String, List[Signature]] = Map.empty,
                                    names: Map[String, String] = Map.empty,
                                    effects: Map[String, String] = Map.empty,
@@ -110,13 +114,17 @@ object Checker {
                                    delta: List[Binding] = Nil,
                                    types: Map[String, String] = Map.empty,
                                    aliases: Map[String, Type] = Map.empty,
+                                   annotations: Map[String, Argument] = Map.empty,
+                                   annotationResiduals: Map[String, List[Obligation]] = Map.empty,
+                                   kinds: Map[String, Kind] = Map.empty,
                                    predicateNames: Map[String, String] = Map.empty,
                                    logicalNames: Map[String, String] = Map.empty,
                                    logic: Logic.Context = Logic.Context()) {
       def bind(name: String, tpe: Type, symbolic: Option[Expr] = None): Environment =
         bindIdentity(name, tpe, fresh(name), symbolic)
       def bindIdentity(name: String, tpe: Type, identity: String, symbolic: Option[Expr] = None): Environment = {
-        val next = copy(values = values.updated(name, tpe))
+        val next = copy(values = values.updated(name, tpe), blockDefinitions = blockDefinitions - name,
+          blockUses = blockUses - name, blockResults = blockResults - name)
         if !refined then next else Contracts.sort(tpe) match {
           case None => next.copy(logicalNames = logicalNames - name)
           case Some(sort) =>
@@ -125,29 +133,244 @@ object Checker {
             next.copy(logicalNames = logicalNames.updated(name, identity), logic = logic.bind(identity, sort).assume(facts))
         }
       }
-      def withType(name: String, identity: String): Environment = copy(types = types.updated(name, identity), aliases = aliases - name)
+      def withAnnotation(name: String, actual: Argument, residuals: List[Obligation] = Nil): Environment =
+        copy(annotations = annotations.updated(name, actual), annotationResiduals = annotationResiduals.updated(name, residuals),
+          types = types - name, aliases = aliases - name, effects = effects - name, predicateNames = predicateNames - name)
+      def withKind(name: String, identity: String, kind: Kind): Environment =
+        withAnnotation(name, Annotations.variable(identity, kind)).copy(kinds = kinds.updated(identity, kind))
+      def withType(name: String, identity: String): Environment = copy(types = types.updated(name, identity), aliases = aliases - name, annotations = annotations - name)
       def withPredicate(name: String, identity: String, args: List[Logic.Sort]): Environment =
         copy(predicateNames = predicateNames.updated(name, identity), logic = logic.copy(predicates = logic.predicates.updated(identity, args)))
       def withEffect(name: String, identity: String, bound: EffectBound): Environment =
-        copy(effects = effects.updated(name, identity), effectBounds = effectBounds.updated(identity, bound))
+        copy(effects = effects.updated(name, identity), effectBounds = effectBounds.updated(identity, bound), annotations = annotations - name)
       def capability(name: String): String = names.getOrElse(name, fail(s"Unknown or out-of-scope capability $name"))
-      def localRegion(name: String): String = names.getOrElse(name, aliases.get(name) match {
-        case Some(Type.LocalFunction(_, _, _, Some(r), _)) => r
-        case _ => capability(name)
-      })
+      def localRegion(name: String): String = name match {
+        case "here" => region
+        case "top" | Evidence.Top => Evidence.Top
+        case _ => annotations.get(name) match {
+          case Some(Argument.Region(r)) => r
+          case Some(_) => fail(s"$name is not a region")
+          case None => values.get(name) match {
+            case Some(Type.Capability(r)) => r
+            case _ => names.getOrElse(name, aliases.get(name) match {
+              case Some(Type.LocalFunction(_, _, _, Some(r), _)) => r
+              case _ => capability(name)
+            })
+          }
+        }
+      }
+      // A new capability binder shadows an older value with the same name.
+      // A later value binder is selected by inferValue before this capability.
       def withCapability(name: String, identity: String, ops: List[Signature]): Environment =
-        copy(capabilities = capabilities.updated(identity, ops), names = names.updated(name, identity))
+        copy(capabilities = capabilities.updated(identity, ops), names = names.updated(name, identity),
+          values = values - name, logicalNames = logicalNames - name, annotations = annotations - name,
+          blockDefinitions = blockDefinitions - name, blockUses = blockUses - name, blockResults = blockResults - name)
       def enterHandler(name: String, identity: String, ops: List[Signature], edge: Binding): Environment =
         withCapability(name, identity, ops).copy(region = identity, delta = edge :: delta)
     }
 
+    private case class BlockScheme(definition: BlockDefinition, environment: Environment,
+        captures: List[(String, String, Type)], identity: String)
+    private class BlockUse(val parameter: BlockParameter, val argument: BlockArgument,
+        val caller: Environment, val declaration: Environment, val parent: String) {
+      var stack = checkingBlocks
+      var callback: Option[CheckedValue] = None
+    }
+    private var checkingBlocks = Set.empty[String]
+
+    private def blockHeaders(p: BlockParameter, env: Environment): List[Signature] = {
+      val schema = interfaces.getOrElse(p.interfaceName, fail(s"Unknown interface ${p.interfaceName}"))
+      require(schema.parameters.size == p.interfaceArguments.size, s"Wrong number of type arguments for interface ${p.interfaceName}")
+      val actuals = schema.parameters.zip(p.interfaceArguments.map(resolve(_, env))).toMap
+      val mapper = new Annotations.Mapper {
+        override def after(t: Type): Type = t match {
+          case Type.Variable(n) if actuals.contains(n) => actuals(n)
+          case _ => t
+        }
+      }
+      schema.operations.values.toList.sortBy(_.name).map(mapper.signature)
+    }
+    private def blockResult(s: BlockScheme): Type = {
+      val d = s.definition
+      val scope = s.environment.copy(values = s.environment.values - d.block.name,
+        names = s.environment.names - d.block.name, blockDefinitions = s.environment.blockDefinitions - d.block.name)
+        .bind(d.parameter, resolve(d.argument, s.environment))
+        .copy(blockResults = s.environment.blockResults.updated(d.block.name, resolve(d.block.result, s.environment)))
+      d.result.fold(projectedValue(d.definition, scope, Map.empty))(c => resolve(c, scope).value)
+    }
+    private def defineBlock(d: BlockDefinition, body: Term, env: Environment, inherited: Option[Computation]): CheckedTerm = {
+      blockHeaders(d.block, env); resolve(d.block.result, env); resolve(d.argument, env)
+      val names = (Surface.free(d.definition) -- Set(d.parameter, d.block.name, d.name)).toList.sorted
+      // Save the lexical values now. Specializations later receive them as
+      // ordinary arguments, so caller shadowing cannot capture a helper's free names.
+      val captures = names.filterNot(env.blockDefinitions.contains).map { name =>
+        (name, fresh("blockCapture"), value(Value.Variable(name), env))
+      }
+      val scheme = BlockScheme(d, env, captures.map((n, a, v) => (n, a, v.tpe)), fresh(d.name))
+      val scope = captures.foldLeft(env) { case (e, (_, alias, v)) => e.bind(alias, v.tpe) }
+      val checked = infer(body, scope.copy(blockDefinitions = scope.blockDefinitions.updated(d.name, scheme),
+        values = scope.values - d.name, names = scope.names - d.name,
+        blockUses = scope.blockUses - d.name, blockResults = scope.blockResults - d.name), inherited)
+      captures.foldRight(checked) { case ((_, alias, v), rest) =>
+        val binding = CheckedTerm(Term.Return(v.source), Computation(v.tpe), v.captures, List(v), residuals = v.residuals)
+        finishTerm(CheckedTerm(Term.Let(alias, binding.source, rest.source), rest.tpe, binding.captures ++ rest.captures,
+          children = List(binding, rest), logic = rest.logic, symbolic = rest.symbolic))
+      }
+    }
+    private def invokeBlock(name: String, capability: Value, env: Environment, inherited: Option[Computation]): CheckedTerm = {
+      val use = env.blockUses.getOrElse(name, fail(s"Unknown native block $name"))
+      val cap = value(capability, env)
+      val actual = cap.tpe match {
+        case Type.Capability(r) => r
+        case _ => fail("A native capability block needs a capability argument")
+      }
+      require(env.region == actual, "A native capability block must be invoked at its capability's region", DiagnosticKind.Unsupported)
+      val edge = Evidence.known(actual, use.parent, env.delta).getOrElse(
+        throw Diagnostic("A native block invocation needs known evidence to its caller region", DiagnosticKind.Unsupported))
+      require(edge.distance.concrete.nonEmpty, "A native block invocation needs a concrete relative distance", DiagnosticKind.Unsupported)
+      val ops = env.capabilities(actual).sortBy(_.name)
+      val headers = blockHeaders(use.parameter, use.declaration)
+      require(ops.map(_.name) == headers.map(_.name) && ops.zip(headers).forall { (a, b) =>
+        TypeEquality.same(a.argument, b.argument) && TypeEquality.same(a.result, b.result)
+      }, s"Capability does not implement block interface ${use.parameter.interfaceName}")
+      val answer = inherited.getOrElse(throw Diagnostic("A native capability block needs an inherited answer", DiagnosticKind.Unsupported))
+      val result = Computation(resolve(use.parameter.result, use.declaration), Effect.Change(answer, answer))
+      val callback = use.callback match {
+        case Some(v) =>
+          val p = v.tpe.asInstanceOf[Type.CapabilityPoly]
+          val k = open(p.body, p.parameter, actual).asInstanceOf[Type.KindPoly]
+          require(TypeEquality.sameOperations(p.operations.map(open(_, p.parameter, actual)), ops) &&
+            Annotations.sameKind(k.kind, Kind.Evidence(actual, edge.distance, use.parent)) &&
+            TypeEquality.same(k.body.asInstanceOf[Type.LocalFunction].result, result),
+            "A block parameter is invoked with incompatible answer or region contracts", DiagnosticKind.Unsupported)
+          v
+        case None =>
+          val BlockArgument.Literal(parameter, body) = use.argument: @unchecked
+          val region = fresh(parameter); val evidence = fresh("blockEvidence"); val unit = fresh("blockUnit")
+          val signatures = ops.map(open(_, actual, region))
+          val witness = Binding(evidence, Constraint(region, use.parent), edge.distance)
+          val kind = Kind.Evidence(region, edge.distance, use.parent)
+          val scope = use.caller.withCapability(parameter, region, signatures).copy(region = region,
+            delta = witness :: use.caller.delta, kinds = use.caller.kinds.updated(evidence, kind))
+          val expected = open(result, actual, region)
+          val savedStack = checkingBlocks
+          checkingBlocks = use.stack
+          val checkedBody = try checkTerm(body, expected, scope) finally checkingBlocks = savedStack
+          require(!checkedBody.residuals.exists(_.constraint.free(region)),
+            "Native block inference left a residual mentioning its bound capability")
+          val localType = Type.LocalFunction(Type.Unit, expected, checkedBody.captures, Some(region))
+          val local = finishValue(CheckedValue(Value.LocalLambda(unit, Some(Type.Unit), None, body),
+            localType, checkedBody.captures, body = Some(checkedBody)))
+          val abstraction = finishValue(CheckedValue(Value.KindLambda(evidence, kind, local.source),
+            Type.KindPoly(evidence, kind, local.tpe), local.captures, List(local), quantified = List(witness)))
+          val captures = abstraction.captures - region
+          val value = finishValue(CheckedValue(Value.CapabilityLambda(region, signatures, abstraction.source),
+            Type.CapabilityPoly(region, signatures, abstraction.tpe, captures), captures, List(abstraction)))
+          use.callback = Some(value)
+          value
+      }
+      // Ordinary checked capability and evidence applications supply the actual
+      // handler edge. No distance is guessed and no residual is discarded.
+      val proofName = fresh("blockInvocationEvidence")
+      val function = Value.InstantiateKind(Value.Instantiate(Value.Variable(name), capability),
+        Argument.Evidence(Proof.Variable(proofName)))
+      infer(Term.Apply(function, Value.Unit), env.bind(name, callback.tpe)
+        .withAnnotation(proofName, Argument.Evidence(Proof.Checked(edge))), inherited)
+    }
+    private def applyBlock(name: String, argument: Value, block: BlockArgument,
+        env: Environment, inherited: Option[Computation]): CheckedTerm = {
+      require(!env.values.contains(name), s"$name is a value, not a native block function")
+      val scheme = env.blockDefinitions.getOrElse(name, fail(s"Unknown native block function $name"))
+      require(!checkingBlocks(scheme.identity), "Recursive native block specialization is not supported yet", DiagnosticKind.Unsupported)
+      val d = scheme.definition
+      val forwarding = block match {
+        case BlockArgument.Forward(n) => Some(n -> env.blockUses.getOrElse(n, fail(s"Unknown native block $n")))
+        case _ => None
+      }
+      forwarding.foreach { (_, outer) =>
+        require(outer.parent == env.region, "Forwarding a native block across a new delimiter needs a more general block scheme", DiagnosticKind.Unsupported)
+        require(TypeEquality.sameOperations(blockHeaders(outer.parameter, outer.declaration), blockHeaders(d.block, scheme.environment)) &&
+          TypeEquality.same(resolve(outer.parameter.result, outer.declaration), resolve(d.block.result, scheme.environment)),
+          "Forwarded block declarations disagree")
+      }
+      val actualBlock = forwarding.fold(block)(_._2.argument)
+      val caller = forwarding.fold(env)(_._2.caller)
+      val domain = resolve(d.argument, scheme.environment)
+      val arg = checkValue(argument, domain, env)
+      val use = new BlockUse(d.block, actualBlock, caller, scheme.environment, env.region)
+      forwarding.foreach { (_, outer) => use.stack = outer.stack }
+      val result = d.result match {
+        case Some(c) if c.effect != Effect.Pure => resolve(c, scheme.environment)
+        case _ => adapt(Computation(blockResult(scheme)), inherited, env)
+      }
+      val scope = scheme.environment.copy(region = env.region, delta = env.delta,
+        values = scheme.environment.values - d.block.name, names = scheme.environment.names - d.block.name,
+        blockDefinitions = scheme.environment.blockDefinitions - d.block.name,
+        capabilities = env.capabilities ++ scheme.environment.capabilities,
+        kinds = env.kinds ++ scheme.environment.kinds,
+        blockUses = scheme.environment.blockUses.updated(d.block.name, use),
+        blockResults = scheme.environment.blockResults.updated(d.block.name, resolve(d.block.result, scheme.environment)))
+        .bind(d.parameter, domain)
+      checkingBlocks += scheme.identity
+      // A nested call of the same helper in the supplied block is not recursion
+      // in the helper definition. invokeBlock temporarily restores the caller's stack.
+      val checked = try checkTerm(d.definition, result, scope) finally checkingBlocks -= scheme.identity
+      val callback = use.callback.getOrElse(throw Diagnostic("A native block parameter must be invoked to infer its contract", DiagnosticKind.Unsupported))
+      val argumentBlock = forwarding match {
+        case Some((n, outer)) =>
+          outer.callback.foreach(v => require(TypeEquality.same(v.tpe, callback.tpe),
+            "A forwarded block has incompatible invocation contracts", DiagnosticKind.Unsupported))
+          outer.callback = Some(callback)
+          CheckedValue(Value.Variable(n), callback.tpe, callback.captures)
+        case None => callback
+      }
+      val captured = scheme.captures.map { (_, alias, _) => value(Value.Variable(alias), env) }
+      val parameters = (d.parameter -> domain) :: (d.block.name -> callback.tpe) :: scheme.captures.map((n, _, t) => n -> t)
+      val parameter = fresh("blockArguments")
+      val tuple = Surface.tuple(parameters.map(_._2))
+      val projectionEnv = env.bind(parameter, tuple)
+      val definition = parameters.zipWithIndex.foldRight(checked) { case (((n, _), i), rest) =>
+        val v = value(Surface.projection(Value.Variable(parameter), i, parameters.size), projectionEnv)
+        val binding = CheckedTerm(Term.Return(v.source), Computation(v.tpe), v.captures, List(v))
+        finishTerm(CheckedTerm(Term.Let(n, binding.source, rest.source), rest.tpe, binding.captures ++ rest.captures,
+          children = List(binding, rest), logic = rest.logic))
+      }
+      val functionType = Type.LocalFunction(tuple, result, definition.captures, Some(env.region))
+      val lambda = finishValue(CheckedValue(Value.LocalLambda(parameter, Some(tuple), None, definition.source),
+        functionType, definition.captures, body = Some(definition)))
+      def pack(vs: List[CheckedValue]): CheckedValue = vs match {
+        case v :: Nil => v
+        case v :: rest =>
+          val tail = pack(rest)
+          finishValue(CheckedValue(Value.Primitive("pair", List(v.source, tail.source)),
+            Type.Pair(v.tpe, tail.tpe), v.captures ++ tail.captures, List(v, tail)))
+        case Nil => value(Value.Unit, env)
+      }
+      val args = pack(arg :: argumentBlock :: captured)
+      require(subtype(args.tpe, tuple, env.effectBounds, env.logic), "Native block arguments do not meet the inferred function contract")
+      val functionName = fresh(name + "Specialization")
+      val function = CheckedValue(Value.Variable(functionName), functionType, lambda.captures)
+      val call = finishTerm(CheckedTerm(Term.Apply(function.source, args.source), result,
+        function.captures ++ args.captures, List(function, args), logic = env.logic))
+      val binding = finishTerm(CheckedTerm(Term.Return(lambda.source), Computation(functionType), lambda.captures, List(lambda)))
+      finishTerm(CheckedTerm(Term.Let(functionName, binding.source, call.source), result,
+        binding.captures ++ call.captures, children = List(binding, call), logic = env.logic))
+    }
+
+    private case class InterfaceSchema(parameters: List[String], operations: Map[String, Signature])
+    private var interfaces = Map.empty[String, InterfaceSchema]
+
     def check(program: Program): Either[Diagnostic, CheckedProgram] = try {
-      if program.result.effect != Effect.Pure then fail("A closed program must have a pure final computation type")
+      if !program.inferResult && program.result.effect != Effect.Pure then fail("A closed program must have a pure final computation type")
       refined = Contracts.usesRefinements(program)
       datatypes = Datatypes.validate(program.datatypes)
       val logicalData = Datatypes.logical(datatypes)
       val measures = Measures.validate(program.measures, logicalData)
-      val env = Environment(logic = Logic.Context(datatypes = logicalData, measures = measures))
+      var env = Environment(logic = Logic.Context(datatypes = logicalData, measures = measures))
+      require(program.typeAliases.map(_._1).distinct.size == program.typeAliases.size, "Duplicate type alias")
+      program.typeAliases.foreach { (name, tpe) =>
+        env = env.copy(aliases = env.aliases.updated(name, resolve(tpe, env)))
+      }
       datatypes = datatypes.map(d => d.copy(constructors = d.constructors.map { c =>
         var scope = env
         c.copy(fields = c.fields.map { (name, tpe) =>
@@ -157,12 +380,26 @@ object Checker {
         })
       }))
       constructors = Datatypes.constructors(datatypes)
-      val expected = resolve(program.result, env)
-      val checked = checkTerm(program.body, expected, env)
+      require(program.interfaces.map(_.name).distinct.size == program.interfaces.size, "Duplicate interface")
+      interfaces = program.interfaces.map { i =>
+        require(i.operations.map(_.name).distinct.size == i.operations.size, s"Duplicate operation in interface ${i.name}")
+        require(i.typeParameters.distinct.size == i.typeParameters.size, "Duplicate interface type parameter")
+        val parameters = i.typeParameters.map(fresh)
+        val scope = i.typeParameters.zip(parameters).foldLeft(env) { case (e, (n, id)) => e.withType(n, id) }
+        i.name -> InterfaceSchema(parameters, i.operations.map { op =>
+          val unit = Computation(Type.Unit)
+          op.name -> resolveSignature(Signature(op.name, op.argument, op.result, unit, unit,
+            op.parameter, op.returned), scope)
+        }.toMap)
+      }.toMap
+      val annotation = Option.unless(program.inferResult)(resolve(program.result, env))
+      val checked = annotation.fold(infer(program.body, env, None))(checkTerm(program.body, _, env))
+      val expected = annotation.getOrElse(checked.tpe)
+      require(expected.effect == Effect.Pure, "A closed program must have a pure final computation type")
       if free(expected).nonEmpty then fail("The result type contains an escaping capability")
       require(checked.residuals.isEmpty, s"Unsolved region obligations at program boundary: ${checked.residuals}")
       Elaboration.validate(checked)
-      Right(new CheckedProgram(program, checked, datatypes))
+      Right(new CheckedProgram(if program.inferResult then program.copy(result = expected, inferResult = false) else program, checked, datatypes))
     } catch { case d: Diagnostic => Left(d) }
 
     private def fail(message: String): Nothing = throw Diagnostic(message)
@@ -181,13 +418,15 @@ object Checker {
       case Type.Pair(a, b) => free(a) ++ free(b)
       case Type.TypePoly(_, body) => free(body)
       case Type.PredicatePoly(_, _, body) => free(body)
+      case _: Type.KindPoly | _: Type.AbstractResult => Annotations.regions(Computation(tpe))
       case _ => Set.empty
     }
     private def free(op: Signature): Set[String] =
       free(op.argument) ++ free(op.result) ++ free(op.initialAnswer) ++ free(op.finalAnswer)
-    private def free(tpe: Computation): Set[String] = free(tpe.value) ++ free(tpe.effect)
+    private def free(tpe: Computation): Set[String] =
+      if tpe.form.nonEmpty then Annotations.regions(tpe) else free(tpe.value) ++ free(tpe.effect)
     private def free(effect: Effect): Set[String] = effect match {
-      case Effect.Pure | Effect.Variable(_) => Set.empty
+      case Effect.Pure | Effect.Variable(_) | Effect.Abstract => Set.empty
       case Effect.Change(a, b) => free(a) ++ free(b)
       case Effect.Sequence(a, b) => free(a) ++ free(b)
     }
@@ -205,10 +444,12 @@ object Checker {
       case Type.EffectPoly(_, body, _) => captures(body)
       case Type.TypePoly(_, body) => captures(body)
       case Type.PredicatePoly(_, _, body) => captures(body)
+      case Type.KindPoly(_, _, body) => captures(body)
       case _ => Set.empty
     }
     private def resolve(tpe: Type, env: Environment): Type = tpe match {
       case Type.Pair(a, b) => Type.Pair(resolve(a, env), resolve(b, env))
+      case Type.Token(name) if env.annotations.contains(name) => fail(s"$name is not a value type")
       case Type.Token(name) if env.types.contains(name) => Type.Variable(env.types(name))
       case Type.Token(name) if env.aliases.contains(name) => env.aliases(name)
       case Type.Token(name) if env.logic.datatypes.contains(name) => Type.Data(name)
@@ -223,6 +464,11 @@ object Checker {
         val p = logical(predicate, inner)
         require(Logic.sort(p, inner.logic) == Logic.Sort.Bool, "A refinement predicate must be Bool")
         Type.Refined(id, b, p)
+      case Type.KindPoly(parameter, k, body) =>
+        val kind = resolveKind(k, env)
+        val id = fresh(parameter)
+        Type.KindPoly(id, kind, resolve(body, env.withKind(parameter, id, kind)))
+      case _: Type.AbstractResult => fail("An abstract computation is not a source value type")
       case Type.TypePoly(parameter, body) =>
         val id = fresh(parameter)
         Type.TypePoly(id, resolve(body, env.withType(parameter, id)))
@@ -262,19 +508,36 @@ object Checker {
       case _ => tpe
     }
     private def resolve(tpe: Computation, env: Environment): Computation = {
-      val v = resolve(tpe.value, env)
-      val binder = tpe.returned.map(fresh)
-      val e = (tpe.effect, tpe.returned.zip(binder)) match {
-        case (Effect.Change(initial, result), Some((name, id))) =>
-          Effect.Change(resolve(initial, env.bindIdentity(name, v, id)), resolve(result, env))
-        case _ => resolve(tpe.effect, env)
+      tpe match {
+        case Computation(Type.Token(n), Effect.Pure, None, None) => env.annotations.get(n) match {
+          case Some(Argument.Computation(c)) => return c
+          case _ => ()
+        }
+        case _ => ()
       }
-      Computation(v, e, binder)
+      resolveComputation(tpe, env)
+    }
+    private def resolveComputation(tpe: Computation, env: Environment): Computation = tpe.form match {
+      case Some(ComputationForm.Variable(name)) => env.annotations.get(name) match {
+        case Some(Argument.Computation(c)) => c
+        case _ => fail(s"Unknown or non-computation variable $name")
+      }
+      case Some(ComputationForm.Context(k, a)) => resolveContext(k, env).plug(resolve(a, env))
+      case None =>
+        val v = resolve(tpe.value, env)
+        val binder = tpe.returned.map(fresh)
+        val e = (tpe.effect, tpe.returned.zip(binder)) match {
+          case (Effect.Change(initial, result), Some((name, id))) =>
+            Effect.Change(resolve(initial, env.bindIdentity(name, v, id)), resolve(result, env))
+          case _ => resolve(tpe.effect, env)
+        }
+        Computation(v, e, binder)
     }
     private def resolve(effect: Effect, env: Environment): Effect = effect match {
       case Effect.Pure => Effect.Pure
       case Effect.Change(a, b) => Effect.Change(resolve(a, env), resolve(b, env))
       case Effect.Variable(name) => Effect.Variable(env.effects.getOrElse(name, fail(s"Unknown answer-effect variable $name")))
+      case Effect.Abstract => fail("Unresolved abstract computation effect")
       case Effect.Sequence(_, _) => fail("Answer-effect sequences are a prototype extension, not part of the paper algorithm")
     }
     private def resolve(bound: EffectBound, env: Environment): EffectBound = bound match {
@@ -287,17 +550,48 @@ object Checker {
       require(operations.map(_.name).distinct.size == operations.size, "Duplicate operation in capability contract")
       operations.map(resolveSignature(_, env)).sortBy(_.name)
     }
-    private def resolveSignature(op: Signature, env: Environment): Signature = {
-      val arg = resolve(op.argument, env)
+    private def declaredSignature(op: Operation, env: Environment): Option[Signature] = op.interfaceName.map { name =>
+      val schema = interfaces.getOrElse(name, fail(s"Unknown interface $name"))
+      require(schema.parameters.size == op.interfaceArguments.size, s"Wrong number of type arguments for interface $name")
+      val signature = schema.operations.getOrElse(op.name, fail(s"Operation ${op.name} is not declared in interface $name"))
+      val actuals = schema.parameters.zip(op.interfaceArguments.map(resolve(_, env))).toMap
+      val mapper = new Annotations.Mapper {
+        override def after(t: Type): Type = t match {
+          case Type.Variable(n) if actuals.contains(n) => actuals(n)
+          case _ => t
+        }
+      }
+      mapper.signature(signature)
+    }
+    private def resolveSignature(op: Signature, env: Environment, inferredAnswer: Option[Computation] = None,
+        declared: Option[Signature] = None, argumentAnnotated: Boolean = true,
+        resultAnnotated: Boolean = true, argumentAnnotations: List[Option[Type]] = Nil): Signature = {
+      val arg = if argumentAnnotated then resolve(op.argument, env) else declared.get.argument
+      declared.foreach(d => require(TypeEquality.same(arg, d.argument), s"Argument type of ${op.name} does not match its interface"))
+      if argumentAnnotations.nonEmpty then {
+        val components = Surface.components(arg, argumentAnnotations.size)
+        argumentAnnotations.zip(components).foreach { (annotation, expected) =>
+          annotation.foreach(t => require(TypeEquality.same(resolve(t, env), expected),
+            s"Argument type of ${op.name} does not match its interface"))
+        }
+      }
       val parameter = if refined && Contracts.sort(arg).nonEmpty then op.parameter.map(fresh) else None
       val scope = op.parameter.zip(parameter).foldLeft(env) { case (e, (name, id)) => e.bindIdentity(name, arg, id) }
-      val result = resolve(op.result, scope)
+      val declaredResult = declared.map { d =>
+        d.parameter.zip(parameter).foldLeft(d.result) { case (t, (old, id)) =>
+          Contracts.substitute(t, old, Expr.Variable(id))
+        }
+      }
+      val result = if resultAnnotated then resolve(op.result, scope) else declaredResult.get
+      declaredResult.foreach(t => require(TypeEquality.same(result, t), s"Result type of ${op.name} does not match its interface"))
       require(op.returned.isEmpty || Contracts.sort(result).nonEmpty,
         "Dependent operation results require an Int, Bool, Unit or logical pair type")
       val returned = op.returned.map(fresh)
       val inner = op.returned.zip(returned).foldLeft(scope) { case (e, (name, id)) => e.bindIdentity(name, result, id) }
-      op.copy(argument = arg, result = result, initialAnswer = resolve(op.initialAnswer, inner),
-        finalAnswer = resolve(op.finalAnswer, scope), parameter = parameter, returned = returned)
+      // A contextual answer is already resolved in the enclosing scope. Do not
+      // resolve its generative regions or refinement identities a second time.
+      op.copy(argument = arg, result = result, initialAnswer = inferredAnswer.getOrElse(resolve(op.initialAnswer, inner)),
+        finalAnswer = inferredAnswer.getOrElse(resolve(op.finalAnswer, scope)), parameter = parameter, returned = returned)
     }
     private def operationArgument(op: Signature, argument: Expr): Signature = op.parameter.fold(op) { parameter =>
       op.copy(result = Contracts.substitute(op.result, parameter, argument),
@@ -306,26 +600,65 @@ object Checker {
     }
 
     private def open(tpe: Type, bound: String, actual: String): Type =
-      Contracts.map(tpe)(openNode(_, bound, actual))
-    private def openNode(tpe: Type, bound: String, actual: String): Type = tpe match {
-      case Type.Capability(n) => Type.Capability(if n == bound then actual else n)
-      case Type.Function(a, c, cs, region, p) =>
-        Type.Function(a, c, cs.map(n => if n == bound then actual else n), region.map(r => if r == bound then actual else r), p)
-      case Type.LocalFunction(a, c, cs, region, p) =>
-        Type.LocalFunction(a, c, cs.map(n => if n == bound then actual else n), region.map(r => if r == bound then actual else r), p)
-      case Type.Continuation(a, c, region, cs, p) =>
-        Type.Continuation(a, c, if region == bound then actual else region, cs.map(n => if n == bound then actual else n), p)
-      case Type.CapabilityPoly(n, ops, b, cs, scope, obligations) =>
-        Type.CapabilityPoly(n, ops, b, cs.map(n => if n == bound then actual else n),
-          scope.map(r => if r == bound then actual else r),
-          obligations.map(o => o.copy(constraint = o.constraint.substitute(bound, actual))))
-      case other => other
-    }
+      Annotations.substitution(bound, Argument.Region(actual)).typ(tpe)
     private def open(op: Signature, bound: String, actual: String): Signature =
-      op.copy(argument = open(op.argument, bound, actual), result = open(op.result, bound, actual),
-        initialAnswer = open(op.initialAnswer, bound, actual), finalAnswer = open(op.finalAnswer, bound, actual))
+      Annotations.substitution(bound, Argument.Region(actual)).signature(op)
     private def open(c: Computation, bound: String, actual: String): Computation =
-      Contracts.map(c)(openNode(_, bound, actual), identity)
+      Annotations.substitution(bound, Argument.Region(actual)).computation(c)
+
+    private def resolveDistance(d: Distance, env: Environment): Distance = d match {
+      case Distance.Numeral(n) => require(n >= 0, "A distance must be nonnegative"); d
+      case Distance.Variable(n) => env.annotations.get(n) match {
+        case Some(Argument.Distance(d)) => d
+        case _ => fail(s"Unknown or non-distance variable $n")
+      }
+      case Distance.Plus(a, b) => Distance.Plus(resolveDistance(a, env), resolveDistance(b, env))
+    }
+    private def resolveKind(k: Kind, env: Environment): Kind = k match {
+      case Kind.Evidence(a, d, b) => Kind.Evidence(env.localRegion(a), resolveDistance(d, env), env.localRegion(b))
+      case Kind.Context(d) => Kind.Context(resolveDistance(d, env))
+      case _ => k
+    }
+    private def resolveContext(k: AnswerContext, env: Environment): AnswerContext = k match {
+      case AnswerContext.Hole => k
+      case AnswerContext.Variable(n) => env.annotations.get(n) match {
+        case Some(Argument.Context(c)) => c
+        case _ => fail(s"Unknown or non-ATC variable $n")
+      }
+      case AnswerContext.Compose(a, b) => Annotations.contextCompose(resolveContext(a, env), resolveContext(b, env))
+      case AnswerContext.Layer(t, i, rest, binder) =>
+        val v = resolve(t, env)
+        val id = binder.map(fresh)
+        val inner = binder.zip(id).foldLeft(env) { case (e, (n, b)) => e.bindIdentity(n, v, b) }
+        // The layer's returned-value binder scopes only over its initial answer.
+        AnswerContext.Layer(v, resolve(i, inner), resolveContext(rest, env), id)
+    }
+    private def resolveProof(p: Proof, env: Environment): Reconstruction = p match {
+      case Proof.Refl(r) => Reconstruction(Witness.Refl(env.localRegion(r)), Nil)
+      case Proof.Step(h) =>
+        val r = env.localRegion(h)
+        val edge = env.delta.find(b => b.constraint.from == r && b.distance == Distance.Numeral(1))
+          .getOrElse(fail(s"No in-scope handler edge for $h"))
+        Reconstruction(Witness.Use(edge), Nil)
+      case Proof.Variable(n) => env.annotations.get(n) match {
+        case Some(Argument.Evidence(Proof.Checked(w))) => Reconstruction(w, env.annotationResiduals.getOrElse(n, Nil))
+        case _ => fail(s"Unknown or non-evidence variable $n")
+      }
+      case Proof.Compose(a, b) =>
+        val x = resolveProof(a, env); val y = resolveProof(b, env)
+        Reconstruction(Evidence.compose(x.witness, y.witness), (x.residuals ++ y.residuals).distinct)
+      case Proof.Path(r) => reconstruct(env.region, env.localRegion(r), env)
+      case _: Proof.Checked => fail("Internal evidence cannot be supplied as a source annotation")
+    }
+    private def resolveArgument(a: Argument, env: Environment): (Argument, List[Obligation]) = a match {
+      case Argument.Region(r) => (Argument.Region(env.localRegion(r)), Nil)
+      case Argument.Distance(d) => (Argument.Distance(resolveDistance(d, env)), Nil)
+      case Argument.Context(k) => (Argument.Context(resolveContext(k, env)), Nil)
+      case Argument.Computation(c) => (Argument.Computation(resolve(c, env)), Nil)
+      case Argument.Evidence(p) =>
+        val result = resolveProof(p, env)
+        (Argument.Evidence(Proof.Checked(result.witness)), result.residuals)
+    }
 
     private def subtype(actual: Type, expected: Type, bounds: Map[String, EffectBound], logic: Logic.Context = Logic.Context()): Boolean = (actual, expected) match {
       case (Type.LocalFunction(a, r, cs, scope, p), Type.LocalFunction(b, s, ds, target, q)) =>
@@ -348,6 +681,8 @@ object Checker {
         val assumptions = bounds.updated(b, expectedDomain)
         accepts(Effect.Variable(b), domain, assumptions) &&
           subtype(normalize(EffectSubstitution(body, a, Effect.Variable(b)), assumptions), result, assumptions, logic)
+      case (Type.KindPoly(a, k, body), Type.KindPoly(b, l, result)) =>
+        Annotations.sameKind(k, l) && subtype(Annotations.substitution(a, Annotations.variable(b, l)).typ(body), result, bounds, logic)
       case (Type.TypePoly(a, body), Type.TypePoly(b, result)) =>
         subtype(Contracts.instantiate(body, a, Type.Variable(b)), result, bounds, logic)
       case (Type.PredicatePoly(a, args, body), Type.PredicatePoly(b, params, result)) if args == params =>
@@ -385,6 +720,11 @@ object Checker {
       }
     }
     private def subtype(actual: Computation, expected: Computation, bounds: Map[String, EffectBound], logic: Logic.Context): Boolean = {
+      if actual.form.nonEmpty || expected.form.nonEmpty then return (actual.form, expected.form) match {
+        case (Some(ComputationForm.Context(a, c)), Some(ComputationForm.Context(b, d))) =>
+          TypeEquality.sameContext(a, b) && subtype(c, d, bounds, logic)
+        case _ => TypeEquality.same(actual, expected)
+      }
       val id = fresh("returned")
       val v = Expr.Variable(id)
       val context = Contracts.sort(actual.value).fold(logic)(sort => logic.bind(id, sort).assume(Contracts.member(actual.value, v)))
@@ -401,14 +741,14 @@ object Checker {
     private def answerSubtype(actual: Computation, expected: Computation, env: Environment): Boolean =
       subtype(actual, expected, env.effectBounds, env.logic)
 
-    private def finalAnswer(tpe: Computation): Option[Computation] = tpe.effect match {
+    private def finalAnswer(tpe: Computation): Option[Computation] = if tpe.form.nonEmpty then None else tpe.effect match {
       case Effect.Pure => None
-      case Effect.Variable(_) | Effect.Sequence(_, _) => fail("The paper's final-answer projection is undefined for an abstract answer effect")
+      case Effect.Variable(_) | Effect.Sequence(_, _) | Effect.Abstract => fail("The paper's final-answer projection is undefined for an abstract answer effect")
       case Effect.Change(_, result) => Some(result)
     }
     private def adapt(tpe: Computation, inherited: Option[Computation], env: Environment): Computation = inherited match {
       case None =>
-        require(tpe.effect == Effect.Pure, "A_App: an impure computation requires an inherited final answer")
+        require(tpe.form.nonEmpty || tpe.effect == Effect.Pure, "A_App: an impure computation requires an inherited final answer")
         tpe
       case Some(answer) => tpe.effect match {
         case Effect.Pure => Computation(tpe.value, Effect.Change(answer, answer))
@@ -416,7 +756,7 @@ object Checker {
           require(answerSubtype(result, answer, env),
             s"Answer mismatch: expected final ${show(answer)}, found ${show(result)}")
           tpe.copy(effect = Effect.Change(initial, answer))
-        case Effect.Variable(_) | Effect.Sequence(_, _) => fail("An opaque answer effect needs instantiation before matching a final answer")
+        case Effect.Variable(_) | Effect.Sequence(_, _) | Effect.Abstract => fail("An opaque answer effect needs instantiation before matching a final answer")
       }
     }
 
@@ -456,6 +796,9 @@ object Checker {
           t
         case t @ Type.Continuation(_, _, r, _, _) =>
           if r == alpha then escapesFixedRegion = true
+          t
+        case t @ Type.KindPoly(_, Kind.Evidence(from, _, to), _) =>
+          if from == alpha || to == alpha then escapesFixedRegion = true
           t
         case t => t
       }, identity)
@@ -545,6 +888,8 @@ object Checker {
       case Value.Capability(name) =>
         val identity = env.capability(name)
         CheckedValue(Value.Capability(identity), Type.Capability(identity), Set(identity))
+      case Value.Variable(name) if !env.values.contains(name) && env.names.contains(name) =>
+        inferValue(Value.Capability(name), env)
       case Value.Variable(name) =>
         val tpe = env.values.getOrElse(name, fail(s"Unknown value $name"))
         val expression = env.logicalNames.get(name).map(Expr.Variable.apply)
@@ -634,12 +979,78 @@ object Checker {
         val requirements = Evidence.instantiate(scheme.parameter, actual, scheme.obligations, env.delta, fresh)
         CheckedValue(v, open(scheme.body, scheme.parameter, actual), f.captures ++ cap.captures, List(f, cap),
           residuals = requirements.flatMap(_.residuals), evidence = requirements.map(_.witness))
+      case Value.KindLambda(parameter, k, body) =>
+        val kind = resolveKind(k, env)
+        val id = fresh(parameter)
+        val checked = value(body, env.withKind(parameter, id, kind))
+        val quantified = kind match {
+          case Kind.Evidence(a, d, b) => List(Binding(id, Constraint(a, b), d))
+          case _ => Nil
+        }
+        CheckedValue(Value.KindLambda(id, kind, body), Type.KindPoly(id, kind, checked.tpe), checked.captures,
+          List(checked), quantified = quantified)
+      case Value.InstantiatePolymorphic(function, alternatives) =>
+        val checked = value(function, env)
+        def selected(p: PartialFunction[PolymorphicArgument, Value]): Value =
+          alternatives.collectFirst(p).getOrElse(fail(s"Polymorphic argument has no syntax matching ${show(checked.tpe)}"))
+        val application = checked.tpe match {
+          case Type.KindPoly(_, kind, _) => selected {
+            case PolymorphicArgument.Kind(a) if ((kind, a) match {
+              case (Kind.Region, _: Argument.Region) | (Kind.Distance, _: Argument.Distance) |
+                   (Kind.Computation, _: Argument.Computation) | (_: Kind.Context, _: Argument.Context) |
+                   (_: Kind.Evidence, _: Argument.Evidence) => true
+              case _ => false
+            }) => Value.InstantiateKind(function, a)
+          }
+          case _: Type.TypePoly => selected { case PolymorphicArgument.ValueType(t) => Value.InstantiateType(function, t) }
+          case _: Type.EffectPoly => selected { case PolymorphicArgument.AnswerEffect(e) => Value.InstantiateEffect(function, e) }
+          case _: Type.PredicatePoly => selected { case PolymorphicArgument.Predicate(ps, b) => Value.InstantiatePredicate(function, ps, b) }
+          case other => fail(s"Cannot instantiate a polymorphic argument in ${show(other)}")
+        }
+        instantiate(application, checked, env)
+      case Value.InstantiateKind(function, argument) =>
+        instantiate(v, value(function, env), env)
       case Value.TypeLambda(parameter, body) =>
         val id = fresh(parameter)
         val checked = value(body, env.withType(parameter, id))
         CheckedValue(Value.TypeLambda(id, body), Type.TypePoly(id, checked.tpe), checked.captures, List(checked))
       case Value.InstantiateType(function, argument) =>
-        val checked = value(function, env)
+        instantiate(v, value(function, env), env)
+      case Value.PredicateLambda(parameter, args, body) =>
+        val id = fresh(parameter)
+        val checked = value(body, env.withPredicate(parameter, id, args))
+        CheckedValue(Value.PredicateLambda(id, args, body), Type.PredicatePoly(id, args, checked.tpe), checked.captures, List(checked))
+      case Value.InstantiatePredicate(function, parameters, predicate) =>
+        instantiate(v, value(function, env), env)
+      case Value.EffectLambda(parameter, body, bound) =>
+        val identity = fresh(parameter)
+        val domain = resolve(bound, env)
+        val checked = value(body, env.withEffect(parameter, identity, domain))
+        CheckedValue(Value.EffectLambda(identity, body, domain), Type.EffectPoly(identity, checked.tpe, domain), checked.captures, List(checked))
+      case Value.InstantiateEffect(function, effect) =>
+        instantiate(v, value(function, env), env)
+
+    }
+
+    // Both tagged and bare applications use these same instantiation rules.
+    // The function is checked once, before selecting a bare argument's kind.
+    private def instantiate(v: Value, checked: CheckedValue, env: Environment): CheckedValue = v match {
+      case Value.InstantiateKind(function, argument) =>
+        val (actual, residuals) = resolveArgument(argument, env)
+        val result = checked.tpe match {
+          case Type.KindPoly(name, kind, body) =>
+            val actualKind = Annotations.kindOf(actual, env.kinds)
+            require(Annotations.sameKind(actualKind, kind), s"Annotation kind mismatch: expected $kind, found $actualKind")
+            Annotations.substitution(name, actual).typ(body)
+          case other => fail(s"Cannot instantiate an annotation in ${show(other)}")
+        }
+        val evs = actual match {
+          case Argument.Evidence(Proof.Checked(w)) => List(w)
+          case _ => Nil
+        }
+        CheckedValue(Value.InstantiateKind(function, actual), result, checked.captures, List(checked),
+          residuals = residuals, evidence = evs)
+      case Value.InstantiateType(function, argument) =>
         val actual = resolve(argument, env)
         // A_TApp requires a well-kinded argument in the current context, not a
         // closed type. resolve checks its scope; A_Handle still checks escape.
@@ -648,13 +1059,8 @@ object Checker {
           case other => fail(s"Cannot instantiate a type in ${show(other)}")
         }
         CheckedValue(Value.InstantiateType(function, actual), result, checked.captures, List(checked))
-      case Value.PredicateLambda(parameter, args, body) =>
-        val id = fresh(parameter)
-        val checked = value(body, env.withPredicate(parameter, id, args))
-        CheckedValue(Value.PredicateLambda(id, args, body), Type.PredicatePoly(id, args, checked.tpe), checked.captures, List(checked))
       case Value.InstantiatePredicate(function, parameters, predicate) =>
         require(parameters.map(_._1).distinct.size == parameters.size, "Duplicate predicate parameter")
-        val checked = value(function, env)
         val identities = parameters.map((name, sort) => (name, fresh(name), sort))
         val inner = identities.foldLeft(env) { case (e, (name, id, sort)) =>
           e.bindIdentity(name, Contracts.typeOfSort(sort), id)
@@ -668,13 +1074,7 @@ object Checker {
           case other => fail(s"Cannot instantiate a predicate in ${show(other)}")
         }
         CheckedValue(v, result, checked.captures, List(checked))
-      case Value.EffectLambda(parameter, body, bound) =>
-        val identity = fresh(parameter)
-        val domain = resolve(bound, env)
-        val checked = value(body, env.withEffect(parameter, identity, domain))
-        CheckedValue(Value.EffectLambda(identity, body, domain), Type.EffectPoly(identity, checked.tpe, domain), checked.captures, List(checked))
       case Value.InstantiateEffect(function, effect) =>
-        val checked = value(function, env)
         val actual = resolve(effect, env)
         val result = checked.tpe match {
           case Type.EffectPoly(name, body, bound) =>
@@ -686,6 +1086,7 @@ object Checker {
           case other => fail(s"Cannot instantiate an answer effect in ${show(other)}")
         }
         CheckedValue(v, result, checked.captures, List(checked))
+      case _ => fail("Expected a resolved polymorphic application")
     }
 
     private def accepts(effect: Effect, bound: EffectBound, bounds: Map[String, EffectBound]): Boolean =
@@ -704,6 +1105,7 @@ object Checker {
       case Type.LocalFunction(arg, result, cs, scope, parameter) => Type.LocalFunction(normalize(arg, bounds), normalize(result, bounds), cs, scope, parameter)
       case Type.Pair(a, b) => Type.Pair(normalize(a, bounds), normalize(b, bounds))
       case Type.TypePoly(n, b) => Type.TypePoly(n, normalize(b, bounds))
+      case Type.KindPoly(n, k, b) => Type.KindPoly(n, k, normalize(b, bounds))
       case Type.PredicatePoly(n, args, b) => Type.PredicatePoly(n, args, normalize(b, bounds))
       case Type.CapabilityPoly(name, ops, body, cs, scope, obligations) =>
         Type.CapabilityPoly(name, ops.map(op => op.copy(argument = normalize(op.argument, bounds), result = normalize(op.result, bounds),
@@ -716,8 +1118,15 @@ object Checker {
         Type.EffectPoly(name, normalize(body, bounds.updated(name, domain)), domain)
       case other => other
     }
-    private def normalize(tpe: Computation, bounds: Map[String, EffectBound]): Computation =
-      tpe.copy(value = normalize(tpe.value, bounds), effect = normalize(tpe.effect, bounds))
+    private def normalize(tpe: Computation, bounds: Map[String, EffectBound]): Computation = {
+      val m = new Annotations.Mapper {
+        override def effect(e: Effect): Effect = e match {
+          case Effect.Sequence(a, b) => compose(effect(a), effect(b), bounds)
+          case _ => super.effect(e)
+        }
+      }
+      m.computation(tpe)
+    }
     private def normalize(effect: Effect, bounds: Map[String, EffectBound]): Effect = effect match {
       case Effect.Change(a, b) => Effect.Change(normalize(a, bounds), normalize(b, bounds))
       case Effect.Sequence(a, b) => compose(normalize(a, bounds), normalize(b, bounds), bounds)
@@ -815,6 +1224,7 @@ object Checker {
           case Type.LocalFunction(a, c, cs, r, p) =>
             Type.LocalFunction(ty(a, !covariant, condition), comp(c, covariant, condition), cs, r, p)
           case Type.TypePoly(n, b) => Type.TypePoly(n, ty(b, covariant, condition))
+          case Type.KindPoly(n, k, b) => Type.KindPoly(n, k, ty(b, covariant, condition))
           case Type.PredicatePoly(n, args, b) => Type.PredicatePoly(n, args, ty(b, covariant, condition))
           case _ => t
         }
@@ -920,10 +1330,17 @@ object Checker {
         checked.children.flatMap(_.residuals) ++ checked.operations.flatMap(_.body.residuals)).distinct)
     }
     private def inferTerm(term: Term, env: Environment, inherited: Option[Computation]): CheckedTerm = term match {
+      case Term.BlockDefine(d, body) => defineBlock(d, body, env, inherited)
+      case Term.BlockApply(n, a, b) => applyBlock(n, a, b, env, inherited)
+      case Term.BlockInvoke(n, c) => invokeBlock(n, c, env, inherited)
       case Term.Match(scrutinee, cases) => inferMatch(term, scrutinee, cases, env, inherited, None)
+      case Term.AnnotationAlias(name, definition, body) =>
+        val (alias, residuals) = resolveArgument(definition, env)
+        val checked = infer(body, env.withAnnotation(name, alias, residuals), inherited)
+        CheckedTerm(term, checked.tpe, checked.captures, children = List(checked), logic = checked.logic, symbolic = checked.symbolic)
       case Term.TypeAlias(name, definition, body) =>
         val alias = resolve(definition, env)
-        val checked = infer(body, env.copy(aliases = env.aliases.updated(name, alias), types = env.types - name), inherited)
+        val checked = infer(body, env.copy(aliases = env.aliases.updated(name, alias), types = env.types - name, annotations = env.annotations - name), inherited)
         CheckedTerm(term, checked.tpe, checked.captures, children = List(checked), logic = checked.logic, symbolic = checked.symbolic)
       case Term.Ascribe(body, expected) =>
         val checked = checkTerm(body, resolve(expected, env), env)
@@ -955,7 +1372,7 @@ object Checker {
         val first = infer(binding, env, inherited)
         val nextAnswer = first.tpe.effect match {
           case Effect.Pure => inherited
-          case Effect.Variable(_) | Effect.Sequence(_, _) => None
+          case Effect.Variable(_) | Effect.Sequence(_, _) | Effect.Abstract => None
           case Effect.Change(initial, _) => Some(initial)
         }
         val scope = env.copy(logic = first.logic).bind(name, first.tpe.value, first.symbolic)
@@ -1003,59 +1420,215 @@ object Checker {
           List(ascribe(left, joined), ascribe(right, joined)), logic = context,
           symbolic = for a <- left.symbolic; b <- right.symbolic yield Expr.App("ite", List(conditionExpr, a, b)))
       case Term.Perform(receiver, operation, argument) =>
-        // A value binder shadows a handler name in receiver position. Capability
-        // aliases retain the original identity, including its answer contract.
-        val cap = env.values.get(receiver) match {
-          case Some(Type.Capability(name)) => name
-          case Some(other) => fail(s"Operation receiver $receiver has non-capability type ${show(other)}")
-          case None => env.capability(receiver)
-        }
-        val ops = env.capabilities.getOrElse(cap, fail(s"Unknown or out-of-scope capability $cap"))
-        val declared = ops.find(_.name == operation).getOrElse(fail(s"Unknown operation $cap.$operation"))
-        val arg = checkValue(argument, declared.argument, env)
-        val supplied = declared.parameter.fold(declared)(_ => operationArgument(declared, symbol(arg)))
-        val resultIdentity = if supplied.returned.nonEmpty then Some(fresh("operationResult")) else None
-        val op = supplied.returned.zip(resultIdentity).foldLeft(supplied) { case (o, (parameter, actual)) =>
-          o.copy(initialAnswer = Contracts.substitute(o.initialAnswer, parameter, Expr.Variable(actual)), returned = None)
-        }
-        val answer = inherited.getOrElse(fail(s"$cap.$operation needs an inherited final answer type"))
-        val reconstruction = reconstruct(env.region, cap, env)
-        val context = try {
-          Evidence.atc(answer, op.finalAnswer, reconstruction.witness.distance, answerSubtype(_, _, env))
-        } catch {
-          case error: Diagnostic =>
-            observe.foreach(_(OperationInference(cap, operation, reconstruction, Left(error))))
-            throw error
-        }
-        observe.foreach(_(OperationInference(cap, operation, reconstruction, Right(context))))
-        val initial = context.plug(op.initialAnswer)
-        val target = if env.values.contains(receiver) then receiver else cap
-        val checked = CheckedTerm(Term.Perform(target, operation, argument), Computation(op.result, Effect.Change(initial, answer), resultIdentity),
-          arg.captures + cap, List(arg), operationArgument = Some(op.argument),
-          residuals = reconstruction.residuals, evidence = List(reconstruction.witness),
-          operationTyping = Some(OperationTyping(op, context, Computation(op.result, Effect.Change(initial, answer), resultIdentity))))
-        resultIdentity match {
-          case None => symbolicTerm(checked, env)
-          case Some(id) =>
-            val sort = Contracts.sort(op.result).getOrElse(fail("Dependent operation results require a logical base type"))
-            checked.copy(logic = env.logic.bind(id, sort).assume(Contracts.member(op.result, Expr.Variable(id))), symbolic = Some(Expr.Variable(id)))
+        inferOperation(receiver, operation, argument, None, None, env, inherited)
+      case Term.AnnotatedPerform(receiver, operation, argument, evidence, context) =>
+        inferOperation(receiver, operation, argument, evidence, context, env, inherited)
+      case Term.SingleAnnotatedPerform(receiver, operation, argument, name) =>
+        val actual = env.annotations.getOrElse(name, fail(s"Unknown operation annotation $name"))
+        Annotations.kindOf(actual, env.kinds) match {
+          case _: Kind.Evidence =>
+            inferOperation(receiver, operation, argument, Some(Proof.Variable(name)), None, env, inherited)
+          case _: Kind.Context =>
+            inferOperation(receiver, operation, argument, None, Some(AnswerContext.Variable(name)), env, inherited)
+          case _ => fail(s"Operation annotation $name must have evidence or ATC kind")
         }
       case Term.Handle(cap, result, operations, body, returned, onReturn) =>
         inferHandler(cap, resolve(result, env), operations, body, returned, onReturn, env, inherited)
-      case _: Term.InferredHandle =>
-        fail("A handler without a result annotation needs an expected computation type")
+      case Term.InferredHandle(cap, operations, body, returned, onReturn) =>
+        val result = handlerResultValue(cap, operations, body, returned, onReturn, env, Map.empty)
+        val candidate = inherited.fold(Computation(result))(answer =>
+          Computation(result, Effect.Change(answer, answer)))
+        // A_Handle is checking-only. Generate an annotation, then check it in
+        // exactly pi(candidate) mode; do not treat this projection as a typing
+        // derivation or equate an identity answer transition with purity.
+        inferHandler(cap, candidate, operations, body, returned, onReturn, env, inherited)
+    }
+
+    /** Partial surface annotation inference, additional to the printed algorithm.
+     * Project the value returned by a handler without using its answer effects.
+     * The complete handler is subsequently checked by inferHandler, including
+     * all arguments, clauses, evidence, residuals, and scope-exit conditions.
+     * Refinements are forgotten in the proposed value type, never assumed.
+     */
+    private type OperationResults = Map[String, Map[String, Type]]
+    private def handlerResultValue(cap: String, operations: List[Operation], body: Term,
+        returned: String, onReturn: Term, env: Environment, headers: OperationResults): Type = {
+      val results = operations.map { op =>
+        val declared = declaredSignature(op, env)
+        val argument = if op.argumentAnnotated then resolve(op.argument, env) else declared.get.argument
+        val result = if op.resultAnnotated then resolve(op.result, env.bind(op.parameter, argument)) else declared.get.result
+        op.name -> Contracts.erase(result)
+      }.toMap
+      // A header records only result types. It must not impersonate a checked
+      // capability, or allow the new handler's name to escape through a value.
+      val inner = env.copy(values = env.values - cap, names = env.names - cap)
+      val bodyValue = projectedValue(body, inner, headers.updated(cap, results))
+      val result = projectedValue(onReturn, env.bind(returned, bodyValue), headers - returned)
+      require(!result.isInstanceOf[Type.AbstractResult],
+        "Handler result inference needs a known value type; add a computation annotation", DiagnosticKind.Unsupported)
+      result
+    }
+
+    private def projectedValue(term: Term, env: Environment, headers: OperationResults): Type = {
+      def unsupported(): Nothing = throw Diagnostic(
+        "Cannot infer the handler's returned value type here; add a computation annotation", DiagnosticKind.Unsupported)
+      def result(v: Value, scope: Environment = env): Type = {
+        // Do not synthesize bodies of source abstractions during this pass:
+        // their region/evidence checks belong to the subsequent full check.
+        def atomic(v: Value): Boolean = v match {
+          case _: Value.Integer | _: Value.Boolean | Value.Unit | _: Value.Token | _: Value.Variable | _: Value.Capability => true
+          case Value.Primitive(_, args) => args.forall(atomic)
+          case Value.Constructor(_, args) => args.forall(atomic)
+          case Value.Instantiate(f, a) => atomic(f) && atomic(a)
+          case Value.InstantiateType(f, _) => atomic(f)
+          case Value.InstantiateEffect(f, _) => atomic(f)
+          case Value.InstantiatePredicate(f, _, _) => atomic(f)
+          case Value.InstantiateKind(f, _) => atomic(f)
+          case Value.InstantiatePolymorphic(f, _) => atomic(f)
+          case _ => false
+        }
+        v match {
+          case Value.Lambda(p, a, r, _) =>
+            val argument = resolve(a, scope)
+            Contracts.erase(Type.Function(argument, resolve(r, scope.bind(p, argument)), region = Some(scope.region)))
+          case _ if atomic(v) => Contracts.erase(value(v, scope).tpe)
+          case _ => unsupported()
+        }
+      }
+      def operation(receiver: String, name: String): Type = {
+        val header = if env.values.contains(receiver) then None else headers.get(receiver)
+        header match {
+          case Some(ops) => ops.getOrElse(name, fail(s"Unknown operation $receiver.$name"))
+          case None =>
+            val identity = env.values.get(receiver) match {
+              case Some(Type.Capability(r)) => r
+              case Some(other) => fail(s"Operation receiver $receiver has non-capability type ${show(other)}")
+              case None => env.capability(receiver)
+            }
+            val op = env.capabilities.getOrElse(identity, fail(s"Unknown capability $receiver"))
+              .find(_.name == name).getOrElse(fail(s"Unknown operation $receiver.$name"))
+            Contracts.erase(op.result)
+        }
+      }
+      def same(results: List[Type]): Type = results match {
+        case first :: rest if rest.forall(TypeEquality.same(_, first)) => first
+        case _ => unsupported()
+      }
+      term match {
+        case Term.BlockInvoke(n, _) => env.blockResults.getOrElse(n, fail(s"Unknown native block $n"))
+        case Term.BlockApply(n, _, _) => blockResult(env.blockDefinitions.getOrElse(n, unsupported()))
+        case Term.BlockDefine(d, b) =>
+          val scheme = BlockScheme(d, env, Nil, fresh(d.name))
+          projectedValue(b, env.copy(blockDefinitions = env.blockDefinitions.updated(d.name, scheme)), headers)
+        case Term.Return(v) => result(v)
+        case Term.Let(name, binding, body) =>
+          val t = projectedValue(binding, env, headers)
+          projectedValue(body, env.bind(name, t), headers - name)
+        case Term.Apply(f, _) => result(f) match {
+          case Type.Function(_, r, _, _, _) => Contracts.erase(r.value)
+          case Type.LocalFunction(_, r, _, _, _) => Contracts.erase(r.value)
+          case Type.Continuation(_, r, _, _, _) => Contracts.erase(r.value)
+          case _ => unsupported()
+        }
+        case Term.Perform(c, op, _) => operation(c, op)
+        case Term.AnnotatedPerform(c, op, _, _, _) => operation(c, op)
+        case Term.SingleAnnotatedPerform(c, op, _, _) => operation(c, op)
+        case Term.Ascribe(_, c) => Contracts.erase(resolve(c, env).value)
+        case Term.Handle(_, c, _, _, _, _) => Contracts.erase(resolve(c, env).value)
+        case Term.InferredHandle(c, ops, b, x, ret) => handlerResultValue(c, ops, b, x, ret, env, headers)
+        case Term.ExplicitReturn(b) => projectedValue(b, env, headers)
+        case Term.If(_, a, b) => same(List(projectedValue(a, env, headers), projectedValue(b, env, headers)))
+        case Term.Assert(_) => Type.Unit
+        case Term.TypeAlias(n, t, b) =>
+          val scope = env.copy(aliases = env.aliases.updated(n, resolve(t, env)), types = env.types - n, annotations = env.annotations - n)
+          projectedValue(b, scope, headers)
+        case Term.AnnotationAlias(n, a, b) =>
+          val (alias, residuals) = resolveArgument(a, env)
+          projectedValue(b, env.withAnnotation(n, alias, residuals), headers)
+        case Term.LetRec(n, p, a, r, _, b, local) =>
+          val argument = resolve(a, env)
+          val answer = resolve(r, env.bind(p, argument))
+          val arrow = if local then Type.LocalFunction(argument, answer, region = Some(env.region))
+            else Type.Function(argument, answer, region = Some(env.region))
+          projectedValue(b, env.bind(n, Contracts.erase(arrow)), headers - n)
+        case Term.Match(_, cases) => same(cases.map { c =>
+          val fields = constructors.getOrElse(c.constructor, fail(s"Unknown constructor ${c.constructor}"))._2.fields
+          require(fields.size == c.parameters.size, "Wrong number of pattern fields")
+          val scope = c.parameters.zip(fields).foldLeft(env) { case (scope, (n, (_, t))) => scope.bind(n, Contracts.erase(t)) }
+          projectedValue(c.body, scope, headers -- c.parameters)
+        })
+      }
+    }
+
+    private def inferOperation(receiver: String, operation: String, argument: Value,
+        evidence: Option[Proof], explicitContext: Option[AnswerContext], env: Environment,
+        inherited: Option[Computation]): CheckedTerm = {
+      // A value binder shadows a handler name in receiver position. Capability
+      // aliases retain the original identity, including its answer contract.
+      val cap = env.values.get(receiver) match {
+        case Some(Type.Capability(name)) => name
+        case Some(other) => fail(s"Operation receiver $receiver has non-capability type ${show(other)}")
+        case None => env.capability(receiver)
+      }
+      val ops = env.capabilities.getOrElse(cap, fail(s"Unknown or out-of-scope capability $cap"))
+      val declared = ops.find(_.name == operation).getOrElse(fail(s"Unknown operation $cap.$operation"))
+      val arg = checkValue(argument, declared.argument, env)
+      val supplied = declared.parameter.fold(declared)(_ => operationArgument(declared, symbol(arg)))
+      val resultIdentity = if supplied.returned.nonEmpty then Some(fresh("operationResult")) else None
+      val op = supplied.returned.zip(resultIdentity).foldLeft(supplied) { case (o, (parameter, actual)) =>
+        o.copy(initialAnswer = Contracts.substitute(o.initialAnswer, parameter, Expr.Variable(actual)), returned = None)
+      }
+      val reconstruction = evidence.fold(reconstruct(env.region, cap, env))(resolveProof(_, env))
+      require(reconstruction.witness.constraint == Constraint(env.region, cap), "Operation evidence has incorrect region endpoints")
+      val context = try {
+        explicitContext match {
+          case Some(k) =>
+            val resolved = resolveContext(k, env)
+            require(Evidence.sameDistance(Annotations.depth(resolved, env.kinds), reconstruction.witness.distance),
+              "ATC depth differs from evidence distance")
+            resolved
+          case None =>
+            val answer = inherited.getOrElse(fail(s"$cap.$operation needs an inherited final answer type or an explicit ATC"))
+            Evidence.atc(answer, op.finalAnswer, reconstruction.witness.distance, answerSubtype(_, _, env))
+        }
+      } catch {
+        case error: Diagnostic =>
+          observe.foreach(_(OperationInference(cap, operation, reconstruction, Left(error))))
+          throw error
+      }
+      observe.foreach(_(OperationInference(cap, operation, reconstruction, Right(context))))
+      val initial = context.plug(op.initialAnswer)
+      val answer = if explicitContext.nonEmpty then context.plug(op.finalAnswer) else inherited.get
+      val inferred = Computation(op.result, Effect.Change(initial, answer), resultIdentity)
+      val result = if explicitContext.nonEmpty && inherited.nonEmpty then adapt(inferred, inherited, env) else inferred
+      val target = if env.values.contains(receiver) then receiver else cap
+      val checked = CheckedTerm(Term.Perform(target, operation, argument), result,
+        arg.captures + cap, List(arg), operationArgument = Some(op.argument),
+        residuals = reconstruction.residuals, evidence = List(reconstruction.witness),
+        operationTyping = Some(OperationTyping(op, context, inferred)))
+      resultIdentity match {
+        case None => symbolicTerm(checked, env)
+        case Some(id) =>
+          val sort = Contracts.sort(op.result).getOrElse(fail("Dependent operation results require a logical base type"))
+          checked.copy(logic = env.logic.bind(id, sort).assume(Contracts.member(op.result, Expr.Variable(id))), symbolic = Some(Expr.Variable(id)))
+      }
     }
 
     private def inferHandler(cap: String, finalType: Computation, operations: List[Operation], body: Term,
                              returned: String, onReturn: Term, env: Environment,
                              inherited: Option[Computation]): CheckedTerm = {
       val identity = fresh(cap)
-      require(operations.nonEmpty, "A handler must declare at least one operation")
       require(operations.map(_.name).distinct.size == operations.size, "Duplicate operation in handler")
       val ops = operations.map { op =>
-        val signature = resolveSignature(op.signature.copy(parameter = if refined && Contracts.sort(resolve(op.argument, env)).nonEmpty then Some(op.parameter) else None), env)
+        // Result-only clauses preserve the enclosing handler's answer. This is
+        // surface annotation inference; the ordinary clause and body checks
+        // below still validate the resulting explicit operation contract.
+        val inferred = Option.when(op.answers.isEmpty)(finalType)
+        val annotated = op.copy(answers = op.answers.orElse(Some((finalType, finalType))))
+        val signature = resolveSignature(annotated.signature.copy(parameter = Some(op.parameter)), env, inferred,
+          declaredSignature(op, env), op.argumentAnnotated, op.resultAnnotated, op.argumentAnnotations)
         op.copy(argument = signature.argument, result = signature.result,
-          initialAnswer = signature.initialAnswer, finalAnswer = signature.finalAnswer,
+          answers = Some((signature.initialAnswer, signature.finalAnswer)),
           argumentIdentity = signature.parameter, returned = signature.returned)
       }
       val edge = Binding(fresh("handlerEvidence"), Constraint(identity, env.region), Distance.Numeral(1))

@@ -1,12 +1,86 @@
 # ATM validation record
 
-Latest implementation validation: **2026-11-06**, on Effekt v0.3.0
+Latest implementation validation: **2026-11-09** (operation annotation syntax below).
+The preceding **2026-11-06** validation used Effekt v0.3.0
 (`cd18ad896b9f1c856a9d6002fd0a5733e5cb9a15`) and its pinned Kiama revision
 `ab6aef78fc4ce99a9ad2db8555718d00b03f7b8a`, using Chez Scheme 10.4.1.
 These are implementation checks, not a correspondence or soundness proof.
 The preceding migration-only results are preserved in
 [history/v0.3.0-migration-validation.md](history/v0.3.0-migration-validation.md).
 The single-file suite outline is [BENCHMARKS.md](BENCHMARKS.md).
+
+## Operation annotation syntax (2026-11-09)
+
+Operation calls use `h.op[E; K](v)` for both annotations and `h.op[X](v)`
+for either one. A lone name is resolved by its scoped kind, including kind
+parameters and lexical aliases. Concrete evidence and context expressions are
+also accepted singly. The tagged operation syntax remains compatible; tagged
+arguments to general kind applications are unchanged. The two annotated examples
+and [ANNOTATIONS.md](ANNOTATIONS.md) now use the concise operation syntax.
+
+JVM test compilation and Scala.js compilation passed. All **86 tests** in
+`AtmParserTests`, `AtmExplicitAnnotationTests`, `AtmInferTests`, and
+`AtmCapabilityNamesTests` passed. These include 11 new operation-syntax tests
+covering both annotations, either omission, kinds independent of name spelling,
+kind parameters, lexical alias shadowing, nested/composed contexts and evidence,
+legacy syntax, and rejection of wrong kinds, unbound names, invalid endpoints,
+and incorrect depths. Executable annotation cases agree between the independent
+source interpreter and direct Chez with optimization enabled and disabled.
+
+Logs: `/private/tmp/atm-kind-operation-annotations-build.log` and
+`/private/tmp/atm-kind-operation-annotations-tests.log`. This was a focused
+regression run; the preceding full ATM run remains recorded below. No benchmark
+timing was rerun.
+
+## Bare capability names (2026-11-09)
+
+The frontend now accepts `invoke(h)`, `val saved = h`, and `f{h}` directly.
+Value bindings and handler/capability bindings shadow one another lexically.
+Resolved occurrences retain the existing capability identity, type, capture,
+and region checks. The two capability-passing examples now use bare names;
+legacy `cap(h)` values and the type annotation `cap(h)` remain accepted.
+
+JVM test compilation and Scala.js compilation passed. All **313 ATM tests**
+in 16 suites passed, including **12 new capability-name regressions**. The new
+positive cases agree between the independent source interpreter, direct Chez,
+and the retained JavaScript backend. Negative cases reject non-capability
+shadows and escaping handler capabilities. The existing local-function suite
+also executes the migrated examples with optimization enabled and disabled.
+
+Logs: `/private/tmp/atm-bare-capabilities-build.log`,
+`/private/tmp/atm-bare-capabilities-focused.log`, and
+`/private/tmp/atm-bare-capabilities-all-tests.log`. No benchmark timing was rerun.
+
+## Explicit annotation validation (2026-11-09)
+
+The complete run passed **334 tests**: 300 ATM tests and 34 concrete Core tests.
+A subsequent review added one rejection for an evidence kind that refers to an
+implicit function's fresh caller region; the final focused run passed all
+**28 explicit-annotation tests**. These runs cover **335 distinct tests**.
+Both `effektJVM/Test/compile` and `effektJS/compile` passed after that final change.
+
+The new suite checks symbolic ATC/evidence parameters instantiated at depths
+0, 1, and 2, composed contexts and witnesses, alpha-renamed kind telescopes,
+lexical aliases, pure and impure computation-type arguments, dependent-layer
+scope, handler escape, and invalid endpoints/depths. Accepted executable cases
+agree between the independent source interpreter and direct Chez-Lift with
+optimization on and off. The two-capability helper retains both abstract
+capabilities. Core mutation testing independently rejects an incorrect symbolic
+ATC certificate. Another test records the remaining lowering restriction for
+abstract ATC applications used as computation results.
+
+The full test command used `org.junit.runner.JUnitCore` with every concrete
+`Atm*Tests` class and `LambdaLiftingTests`, `OptimizerTests`,
+`PatternMatchingTests`, `PolymorphismBoxingTests`, `RenamerTests`, and `SizeTests`
+in `effekt.core`, using the freshly compiled JVM test classpath. `CoreTests` is a
+shared trait, not a runnable suite. Logs are in
+`/private/tmp/effekt-annotations-20261109/{final-tests,final-scope-tests,scope-compile}.log`.
+[ANNOTATIONS.md](ANNOTATIONS.md) documents the syntax and backend boundaries.
+
+The PLDI27 implementation paragraph was updated, rebuilt with `omake -j2`, and
+visually checked on PDF page 20. Evaluation remains one paragraph at the end of
+Section 6.2. The benchmark timing files remain archived measurements from the
+preceding compiler snapshot; this change does not claim fresh performance data.
 
 ## Commit preparation validation
 
@@ -381,3 +455,208 @@ subtyping. A separate rejection reproduction exposed missed alpha-renaming of
 local arrow regions inside operation answer computations; it is now covered by
 a capability-subsumption regression. No historical runtime code changed in
 this increment.
+
+
+## 2026-11-10: named interfaces and Fig. 1 syntax compatibility
+
+Implemented native monomorphic `interface` declarations, named handler
+implementations, inherited clause value signatures, optional identity returns,
+expression clause/function bodies, newline statement separators and empty local
+function parameter lists. The source checker validates declared signatures and
+still checks inferred ATM contracts normally. Full coverage and remaining
+differences are in [SYNTAX-DIFFERENCES.md](SYNTAX-DIFFERENCES.md).
+
+- `sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile'`:
+  **365 passed, 0 failed**; Scala.js compilation passed.
+- `AtmInterfaceTests` adds 15 tests, including invalid interface implementations,
+  declaration scope, dependent binder renaming, reference interpretation and
+  optimized/unoptimized Chez execution. One obsolete parser rejection test was
+  removed because omitted identity returns are now supported; the missing
+  separator diagnostic test now uses two statements on the same line.
+- The final `examples/atm/file-nested.effekt` checks at `Int / pure` and returns
+  **42** through direct Chez and the legacy emitted-Effekt/JS route.
+- Native Effekt/JS independently executes the same body and returns **42**
+  after renaming its `main` to `example` and adding a printing native entry point.
+  This run does not use the ATM source emitter. It confirms `resume(())`, used
+  in the restored example, is the common Unit resumption spelling.
+- The Fig. 1 evidence/ATC certificate comparisons remain passing, with operation
+  distances **1, 0, 1, 0**. The two repository copies of the example match.
+
+These are compiler and execution regressions, not a mechanized proof of the
+frontend, source-to-Core elaboration or backend correspondence.
+
+## 2026-11-10: native expression and declaration syntax
+
+Restored nested expression calls with left-to-right single evaluation, Boolean
+short circuiting, multiple parameters/arguments, parameterized interfaces,
+native explicit function type arguments, ordinary annotated self recursion,
+top-level functions/values and aliases, inferred `main` results, native
+`type`/postfix `match`, wildcard constructor fields, empty interfaces/handlers,
+and braceless expression forms. See [SYNTAX-DIFFERENCES.md](SYNTAX-DIFFERENCES.md)
+for the precise supported subset and remaining gaps.
+
+- `sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile'`:
+  **388 passed, 0 failed**; Scala.js compilation passed.
+- `AtmNativeSyntaxTests` adds 24 regressions for evaluation order, conditional
+  effects and partial primitives, declaration scope, multiple arguments,
+  explicit generics, recursion, patterns, empty-handler distance and rejection
+  of invalid implementations. Execution cases compare reference interpretation
+  and optimized/unoptimized direct Chez. One obsolete parser rejection was
+  removed because computations are now accepted in argument positions.
+- The simplified Fig. 1 has top-level pure mock primitives, `def main() = ...`,
+  and `resume(readInt(c))`/`resume(readInt(d))`. It checks at **Int / pure** and
+  returns **42** through direct Chez and emitted Effekt/JS.
+- Native Effekt/JS independently returns **42** for the same source body with
+  a printing entry point. An instrumented variant appends a tag after each
+  clause's resumption returns; both ATM and native Effekt return **424231**.
+  This exercises nested delimiter/resumption behavior as well as the result.
+- Existing Fig. 1 inferred/explicit evidence and ATC certificate tests still
+  pass, including distances **1, 0, 1, 0**. The compiler and paper example
+  copies are identical.
+- Legacy multiline tagged ATM instantiations remain accepted. Generated
+  wildcard pattern names also compile through Chez after separating their
+  printable identifier from the fresh source binder.
+
+The reusable `file` helper remains inlined: native block/capture polymorphism
+and its interaction with ATM region/answer inference are not implemented.
+These checks do not establish a mechanized elaboration or backend theorem.
+
+## 2026-11-10: rechecking the reusable Fig. 1 (before block elaboration)
+
+Recovered the original `def file(c: Handle) {body: {File} => Int}` form from
+`lexical-effects/PLDI27/examples/file_simple.effekt`. The complete mock-backed
+[comparison source](../../examples/atm/file-reusable.effekt) uses `Int` descriptors, top-level
+pure mock primitives, inferred results, `resume(readInt(c))`, and nested
+`file(7)` / `file(35)` calls. There are no explicit typelike parameters.
+
+The native Effekt v0.3.0 compiler in this checkout was run with its JS backend
+and a printing entry point (`main` renamed to `example`, followed by
+`def main() = println(example())`). Results:
+
+- Original nested body: **42**.
+- Replacing `x + y` with `x * 100 + y`: **735**, distinguishing the descriptors.
+- Appending descriptor-specific tags after each resumption returns: **424231**,
+  matching the previously tested inlined source. Read tags are 1/2 and close
+  tags 3/4 for the outer/inner descriptor respectively.
+
+The ATM `--check-json` run rejects the same reusable source at the block
+parameter with `ParseError: Native block parameters require capture/region and
+answer-type inference, which is not implemented yet`.
+
+The saved [`file-polymorphic.effekt`](../../examples/atm/file-polymorphic.effekt)
+is an **accepted** example and returns **42**. Its `local[f]` callbacks fix the
+operation distance to zero, so every operation infers the hole ATC `[]`.
+A separate nested-use variant of that helper got past parsing but rejected
+with `Unsupported: A_Do: ATC inference requires a concrete evidence distance;
+an enclosing handler used inside a function has symbolic distance`. That
+historical rejection concerns the separate variant, not the saved file.
+The first rejection is a frontend gap; the second demonstrates an additional
+inference gap in the tested explicit encoding. Neither is a source type-safety
+counterexample. The maintained symbolic-distance failure fixture is
+[`infer/polymorphic-outer-call.effekt`](../../examples/atm/infer/polymorphic-outer-call.effekt);
+its [explicitly annotated counterpart](../../examples/atm/annotations/polymorphic-outer-call.effekt)
+is accepted.
+
+Thus the simplified reusable source passes native Effekt, **not ATM**. The
+earlier 388-test result and successful ATM runs concern the inlined Fig. 1;
+the saved rank-2 helper only established separate uses at different result
+types. Compiler code was not changed by this recheck, and the full suite was
+not rerun.
+
+## 2026-11-10: reusable Fig. 1 with inferred native blocks
+
+Implemented native block declarations, literals, capability-block invocation,
+and same-region forwarding. The maintained executable is
+[`examples/atm/file-reusable.effekt`](../../examples/atm/file-reusable.effekt).
+The former paper copies `file_simple_atm.effekt` and `file_simple_reusable.effekt`,
+and the duplicate under `docs/atm/native/`, have been consolidated into this file.
+The paper retains its short typesetting listings. The executable uses
+`interface File`, `read(): Int`, `close(): Unit`,
+`def file(c: Int) {body: {File} => Int}`, and nested block calls, with no
+explicit typelike arguments or handler computation annotations.
+
+- Final `sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile'`:
+  **410 passed, 0 failed**; Scala.js compilation passed.
+- The 22 `AtmBlockTests` cover original source interpretation and optimized/
+  unoptimized direct Chez execution, runtime descriptors, lexical captures and
+  shadowing, repeated callback invocation, forwarding, generic interfaces,
+  non-Int answers, extra delimiters, and rejection of invalid arguments,
+  interfaces, clause results and escaping capabilities. Ordinary symbolic-
+  distance ATC rejection remains covered.
+- A Core structural regression finds two specialized `file` function bindings
+  and their applications. Each helper retains its handler and invokes its
+  callback parameter; the callback operation bodies are absent from the helper
+  bodies. Thus the frontend preserves runtime function/closure calls rather
+  than inlining the reusable example.
+- The program checks at **Int / pure**. Fresh ATM/Chez and native Effekt/JS
+  comparisons agree on **42**; a descriptor-sensitive result is **735**; tags
+  appended after resumptions return produce **424231**. Native testing uses
+  the same source with a printing entry point.
+- Core operation certificates retain distances **1, 0, 1, 0**, with the hole
+  at the two zero-distance invocations. Generated evidence arguments are
+  validated by the existing elaboration/Core checks.
+
+The [paper comparison](FIDELITY.md#native-blocks-contextual-specialization)
+separates the added contextual specialization pass from the unchanged printed
+`A_Do`/`atc` behavior and the preexisting exact-region declarative bridge.
+This is not a new soundness or elaboration-correspondence theorem. The direct
+backend supports these blocks; the legacy emitted-Effekt backend still lacks
+explicit evidence-kind abstractions and is not claimed to pass this source.
+
+
+## 2026-11-10: plain polymorphic syntax
+
+Polymorphic abstractions now use `fun [A] { ... }` or
+`fun [R: Reg, D: Dist, E: Ev(R,D,h), K: ATC(D)] { ... }`. Value parameters
+can follow directly, as in `fun [A](x: A): A { x }`. The previous `typefun`
+spelling remains compatible.
+
+General applications accept bare arguments in grouped or chained brackets.
+The next quantified parameter selects the argument kind; existing scope,
+evidence-endpoint, distance, and ATC checks apply. The maintained annotated
+outer call is `callback[here, 1, step(inner), Int / (Int => [])]()`, and its
+Core is identical to the tagged version. The two annotated examples and the
+accepted result-type-polymorphic file example use the simplified spelling.
+This adds no implicit typelike-argument inference or symbolic-distance ATC
+inference. Legacy tagged applications remain accepted.
+
+Validation:
+
+- The full `effektJVM/testOnly effekt.Atm*Tests` run passed **424 tests**,
+  followed by successful Scala.js compilation.
+- A final parser refinement lets legacy prefix words themselves name bare
+  arguments, such as `f[distance + 0]` and `f[atc[[]]]`. The final focused run
+  of `AtmPolymorphicSyntaxTests`, `AtmExplicitAnnotationTests`, `AtmParserTests`,
+  and `AtmNativeSyntaxTests` passed **101 tests**, including **16** syntax
+  regressions. Scala.js compilation passed again. The full suite was not
+  repeated after this final parser refinement.
+- The final CLI runs return **true** for the annotated outer-call example
+  and **42** for `file-polymorphic.effekt`. Positive syntax tests compare the
+  independent source interpreter with optimized and unoptimized direct Chez.
+- The unannotated `infer/polymorphic-outer-call.effekt` still rejects with
+  the symbolic-distance ATC-inference diagnostic.
+
+Logs: `/private/tmp/effekt-plain-typelike/final-tests.log` and
+`/private/tmp/effekt-plain-typelike/final-syntax-tests.log`.
+
+
+## 2026-11-11: compiler commit validation
+
+Rechecked the accumulated annotation, native syntax, and block-inference
+changes, including the final bare-argument parser refinement and the edited
+outer-call example's zero-argument `fun local[R]()` and `def unused()`.
+
+```sh
+sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-polymorphic.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/annotations/polymorphic-outer-call.effekt'
+```
+
+All **426 ATM tests passed**, and Scala.js compilation passed. The CLI runs
+returned **42**, **42**, and **true**, respectively. The source snapshot was
+checked for concurrent changes before staging. `git diff --check` passed.
+The 83-example inventory above remains an archived measurement; there are now
+88 example source files, and benchmark timings were not regenerated.
+
+Build/test log: `/private/tmp/effekt-commit-20261111/tests.log`.

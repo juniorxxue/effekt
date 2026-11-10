@@ -31,6 +31,7 @@ object Elaboration {
       v.evidence.foreach(witness(_, bindings, regions))
       val rs = v.source match {
         case Value.CapabilityLambda(r, _, _, _) => regions + r
+        case Value.KindLambda(r, Annotations.Kind.Region, _) => regions + r
         case _ => regions
       }
       val bs = bindings ++ v.quantified.map(b => b.name -> b)

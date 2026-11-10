@@ -110,6 +110,16 @@ object LiftedLowering {
       case Type.Continuation(a, c, _, _, _) => L.ValueType.Boxed(function(List(target(a, env)), target(c.value, env)))
       case Type.LocalFunction(a, c, _, _, _) => L.ValueType.Boxed(function(List(target(a, env)), target(c.value, env)))
       case Type.Capability(r) => L.ValueType.Boxed(env.caps.getOrElse(r, throw Diagnostic("Unbound Lifted capability " + r)).block.tpe)
+      case Type.AbstractResult(Syntax.ComputationForm.Variable(n)) =>
+        env.types.getOrElse(n, throw Diagnostic("Unbound Lifted computation parameter " + n))
+      case _: Type.AbstractResult =>
+        throw Diagnostic("Lifted lowering requires a known value projection for an abstract ATC application", Syntax.DiagnosticKind.Unsupported)
+      case Type.KindPoly(n, Annotations.Kind.Computation, body) =>
+        val id = Id("AtmComputationResult")
+        L.ValueType.Boxed(function(Nil, target(body, env.copy(types = env.types.updated(n, L.ValueType.Var(id)))), types = List(id)))
+      case Type.KindPoly(_, _: Annotations.Kind.Evidence, body) =>
+        L.ValueType.Boxed(function(Nil, target(body, env), 1))
+      case Type.KindPoly(_, _, body) => target(body, env)
       case Type.TypePoly(n, body) =>
         val id = Id("AtmType")
         L.ValueType.Boxed(function(Nil, target(body, env.copy(types = env.types.updated(n, L.ValueType.Var(id)))), types = List(id)))
@@ -224,6 +234,19 @@ object LiftedLowering {
       case V.Instantiate(f, cap, evs) =>
         L.Expr.Run(L.Stmt.App(L.Block.Unbox(value(f, env)), Nil,
           evs.map(proof(_, env)) :+ L.Block.Unbox(value(cap, env))))
+      case V.KindLambda(p, Annotations.Kind.Computation, body) =>
+        val id = Id("AtmComputationResult")
+        L.Expr.Box(L.Block.BlockLit(List(id), Nil, L.Stmt.Return(value(body, env.copy(types = env.types.updated(p, L.ValueType.Var(id)))))))
+      case V.KindLambda(p, _: Annotations.Kind.Evidence, body) =>
+        val ev = new L.EvidenceSymbol()
+        L.Expr.Box(L.Block.BlockLit(Nil, List(L.Param.EvidenceParam(ev)),
+          L.Stmt.Return(value(body, env.copy(evidence = env.evidence.updated(p, ev))))))
+      case V.KindLambda(_, _, body) => value(body, env)
+      case V.InstantiateKind(f, Annotations.Argument.Computation(c)) =>
+        L.Expr.Run(L.Stmt.App(L.Block.Unbox(value(f, env)), List(target(c.value, env)), Nil))
+      case V.InstantiateKind(f, Annotations.Argument.Evidence(Annotations.Proof.Checked(w))) =>
+        L.Expr.Run(L.Stmt.App(L.Block.Unbox(value(f, env)), Nil, List(proof(w, env))))
+      case V.InstantiateKind(f, _) => value(f, env)
       case V.TypeLambda(p, body) =>
         val id = Id("AtmType")
         L.Expr.Box(L.Block.BlockLit(List(id), Nil, L.Stmt.Return(value(body, env.copy(types = env.types.updated(p, L.ValueType.Var(id)))))))
@@ -251,7 +274,7 @@ object LiftedLowering {
         case N.If(c, a, b) => L.Stmt.If(value(c, env), term(a, env), term(b, env))
         case N.Match(v, cases) =>
           val clauses = cases.map { c =>
-            val params = c.bindings.map[L.Param.ValueParam]((n, t) => L.Param.ValueParam(Id("atmPattern" + n), target(t, env)))
+            val params = c.bindings.map[L.Param.ValueParam]((n, t) => L.Param.ValueParam(Id("atmPattern"), target(t, env)))
             val scope = c.bindings.zip(params).foldLeft(env) { case (e, ((n, _), p)) =>
               e.bind(n, L.Expr.ValueVar(p.id, p.tpe))
             }

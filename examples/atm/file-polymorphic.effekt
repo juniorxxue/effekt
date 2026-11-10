@@ -1,0 +1,53 @@
+// Accepted result-type-polymorphic example; the result is 42.
+// local[f] fixes each callback to f's region: all operation ATCs infer to [].
+// The symbolic-distance inference failure is infer/polymorphic-outer-call.effekt.
+// Mock descriptors/read/close; no operating-system file access.
+def main(): Int = {
+  def readInt(c: Int): Int = { c }
+  def closeFile(c: Int): Unit = { () }
+  val file = fun [R] {
+    fun (c: Int) {
+      fun (body: forall cap f: {
+        def read(Unit): Int / (R => R);
+        def close(Unit): Unit / (R => R);
+      }. (local[f] (Unit) => R / (R => R))) {
+        try {
+          body{cap(h)}()
+        } with h {
+          def read(u: Unit): Int / (R => R) = {
+            val x = readInt(c);
+            resume(x)
+          }
+          def close(u: Unit): Unit / (R => R) = {
+            closeFile(c);
+            resume()
+          }
+          return x => { x }
+        }: R
+      }
+    }
+  };
+  val readNumber = file[Int](42);
+  val n = readNumber(capfun (f: {
+    def read(Unit): Int / (Int => Int);
+    def close(Unit): Unit / (Int => Int);
+  }) {
+    fun local[f] (u: Unit): Int / (Int => Int) {
+      val x = f.read();
+      f.close();
+      x
+    }
+  });
+  val checkNumber = file[Bool](35);
+  val ok = checkNumber(capfun (f: {
+    def read(Unit): Int / (Bool => Bool);
+    def close(Unit): Unit / (Bool => Bool);
+  }) {
+    fun local[f] (u: Unit): Bool / (Bool => Bool) {
+      val x = f.read();
+      f.close();
+      x == 35
+    }
+  });
+  if (ok) { n } else { 0 }
+}

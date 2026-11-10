@@ -113,8 +113,8 @@ class AtmParserTests extends munit.FunSuite {
   test("parse errors identify the offending line and column") {
     assertEquals(Parser.parse("def main(): Int = {\n  @\n}").swap.toOption.get.message,
       "2:3: Unexpected character '@'")
-    assertEquals(Parser.parse("def main(): Int = {\n  val x = 1\n  x\n}").swap.toOption.get.message,
-      "3:3: Expected ';', found 'x'")
+    assertEquals(Parser.parse("def main(): Int = {\n  val x = 1 x\n}").swap.toOption.get.message,
+      "2:13: Expected ';' or a newline")
     assertEquals(Parser.parse("/* unfinished").swap.toOption.get.message,
       "1:1: Unterminated block comment")
   }
@@ -143,10 +143,43 @@ class AtmParserTests extends munit.FunSuite {
     "trailing input" -> "def main(): Int = { 1 } ignored",
     "missing closing block" -> "def main(): Int = { 1",
     "missing answer endpoint" -> "def main(): Int / (Int => ) = { 1 }",
-    "missing return clause" -> "def main(): Int = { try { 1 } with h: Int {} }",
-    "computation used as a value argument" -> "def main(): Int = { f(g()) }",
     "missing bound separator" -> "def main(): Int = { effectfun [E repeatable] { 1 } }",
     "redefining a reserved primitive" -> "def main(): Int = { val add = 0; add }") do {
     test(s"rejects $name") { assert(Parser.parse(source).isLeft) }
+  }
+
+  test("operation annotation positions and omissions agree with the legacy tagged forms") {
+    def call(annotations: String) = parse(s"def main(): Int = { h.ask$annotations() }")
+    for (positional, tagged) <- List(
+      "[E; K]" -> "[evidence E; atc K]",
+      "[E; K]" -> "[atc K; evidence E]",
+      "[E;]" -> "[evidence E]",
+      "[refl]" -> "[evidence refl]",
+      "[[]]" -> "[atc []]",
+      "[step(h)]" -> "[evidence step(h)]",
+      "[layer(Int, Int, [])]" -> "[atc layer(Int, Int, [])]",
+      "[K[J]]" -> "[atc K[J]]",
+      "[; K]" -> "[atc K]") do assertEquals(call(positional), call(tagged))
+  }
+
+  test("single operation annotation names remain unresolved until kind checking") {
+    for name <- List("K", "e", "evidence", "atc") do
+      assertEquals(parse(s"def main(): Int = { h.ask[$name]() }").body,
+        Term.SingleAnnotatedPerform("h", "ask", Value.Unit, name))
+    assertEquals(parse("def main(): Int = { h.ask[(K)]() }").body,
+      Term.SingleAnnotatedPerform("h", "ask", Value.Unit, "K"))
+  }
+
+  test("nested contexts and composed evidence stay inside their operation annotation slots") {
+    def call(annotations: String) = parse(s"def main(): Int = { h.ask$annotations() }")
+    assertEquals(call("[E + F; K[J[layer(Int, Int, [])]]]"),
+      call("[evidence E + F; atc K[J[layer(Int, Int, [])]]]"))
+    assertEquals(call("[refl; Int / (Int => Int / (Int => []))]"),
+      call("[evidence refl; atc Int / (Int => Int / (Int => []))]"))
+  }
+
+  test("empty operation annotation brackets and extra positions are rejected") {
+    for annotations <- List("[]", "[;]", "[E; K; J]", "[; K;]") do
+      assert(Parser.parse(s"def main(): Int = { h.ask$annotations() }").isLeft, annotations)
   }
 }

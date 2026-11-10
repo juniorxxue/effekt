@@ -57,6 +57,7 @@ object Lowering {
       }
       val body = term(p.body, Env())
       val printed = Contracts.base(p.body.tpe.value) match {
+        case _: Type.AbstractResult => throw Diagnostic("A closed result must have a known value type")
         case Type.Int => "println(atmShowInteger(atmResult))"
         case Type.Bool => "println(atmResult)"
         case Type.Unit => "println(\"unit\")"
@@ -65,7 +66,7 @@ object Lowering {
         case _: Type.Data => "println(\"<data>\")"
         case _: Type.Capability => "println(\"<capability>\")"
         case _: Type.Variable | _: Type.Refined => throw Diagnostic("A closed program has an unprintable result type")
-        case _: Type.LocalFunction | _: Type.Continuation | _: Type.Function | _: Type.CapabilityPoly | _: Type.EffectPoly | _: Type.TypePoly | _: Type.PredicatePoly => "println(\"<function>\")"
+        case _: Type.KindPoly | _: Type.LocalFunction | _: Type.Continuation | _: Type.Function | _: Type.CapabilityPoly | _: Type.EffectPoly | _: Type.TypePoly | _: Type.PredicatePoly => "println(\"<function>\")"
       }
       s"// Generated from a statically checked ATM source program.\n$integerPrelude\n${declarations.mkString("\n\n")}\n\n" +
         s"def main() = {\n  val atmResult = $body;\n  $printed\n}\n"
@@ -74,6 +75,8 @@ object Lowering {
       case Type.Refined(_, base, _) => target(base, env)
       case Type.Pair(a, b) => s"AtmPair[${target(a, env)}, ${target(b, env)}]"
       case Type.Variable(name) => env.types.getOrElse(name, throw Diagnostic(s"Unbound target type $name"))
+      case _: Type.KindPoly | _: Type.AbstractResult =>
+        throw Diagnostic("Explicit kind polymorphism uses the direct Lifted backend", DiagnosticKind.Unsupported)
       case Type.TypePoly(name, body) =>
         val parameter = fresh("Type")
         val cs = (typeCaptures(body).toList.sorted.map(env.caps) :+ "io").distinct.mkString(", ")
@@ -182,6 +185,9 @@ object Lowering {
         val f = fresh("Poly")
         val cap = fresh("CapArgument")
         s"{ val $f = ${value(v.children.head, env)}; val $cap = ${value(v.children(1), env)}; $f(){$cap} }"
+      case _: Value.KindLambda | _: Value.InstantiateKind =>
+        throw Diagnostic("Explicit kind polymorphism uses the direct Lifted backend", DiagnosticKind.Unsupported)
+      case _: Value.InstantiatePolymorphic => throw Diagnostic("Unresolved polymorphic argument reached lowering")
       case Value.TypeLambda(name, _) =>
         val parameter = fresh("Type")
         val function = fresh("Polymorphic")
@@ -268,10 +274,11 @@ object Lowering {
     }
 
     private def rawTerm(t: CheckedTerm, env: Env): String = t.source match {
-      case Term.TypeAlias(_, _, _) => term(t.children.head, env)
+      case Term.TypeAlias(_, _, _) | Term.AnnotationAlias(_, _, _) => term(t.children.head, env)
       case Term.Return(_) => value(t.values.head, env)
       case Term.Assert(_) => "()"
       case Term.Ascribe(_, _) => term(t.children.head, env)
+      case _: Term.BlockDefine | _: Term.BlockApply | _: Term.BlockInvoke => throw Diagnostic("Unresolved native block elaboration")
       case _: Term.InferredHandle => throw Diagnostic("Unresolved handler result annotation")
       case _: Term.ExplicitReturn => throw Diagnostic("Unresolved explicit return clause")
       case Term.LetRec(name, parameter, _, _, _, _, _) =>
@@ -317,6 +324,7 @@ object Lowering {
           "case AtmCtor" + c.constructor + params.mkString("(", ", ", ")") + " => " + statements(term(body, scope))
         }.mkString("\n")
         s"{ val $scrutinee = ${value(t.values.head, env)}; $scrutinee match { $branches } }"
+      case _: Term.AnnotatedPerform | _: Term.SingleAnnotatedPerform => throw Diagnostic("Unresolved operation annotation")
       case Term.Perform(cap, operation, _) =>
         val receiver = env.values.getOrElse(cap, env.caps.getOrElse(cap,
           throw Diagnostic(s"Missing target capability $cap")))

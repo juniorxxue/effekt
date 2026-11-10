@@ -9,14 +9,16 @@ import java.nio.file.{Files, Path}
  */
 object AtmBenchmark {
   case class Certificates(evidence: Int = 0, atcs: Int = 0, layeredAtcs: Int = 0,
-                          distances: List[Int] = Nil, contexts: List[Evidence.AnswerContext] = Nil) {
+                          distances: List[Option[Int]] = Nil, contexts: List[Evidence.AnswerContext] = Nil) {
     def +(that: Certificates): Certificates =
       Certificates(evidence + that.evidence, atcs + that.atcs, layeredAtcs + that.layeredAtcs,
         distances ++ that.distances, contexts ++ that.contexts)
   }
-  def depth(context: Evidence.AnswerContext): Int = context match {
-    case Evidence.AnswerContext.Hole => 0
-    case Evidence.AnswerContext.Layer(_, _, rest, _) => 1 + depth(rest)
+  def depth(context: Evidence.AnswerContext): Option[Int] = context match {
+    case Evidence.AnswerContext.Compose(a, b) => for x <- depth(a); y <- depth(b) yield x + y
+    case Evidence.AnswerContext.Variable(_) => None
+    case Evidence.AnswerContext.Hole => Some(0)
+    case Evidence.AnswerContext.Layer(_, _, rest, _) => depth(rest).map(_ + 1)
   }
   private def sum(xs: Iterable[Certificates]): Certificates = xs.foldLeft(Certificates())(_ + _)
   private def value(v: Core.Value): Certificates = v.node match {
@@ -26,6 +28,9 @@ object AtmBenchmark {
     case Core.ValueNode.LocalLambda(_, _, body) => term(body)
     case Core.ValueNode.CapabilityLambda(_, _, _, body) => value(body)
     case Core.ValueNode.Instantiate(f, c, es) => value(f) + value(c) + Certificates(evidence = es.size)
+    case Core.ValueNode.KindLambda(_, _, body) => value(body)
+    case Core.ValueNode.InstantiateKind(body, _: effekt.atm.Annotations.Argument.Evidence) => value(body) + Certificates(evidence = 1)
+    case Core.ValueNode.InstantiateKind(body, _) => value(body)
     case Core.ValueNode.TypeLambda(_, body) => value(body)
     case Core.ValueNode.InstantiateType(body, _) => value(body)
     case Core.ValueNode.ProofAbstraction(body) => value(body)
@@ -41,8 +46,8 @@ object AtmBenchmark {
     case Core.Node.If(c, a, b) => value(c) + term(a) + term(b)
     case Core.Node.Match(v, cases) => value(v) + sum(cases.map(c => term(c.body)))
     case Core.Node.Perform(_, _, arg, ev, typing) =>
-      value(arg) + Certificates(1, 1, if typing.context == Evidence.AnswerContext.Hole then 0 else 1,
-        List(ev.distance.concrete.get), List(typing.context))
+      value(arg) + Certificates(1, 1, if ev.distance.concrete.exists(_ > 0) then 1 else 0,
+        List(ev.distance.concrete), List(typing.context))
     case Core.Node.Handle(_, _, body, _, ret, ops) => term(body) + term(ret) + sum(ops.map(o => term(o.body)))
     case Core.Node.Ascribe(body) => term(body)
   }
@@ -76,8 +81,8 @@ object AtmBenchmark {
       val result = inspection.result.map(p => term(Core.elaborate(p).body))
       val details = result match {
         case Right(c) => s"\"evidence_uses\":${c.evidence},\"operation_atcs\":${c.atcs},\"layered_atcs\":${c.layeredAtcs}," +
-          s"\"operation_distances\":${c.distances.mkString("[", ",", "]")}," +
-          s"\"atc_depths\":${c.contexts.map(depth).mkString("[", ",", "]")}," +
+          s"\"operation_distances\":${c.distances.map(_.fold("null")(_.toString)).mkString("[", ",", "]")}," +
+          s"\"atc_depths\":${c.contexts.map(c => depth(c).fold("null")(_.toString)).mkString("[", ",", "]")}," +
           s"\"atc_structures\":${c.contexts.map(c => quote(c.toString)).mkString("[", ",", "]") }"
         case Left(e) =>
           val failure = inspection.operations.lastOption.filter(_.context.isLeft).map { o =>

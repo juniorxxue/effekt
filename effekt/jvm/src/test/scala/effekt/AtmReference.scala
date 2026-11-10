@@ -26,6 +26,8 @@ object AtmReference {
   private case class Environment(values: Map[String, Value] = Map.empty,
                                  capabilities: Map[String, Object] = Map.empty) {
     def bind(name: String, value: Value): Environment = copy(values = values.updated(name, value))
+    def withCapability(name: String, identity: Object): Environment =
+      copy(capabilities = capabilities.updated(name, identity), values = values - name)
   }
   private def bind(computation: Computation)(next: Value => Computation): Computation = computation match {
     case Computation.Returned(v) => next(v)
@@ -39,18 +41,27 @@ object AtmReference {
     case Syntax.Value.Token(name) => Value.Token(name)
     case Syntax.Value.Constructor(n, args) => Value.Data(n, args.map(value(_, env)))
     case Syntax.Value.Capability(name) => Value.Capability(env.capabilities(name))
-    case Syntax.Value.Variable(name) => env.values(name)
+    case Syntax.Value.Variable(name) => env.values.getOrElse(name, Value.Capability(env.capabilities(name)))
     case Syntax.Value.LocalLambda(parameter, _, _, body, _) => Value.Function(arg => term(body, env.bind(parameter, arg)))
     case Syntax.Value.Lambda(parameter, _, _, body) => Value.Function(arg => term(body, env.bind(parameter, arg)))
     case Syntax.Value.InferredLambda(parameter, _, body) => Value.Function(arg => term(body, env.bind(parameter, arg)))
     case Syntax.Value.UnannotatedLambda(parameter, _, body) => Value.Function(arg => term(body, env.bind(parameter, arg)))
     case Syntax.Value.CapabilityLambda(parameter, _, body, _) => Value.CapabilityAbstraction {
-      case Value.Capability(identity) => value(body, env.copy(capabilities = env.capabilities.updated(parameter, identity)))
+      case Value.Capability(identity) => value(body, env.withCapability(parameter, identity))
       case other => throw new IllegalStateException(s"Cannot instantiate with $other")
     }
     case Syntax.Value.Instantiate(function, capability) => value(function, env) match {
       case Value.CapabilityAbstraction(instantiate) => instantiate(value(capability, env))
       case other => throw new IllegalStateException(s"Cannot instantiate $other")
+    }
+    case Syntax.Value.KindLambda(_, _, body) => Value.EffectAbstraction(value(body, env))
+    case Syntax.Value.InstantiatePolymorphic(function, _) => value(function, env) match {
+      case Value.EffectAbstraction(body) => body
+      case other => throw new IllegalStateException(s"Cannot instantiate a polymorphic argument in $other")
+    }
+    case Syntax.Value.InstantiateKind(function, _) => value(function, env) match {
+      case Value.EffectAbstraction(body) => body
+      case _ => throw new IllegalArgumentException("Expected a kind abstraction")
     }
     case Syntax.Value.TypeLambda(_, body) => Value.EffectAbstraction(value(body, env))
     case Syntax.Value.PredicateLambda(_, _, body) => Value.EffectAbstraction(value(body, env))
@@ -90,8 +101,31 @@ object AtmReference {
     }
   }
   private def term(source: Syntax.Term, env: Environment): Computation = source match {
+    case Syntax.Term.BlockDefine(d, body) =>
+      val function = Value.Function {
+        case Value.Pair(arg, block) => term(d.definition, env.bind(d.parameter, arg).bind(d.block.name, block))
+        case _ => throw new IllegalStateException("Native block function expects its argument and block")
+      }
+      term(body, env.bind(d.name, function))
+    case Syntax.Term.BlockApply(n, a, b) =>
+      val block = b match {
+        case Syntax.BlockArgument.Literal(c, body) => Value.Function {
+          case Value.Capability(id) => term(body, env.withCapability(c, id))
+          case _ => throw new IllegalStateException("Native block expects a capability")
+        }
+        case Syntax.BlockArgument.Forward(n) => env.values(n)
+      }
+      env.values(n) match {
+        case Value.Function(f) => f(Value.Pair(value(a, env), block))
+        case _ => throw new IllegalStateException("Native block call expects a function")
+      }
+    case Syntax.Term.BlockInvoke(n, c) => env.values(n) match {
+      case Value.Function(f) => f(value(c, env))
+      case _ => throw new IllegalStateException("Native block invocation expects a block")
+    }
     case Syntax.Term.Return(v) => Computation.Returned(value(v, env))
     case Syntax.Term.TypeAlias(_, _, b) => term(b, env)
+    case Syntax.Term.AnnotationAlias(_, _, b) => term(b, env)
     case Syntax.Term.Ascribe(b, _) => term(b, env)
     case Syntax.Term.Assert(v) =>
       if value(v, env) != Value.Boolean(true) then throw new IllegalStateException("Assertion failed")
@@ -115,6 +149,8 @@ object AtmReference {
         term(c.body, c.parameters.zip(fields).foldLeft(env) { case (e, (p, v)) => e.bind(p, v) })
       case _ => throw new IllegalStateException("Source match requires a constructor")
     }
+    case Syntax.Term.AnnotatedPerform(c, op, arg, _, _) => term(Syntax.Term.Perform(c, op, arg), env)
+    case Syntax.Term.SingleAnnotatedPerform(c, op, arg, _) => term(Syntax.Term.Perform(c, op, arg), env)
     case Syntax.Term.Perform(receiver, operation, argument) =>
       val identity = env.values.get(receiver) match {
         case Some(Value.Capability(id)) => id
@@ -135,7 +171,7 @@ object AtmReference {
         case Computation.Requested(id, name, argument, resume) =>
           Computation.Requested(id, name, argument, v => handle(resume(v)))
       }
-      handle(term(body, env.copy(capabilities = env.capabilities.updated(cap, identity))))
+      handle(term(body, env.withCapability(cap, identity)))
   }
 
   def run(program: Syntax.Program): String = term(program.body, Environment()) match {

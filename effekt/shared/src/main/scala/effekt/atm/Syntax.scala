@@ -1,8 +1,8 @@
 package effekt.atm
 
 /** Experimental ATM source language, before elaboration to ATM Core/Lifted.
- * Handler names are capabilities; users write neither regions nor evidence.
- * Regions and evidence are reconstructed by the algorithmic checker.
+ * Handler names are capabilities. Regions, evidence and answer contexts can
+ * either be reconstructed or supplied through checked explicit annotations.
  */
 object Syntax {
   enum Type {
@@ -31,6 +31,9 @@ object Syntax {
                         captures: Set[String] = Set.empty, context: Option[String] = None,
                         obligations: List[Evidence.Obligation] = Nil)
     case EffectPoly(parameter: String, body: Type, bound: EffectBound = EffectBound.Any)
+    case KindPoly(parameter: String, kind: Annotations.Kind, body: Type)
+    // The value projection of an abstract computation; never a source value type.
+    case AbstractResult(computation: ComputationForm)
   }
   enum EffectBound {
     case Any, Repeatable
@@ -41,9 +44,24 @@ object Syntax {
     case Change(initial: Computation, result: Computation)
     case Variable(name: String)
     case Sequence(first: Effect, second: Effect)
+    case Abstract
   }
   // The returned-value binder scopes over the initial answer only.
-  case class Computation(value: Type, effect: Effect = Effect.Pure, returned: Option[String] = None)
+  enum ComputationForm {
+    case Variable(name: String)
+    case Context(context: Evidence.AnswerContext, argument: Computation)
+  }
+  case class Computation(value: Type, effect: Effect = Effect.Pure, returned: Option[String] = None,
+                         form: Option[ComputationForm] = None)
+
+  // A bare bracket argument can have several syntactic readings (e.g. a name
+  // or 0). The quantified parameter selects its grammar during checking.
+  enum PolymorphicArgument {
+    case ValueType(value: Type)
+    case Kind(value: Annotations.Argument)
+    case AnswerEffect(value: Effect)
+    case Predicate(parameters: List[(String, Logic.Sort)], body: Logic.Expr)
+  }
 
   enum Value {
     case Integer(value: BigInt)
@@ -65,10 +83,26 @@ object Syntax {
     case InstantiateType(function: Value, argument: Type)
     case PredicateLambda(parameter: String, arguments: List[Logic.Sort], body: Value)
     case InstantiatePredicate(function: Value, parameters: List[(String, Logic.Sort)], predicate: Logic.Expr)
+    case KindLambda(parameter: String, kind: Annotations.Kind, body: Value)
+    case InstantiateKind(function: Value, argument: Annotations.Argument)
+    case InstantiatePolymorphic(function: Value, alternatives: List[PolymorphicArgument])
     case Primitive(name: String, arguments: List[Value])
   }
+  // Native block schemes are specialized to checked local functions, never
+  // expanded by substituting a callback or helper body at its call site.
+  case class BlockParameter(name: String, interfaceName: String, interfaceArguments: List[Type], result: Type)
+  case class BlockDefinition(name: String, parameter: String, argument: Type,
+      block: BlockParameter, result: Option[Computation], definition: Term)
+  enum BlockArgument {
+    case Literal(capability: String, body: Term)
+    case Forward(name: String)
+  }
   enum Term {
+    case BlockDefine(definition: BlockDefinition, body: Term)
+    case BlockApply(name: String, argument: Value, block: BlockArgument)
+    case BlockInvoke(name: String, capability: Value)
     case TypeAlias(name: String, definition: Type, body: Term)
+    case AnnotationAlias(name: String, definition: Annotations.Argument, body: Term)
     case Return(value: Value)
     case Let(name: String, binding: Term, body: Term)
     case Apply(function: Value, argument: Value)
@@ -80,6 +114,10 @@ object Syntax {
     case If(condition: Value, whenTrue: Term, whenFalse: Term)
     case Match(scrutinee: Value, cases: List[MatchCase])
     case Perform(capability: String, operation: String, argument: Value)
+    case AnnotatedPerform(capability: String, operation: String, argument: Value,
+                          evidence: Option[Annotations.Proof], context: Option[Evidence.AnswerContext])
+    // A lone annotation name is classified by its scoped kind during checking.
+    case SingleAnnotatedPerform(capability: String, operation: String, argument: Value, annotation: String)
     case Handle(capability: String, result: Computation, operations: List[Operation],
                 body: Term, returned: String, onReturn: Term)
     case InferredHandle(capability: String, operations: List[Operation],
@@ -87,18 +125,34 @@ object Syntax {
   }
   case class MatchCase(constructor: String, parameters: List[String], body: Term)
   case class Operation(name: String, argument: Type, result: Type,
-                       initialAnswer: Computation, finalAnswer: Computation,
+                       answers: Option[(Computation, Computation)],
                        parameter: String, continuation: String, body: Term,
-                       argumentIdentity: Option[String] = None, returned: Option[String] = None) {
-    def signature: Signature = Signature(name, argument, result, initialAnswer, finalAnswer, argumentIdentity, returned)
+                       argumentIdentity: Option[String] = None, returned: Option[String] = None,
+                       interfaceName: Option[String] = None,
+                       argumentAnnotated: Boolean = true, resultAnnotated: Boolean = true,
+                       argumentAnnotations: List[Option[Type]] = Nil, interfaceArguments: List[Type] = Nil) {
+    // Missing source annotations are filled from the enclosing handler before
+    // checking. Core and both backends only receive explicit contracts.
+    def signature: Signature = {
+      val (initial, finalAnswer) = answers.getOrElse(throw Diagnostic(s"Unresolved answer contract for operation $name"))
+      Signature(name, argument, result, initial, finalAnswer, argumentIdentity, returned)
+    }
+    def initialAnswer: Computation = signature.initialAnswer
+    def finalAnswer: Computation = signature.finalAnswer
   }
   case class Signature(name: String, argument: Type, result: Type,
                        initialAnswer: Computation, finalAnswer: Computation,
                        parameter: Option[String] = None, returned: Option[String] = None)
   case class DataConstructor(name: String, fields: List[(String, Type)])
   case class DataDeclaration(name: String, constructors: List[DataConstructor])
+  // Native interface headers specify value signatures. Each implementation
+  // supplies or infers its ATM answer contract independently.
+  case class InterfaceOperation(name: String, parameter: Option[String], argument: Type,
+                                result: Type, returned: Option[String] = None, arity: Int = 0)
+  case class InterfaceDeclaration(name: String, operations: List[InterfaceOperation], typeParameters: List[String] = Nil)
   case class Program(result: Computation, body: Term, datatypes: List[DataDeclaration] = Nil,
-                     measures: List[Logic.Measure] = Nil)
+                     measures: List[Logic.Measure] = Nil, interfaces: List[InterfaceDeclaration] = Nil,
+                     inferResult: Boolean = false, typeAliases: List[(String, Type)] = Nil)
 
   enum DiagnosticKind {
     case ParseError, ContractFailure, Unsupported, VerificationUnavailable, TypeError
@@ -133,13 +187,17 @@ object Syntax {
         case EffectBound.After(prefix) => s" after (${show(prefix)})"
       }
       s"forall effect ${displayName(parameter)}$constraint. ${show(body)}"
+    case Type.KindPoly(parameter, kind, body) => s"forall ${displayName(parameter)}: $kind. (${show(body)})"
+    case Type.AbstractResult(c) => s"value(${Annotations.show(c)})"
   }
   private def displayName(name: String): String = name.takeWhile(_ != '#')
-  def show(tpe: Computation): String = s"${tpe.returned.fold("")(n => displayName(n) + ": ")}${show(tpe.value)} / ${show(tpe.effect)}"
+  def show(tpe: Computation): String = tpe.form.fold(
+    s"${tpe.returned.fold("")(n => displayName(n) + ": ")}${show(tpe.value)} / ${show(tpe.effect)}")(Annotations.show)
   def show(effect: Effect): String = effect match {
     case Effect.Pure => "pure"
     case Effect.Change(initial, result) => s"(${show(initial)} => ${show(result)})"
     case Effect.Variable(name) => displayName(name)
     case Effect.Sequence(first, second) => s"(${show(first)} ; ${show(second)})"
+    case Effect.Abstract => "<abstract computation>"
   }
 }

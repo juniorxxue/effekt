@@ -1,6 +1,6 @@
 # Paper fidelity: repairs and remaining work
 
-Updated 2026-11-06 against `popl27-paper152.pdf` and
+Updated 2026-11-10; the earlier rule audit used `popl27-paper152.pdf` and
 `popl27-paper152-supplemental.pdf`, on Effekt v0.3.0.
 
 The implementation is a tested subset of the algorithm, not a full transcription
@@ -52,10 +52,11 @@ not evidence for all of Theorem 3's typing premises.
 
 ## Implemented surface conveniences
 
-The frontend retains the region-free Effekt-like surface. The paper's regions and
-evidence still belong in elaboration and Core. Explicit domains/results remain
-necessary where bidirectional checking supplies no expected type. Annotated
-function recursion is supported; general `fix x. V` is not implemented.
+The frontend retains the region-free Effekt-like surface. Explicit regions, evidence, and ATCs are also available through the checked
+annotation forms described in [ANNOTATIONS.md](ANNOTATIONS.md). Explicit domains/results
+remain necessary where neither bidirectional checking nor the partial annotation
+pass below supplies them. Annotated function recursion is supported; general
+`fix x. V` is not implemented.
 
 Automatic closing of local refinement names at let boundaries remains in place;
 its redesign is deferred. `closeLet`
@@ -69,6 +70,149 @@ The selected backend is historical Lifted/Chez. Its runtime
 evidence representation is useful for this implementation. Passing execution
 tests establishes behavior of that path; it does not prove the Core-to-Lifted
 translation correct.
+
+## Named interface declarations: surface signature lookup
+
+Native `interface File { def read(): Int def close(): Unit }` headers and
+`with h: File { ... }` implementations are accepted. Parameterized interface
+declarations/explicit instantiations and multiple value arguments are also
+supported; each implementation still has monomorphic operation signatures.
+The checker resolves declarations in the top-level environment and verifies any repeated implementation annotations
+against them. Missing/extra/duplicate clauses and wrong arity are rejected.
+An absent return clause expands to an identity clause with a fresh binder.
+No nominal-interface rule or capability equality rule is added to the calculus;
+the existing structural operation signatures and `A_Handle` checks remain.
+
+A result-only declaration does not specify an ATM answer transition. Each
+implementation may give an explicit transition or use the contextual convention
+below. This is additional surface elaboration, not a new inference rule in the
+paper. [SYNTAX-DIFFERENCES.md](SYNTAX-DIFFERENCES.md) records the native language
+features that remain unimplemented rather than attributing them to ATM.
+
+## Native syntax elaboration
+
+`Parser`/`Surface` lower nested expression calls to fresh `let` bindings in source
+evaluation order. Computed or partial right operands of Boolean short circuit
+operators stay under an `If`. Multiple parameters/arguments become nested pairs
+and checked projections, with corresponding substitutions in result/answer
+refinements. Native datatype/match spelling uses the existing datatype rules.
+Ordinary self recursion selects the existing annotated `LetRec`; acyclic
+top-level dependencies become local bindings. Native type-parameter/application
+spelling uses the existing type abstraction/application machinery.
+
+When `main` omits its result, the checker synthesizes the complete program and
+retains the pure-final-computation, capability-escape and residual-obligation
+checks. Native blocks use the additional contextual pass described below; full
+block/capture or effect-set inference is not claimed.
+Empty handlers retain a region and distance-one edge; they are not optimized
+away before checking. These conveniences do not change the evidence/ATC rules
+or establish an operational correspondence theorem for the compiler.
+
+## Native blocks: contextual specialization
+
+`def file(c: Int) {body: {File} => Int}` is retained as a reusable source
+function. `BlockDefine` records its lexical environment and block declaration.
+At a `BlockApply`, `Checker.applyBlock` projects the result value type, combines
+it with the inherited answer, and checks a specialization of the helper at the
+caller's exact region. The helper's value parameters and callback remain
+runtime arguments. Free values are saved under fresh names at declaration time
+and supplied as environment arguments, preserving lexical shadowing.
+
+When the helper executes `body {f}`, `invokeBlock` checks the supplied interface
+and obtains an actual witness from the capability region to the specialization's
+caller region using `Evidence.known`. The witness must have concrete distance
+`d`. The block is checked as a capability abstraction containing an evidence
+abstraction and an exact-region Unit function. Schematically, for caller region
+`rho`, operation signatures `ops`, inherited answer `C`, and block result `R`:
+
+```
+forall cap f: ops.
+  forall e: Ev(f, d, rho).
+    local[f] (Unit) => R / (C => C)
+```
+
+The callback body is checked with the corresponding bound evidence in `delta`.
+The actual block invocation supplies its capability and the checked witness;
+`Core.validate` verifies the kind, endpoints, distance, and instantiated type.
+For Fig. 1 both callback edges have distance one. The operation distances remain
+**1, 0, 1, 0**, and `Evidence.atc` reconstructs the same contexts as for the
+inlined companion. The outer helper result is `Int / pure`; the inner result is
+`Int / (Int => Int)`. Each callback's default transition preserves the inherited
+answer, as with the existing omitted-operation-contract convention.
+
+The comparison with `defn/algorithmic.ott` and
+`PLDI27/sections/implementation.otex` has the following boundary:
+
+- `A_Do` and `atc` are unchanged: symbolic distances still reject, and a concrete
+  distance must match the number of retained answer layers. The new evidence
+  fact is a quantified, checked argument, not a guessed distance.
+- The handler is checked by the existing `A_Handle` implementation, including
+  its residual and region-escape checks. Residual obligations from generated
+  function bindings are propagated to enclosing abstractions and the program
+  boundary; none are discarded.
+- Exact-region helper/callback arrows use the existing declarative
+  `T_Abs`/`T_App` bridge described below, not the printed region-polymorphic
+  `A_Abs` rule. Capability and evidence applications remain explicit in Core.
+- **The contextual specialization pass is additional surface elaboration.**
+  The paper does not provide these native block schemes, their inference rule,
+  or a proof of this pass. It does not imply that arbitrary symbolic-distance
+  programs now satisfy the printed algorithm. No compiler correspondence or
+  soundness theorem is claimed for this extension.
+
+`AtmBlockTests` inspects Core to ensure helper lambdas/calls survive and their
+callback operations have not been substituted into the helper bodies. The
+independent source interpreter executes native block closures directly; it does
+not execute the inferred specialization. Both optimized and unoptimized Chez
+are compared with this interpreter and native Effekt on Fig. 1.
+
+Current limits: one block parameter with one capability parameter, statically
+named nonrecursive helpers, and one compatible callback answer/region contract
+per specialization. Invocation must be at the capability's own region with
+known evidence to the caller. Same-region forwarding is supported; forwarding
+across a new delimiter is rejected. Headers and free names are checked when a
+scheme is defined; its full body is checked separately for each use, not once
+as a principal polymorphic library signature. Definitions that never invoke
+their block cannot infer its contract. General escaping blocks, higher-rank
+capture inference, and arbitrary callback answer transitions remain work.
+The direct Lifted backend supports the generated evidence abstraction; the
+legacy source emitter still rejects explicit evidence-kind abstractions.
+
+## Omitted handler annotations: additional surface inference
+
+The 2026-11-10 Fig. 1 audit compared `Checker.scala` with the current
+`defn/algorithmic.ott` and `PLDI27/sections/implementation.otex` in the paper
+repository. The paper explicitly assumes operation signatures are supplied.
+`A_Handle` checks against a complete computation type `C_F`; its inherited
+mode is `pi(C_F)`. That mode alone does not determine the value result or the
+initial answer. There is no handler-synthesis rule in the printed algorithm.
+
+The result-only operation syntax therefore adds a surface convention: for a
+known handler computation `C`, an omitted operation transition is `C => C`.
+Each resulting clause is checked by the existing clause checker. This does not
+infer arbitrary answer-type modification or make operation invocations pure.
+
+An unannotated handler in synthesis now uses an additional, partial annotation
+pass. `handlerResultValue`/`projectedValue` project a candidate value type `T`
+from declared value types, operation result types, the handled body, and the
+return clause, forgetting refinements. They do not produce a typing derivation.
+The proposed whole-handler annotation is `T / pure` in empty inherited mode
+and `T / (C => C)` under inherited answer `C`. Its final-answer projection
+therefore matches the input mode. `inferHandler` then performs the full checks
+on the original body and clauses, including operation arguments, evidence,
+ATC depths, residuals, return contracts, and scope escape. No supplied annotation
+is weakened or retried under a different type. Unsupported projections require
+an explicit annotation; this is not principal or complete inference.
+
+For Fig. 1, this generates outer `Int / pure` and inner
+`Int / (Int / pure => Int / pure)`. The operation annotations are completed
+using those computations before `A_Do` reconstructs depth-zero or depth-one
+contexts. `AtmHandlerInferenceTests` also checks a Bool-valued inner handler
+under an Int answer, multiple nesting levels, and invalid arguments/clauses.
+
+This is an implementation extension that feeds annotations to the existing
+checker, not a claim that the paper already infers those annotations. The
+separate return-clause mode bridge below remains relevant, and no mechanized
+soundness theorem for these Scala passes is claimed.
 
 ## Handler return mode: an explicit rule reconciliation
 
@@ -115,7 +259,8 @@ lexical region in synthesis. An explicit qualifier must agree with an expected
 arrow. The frontend records a separate
 `LocalFunction` type and `LocalLambda` Core node. Neither acquires an abstract
 call witness, and Lifted gives them zero call-evidence parameters. Operations
-inside them still use ordinary evidence reconstruction and the partial `atc`.
+inside them use evidence reconstruction and the partial `atc` when annotations
+are omitted, or check explicit evidence and ATC arguments.
 Local recursion is checked against an explicit contract. Same-region
 continuations can be viewed as local arrows with compatible contracts; they
 cannot become ordinary region-polymorphic functions.
@@ -130,7 +275,8 @@ Because Definition 17's caller-indexed codomain families are still absent, an
 ordinary function cannot synthesize a returned local arrow indexed by its fresh
 abstract caller region. Relabeling it as the function's required region would
 be wrong. The checker reports this as unsupported; an explicitly stable local
-result annotation works. This restriction also covers returned continuations.
+result annotation works. This restriction also covers returned continuations
+and returned evidence kinds that mention the implicit caller region.
 
 Ten formerly blocked examples now check; seven are enabled by new forms and
 three also replace the former `repeatable`/
@@ -138,7 +284,8 @@ three also replace the former `repeatable`/
 endpoints. The original closed witnesses are retained and executed, but the
 new generic interfaces do not quantify over arbitrary nested computation
 answers. See [REJECTED-EXAMPLES.md](REJECTED-EXAMPLES.md) for individual changes
-and the two examples that remain unsupported.
+and the retained unannotated negative fixtures. Their annotated counterparts
+now execute while preserving the callback and two-capability abstractions.
 
 ## Unresolved fidelity and coverage gaps
 
@@ -154,14 +301,17 @@ repairs above:
    Capability abstraction also remains a surface convenience that binds both
    the region and a capability value. A complete target translation must make
    this elaboration explicit as well.
-2. **The complete typelike/kind language is absent.** General computation-type,
-   distance, evidence and ATC quantification/application, and polymorphic
-   operation-signature binders remain unsupported. Existing type, predicate,
-   effect and capability forms do not constitute the full kind system.
-3. **The explicit evidence/ATC annotation escape hatch described in paper
-   Section 6.2 is absent.** It needs the target kinds and well-formedness rules;
-   it must not be implemented by trusting arbitrary annotations or restoring
-   the old `replaceAnswer` approximation.
+2. **Polymorphic operation-signature binders remain unsupported.** Explicit
+   `Reg`, `Dist`, `Cty`, `Ev`, and `ATC` quantification/application are now checked,
+   alongside existing type, predicate, effect and capability forms. This does
+   not add quantifiers to individual operation clauses or implement every
+   declarative computation rule for opaque effects.
+3. **Abstract result projections have a backend restriction.** Direct Lifted
+   lowering supports computation variables via value-type parameters, but an
+   abstract ATC application used as a computation's result needs a known value
+   projection. ATC applications in answer endpoints, including the symbolic
+   callbacks, execute. The legacy source emitter rejects the new kind-polymorphic
+   forms. See [ANNOTATIONS.md](ANNOTATIONS.md).
 4. **Other language coverage remains limited.** General value fixpoints,
    polymorphic datatypes, and unknown refinement-predicate inference are absent.
    Monomorphic data now supports exhaustive matching, dependent fields, closed
@@ -178,16 +328,17 @@ repairs above:
 6. **No mechanized implementation or backend preservation proof is provided.**
    Regression tests and SMT validity checks are distinct from that proof.
 
-The next architectural change should introduce the full declarative type/kind
-representation and its checker, then the Definition 17 translation, followed by
-polymorphic operation signatures and explicit ATC/evidence arguments. That order
-gives the new forms a checked target instead of accumulating unchecked metadata.
-The existing algorithmic types can remain in the frontend for diagnostics.
+The explicit annotation path now checks dependent kinds, scoped aliases,
+evidence endpoints, distance equality, and ATC plugging. Core independently
+checks kind applications and symbolic ATC depths; Lifted receives evidence
+parameters as runtime arguments. Remaining target work includes the literal
+Definition 17 translation and polymorphic operation signatures, with a complete
+independent declarative checker.
 
 Symbolic-distance ATC **inference** is a separate matter: rejecting it agrees
-with supplemental Section 3.3, page 37. General ATC abstraction is identified
-there as future work. This rejection has deliberately not been “repaired” by
-changing the algorithm's meaning.
+with supplemental Section 3.3, page 37. ATC abstraction was identified
+there as future work. It is now available explicitly; the unannotated algorithm
+and its symbolic-distance rejection remain unchanged.
 
 ## Validation
 

@@ -1,0 +1,26 @@
+// Fig. 1 with a reusable file handler and mock integer descriptors.
+// Native blocks and their ATM contracts are inferred; helpers remain runtime functions.
+interface File {
+  def read(): Int
+  def close(): Unit
+}
+
+def readInt(c: Int): Int = c
+def closeFile(c: Int): Unit = ()
+
+def file(c: Int) {body: {File} => Int} =
+  try { body {f} } with f: File {
+    def read() = resume(readInt(c))
+    def close() = { closeFile(c); resume(()) }
+  }
+
+def main() =
+  file(7) { {a} =>
+    file(35) { {b} =>
+      val x = a.read()
+      val y = b.read()
+      a.close()
+      b.close()
+      x + y
+    }
+  }

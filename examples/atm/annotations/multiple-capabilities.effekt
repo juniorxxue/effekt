@@ -1,0 +1,32 @@
+// The evidence parameter states the relative nesting of the two capabilities.
+// Both capabilities remain abstract; their handler edge is supplied at the call.
+def main(): Bool = {
+  val both = capfun (c: { def ask(): Int / (Int => Bool); }) {
+    capfun (d: { def bump(): Int / (Int / (Int => Bool) => Int / (Int => Bool)); }) {
+      fun [E: Ev(d, 1, c)] {
+        fun local[d](u: Unit): Int / (Int / (Int => Int) => Int / (Int => Bool)) {
+          val a = d.bump[refl; []]();
+          val b = c.ask[E; Int / (Int => [])]();
+          (a + b)
+        }
+      }
+    }
+  };
+  try {
+    try {
+      val local = both{cap(outer)}{cap(inner)}[step(inner)];
+      local()
+    } with inner: Int / (Int => Bool) {
+      def bump(x: Unit): Int / (Int / (Int => Bool) => Int / (Int => Bool)) = {
+        resume(20)
+      }
+      return x => { x }
+    }
+  } with outer: Bool {
+    def ask(x: Unit): Int / (Int => Bool) = {
+      val n = resume(22);
+      zero(n)
+    }
+    return x => { x }
+  }
+}

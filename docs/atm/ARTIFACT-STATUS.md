@@ -1,5 +1,13 @@
 # Artifact readiness after the upstream ARM migration
 
+**2026-11-09 annotation update:** the frontend now checks explicit region,
+distance, evidence, computation-type and ATC binders/arguments. The annotated
+outer-call and two-capability examples execute through direct Chez-Lift; the
+old unannotated fixtures remain negative inference/extension tests. See
+[ANNOTATIONS.md](ANNOTATIONS.md) and [VALIDATION.md](VALIDATION.md). Benchmark
+measurements below describe the archived 2026-11-06 snapshot and have not been
+retimed for this change.
+
 Status snapshot: **2026-11-06**. Start with the [usage guide](README.md) for
 commands and the documentation map, or [BENCHMARKS.md](BENCHMARKS.md) for the
 single-file benchmark outline.
@@ -78,7 +86,7 @@ printed inference rules in [FIDELITY.md](FIDELITY.md). Three old effect-bound
 examples use explicit pure answer endpoints, with their original closed
 runtime witnesses retained. General opaque-effect polymorphism is not added.
 
-Of the 83 existing `.effekt` files, 58 are accepted, 22 are intentional negatives,
+In the archived 2026-11-06 inventory of 83 `.effekt` files, 58 are accepted, 22 are intentional negatives,
 and three remain unsupported. These counts include examples beyond the paper
 inventory and must not be added to its benchmark coverage. The new runner checks
 every existing file and fails on unexpected errors:
@@ -139,14 +147,16 @@ remain distinct from a type-soundness or compiler-preservation proof.
 
 ## Remaining priorities
 
-1. **Complete the declarative target types/kinds and Definition 17 translation.**
-   Then give explicit evidence/ATC arguments and polymorphic operation signatures
-   a checked target. Do not bypass symbolic-distance rejection in the paper's
-   partial inference algorithm. Review the explicit declarative bridges
-   documented in [FIDELITY.md](FIDELITY.md).
+1. **Complete the Definition 17 translation and polymorphic operation signatures.**
+   Explicit region/distance/evidence/ATC/computation parameters now have checked
+   kinds and Core certificates. The implicit algorithm remains partial;
+   arbitrary abstract ATC result projections still require backend support.
+   See [FIDELITY.md](FIDELITY.md).
 2. **Port the complete motivating programs with their original properties.**
-   First the reusable polymorphic close helper, nested file handlers, and nested
-   state handlers with result exactly 3; then the file/GUI protocol. The current
+   The reusable mock-backed Fig. 1 now checks with native blocks and contextual
+   specialization; see [FIDELITY.md](FIDELITY.md#native-blocks-contextual-specialization).
+   Remaining work includes the polymorphic close protocol, nested state handlers
+   with result exactly 3, and the file/GUI protocol. The current
    nested state example still needs polymorphic operation contracts and its
    exact relational invariant; local state-passing functions are now available.
 3. **Port the remaining 29 paper-only rows and audit translation equivalence.**
@@ -164,4 +174,5 @@ remain distinct from a type-soundness or compiler-preservation proof.
 
 The inference suite adds `infer/polymorphic-outer-call.effekt` as an explicit
 symbolic-distance ATC limitation: residual evidence is reconstructed, but ATC
-inference is undefined. This brings the current unsupported file count to three.
+inference is undefined. This brought the archived inventory's unsupported file count to three; these
+original negative fixtures remain unchanged.

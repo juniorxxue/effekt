@@ -22,6 +22,8 @@ object Core {
     case LocalLambda(parameter: String, region: String, body: Term)
     case CapabilityLambda(region: String, operations: List[Signature], requirements: List[Binding], body: Value)
     case Instantiate(function: Value, capability: Value, evidence: List[Witness])
+    case KindLambda(parameter: String, kind: Annotations.Kind, body: Value)
+    case InstantiateKind(function: Value, argument: Annotations.Argument)
     case TypeLambda(parameter: String, body: Value)
     case InstantiateType(function: Value, argument: Type)
     case ProofAbstraction(body: Value)
@@ -66,10 +68,18 @@ object Core {
         case S.UnannotatedLambda(p, _, _) => lambda(v, p, region)
         case S.CapabilityLambda(r, ops, _, _) => ValueNode.CapabilityLambda(r, ops, v.quantified, value(v.children.head, region))
         case S.Instantiate(_, _) => ValueNode.Instantiate(value(v.children.head, region), value(v.children(1), region), v.evidence)
+        case S.KindLambda(p, k, _) => ValueNode.KindLambda(p, k, value(v.children.head, region))
+        case S.InstantiateKind(_, a) =>
+          val actual = a match {
+            case _: Annotations.Argument.Evidence => Annotations.Argument.Evidence(Annotations.Proof.Checked(v.evidence.head))
+            case _ => a
+          }
+          ValueNode.InstantiateKind(value(v.children.head, region), actual)
         case S.TypeLambda(p, _) => ValueNode.TypeLambda(p, value(v.children.head, region))
         case S.InstantiateType(_, a) => ValueNode.InstantiateType(value(v.children.head, region), a)
         case _: S.PredicateLambda | _: S.EffectLambda => ValueNode.ProofAbstraction(value(v.children.head, region))
         case _: S.InstantiatePredicate | _: S.InstantiateEffect => ValueNode.ProofApplication(value(v.children.head, region))
+        case _: S.InstantiatePolymorphic => throw Diagnostic("Unresolved polymorphic argument reached Core")
       }
       Value(node, v.tpe)
     }
@@ -95,9 +105,11 @@ object Core {
         case S.Handle(r, _, _, _, ret, _) => Node.Handle(r, t.handlerEvidence.get,
           term(t.children.head, r), ret, term(t.children(1), region), t.operations.map(o =>
             Operation(o.source.signature, o.source.parameter, o.source.continuation, term(o.body, region))))
+        case _: S.BlockDefine | _: S.BlockApply | _: S.BlockInvoke => throw Diagnostic("Core: unresolved native block elaboration")
         case _: S.InferredHandle => throw Diagnostic("Core: unresolved handler result annotation")
         case _: S.ExplicitReturn => throw Diagnostic("Core: unresolved explicit return clause")
-        case _: S.Ascribe | _: S.TypeAlias => Node.Ascribe(term(t.children.head, region))
+        case _: S.AnnotatedPerform | _: S.SingleAnnotatedPerform => throw Diagnostic("Core: unresolved operation annotation")
+        case _: S.Ascribe | _: S.TypeAlias | _: S.AnnotationAlias => Node.Ascribe(term(t.children.head, region))
       }
       Term(node, t.tpe, region)
     }
@@ -122,7 +134,7 @@ object Core {
         case Witness.Compose(a, b) => proof(a, bs, rs); proof(b, bs, rs)
       }
     }
-    def value(v: Value, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]]): Unit = v.node match {
+    def value(v: Value, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]], ks: Map[String, Annotations.Kind]): Unit = v.node match {
       case ValueNode.LocalLambda(parameter, target, body) =>
         val tpe = v.tpe match {
           case t: Type.LocalFunction => t
@@ -130,7 +142,7 @@ object Core {
         }
         require(tpe.region.contains(target) && (target == Top || rs(target)), "local lambda has an unbound or mismatched region")
         require(TypeEquality.same(body.tpe, tpe.result), "local lambda body/result contract mismatch")
-        term(body, bs, rs, target, vs.updated(parameter, tpe.argument), cs)
+        term(body, bs, rs, target, vs.updated(parameter, tpe.argument), cs, ks)
       case ValueNode.Lambda(parameter, a, body) =>
         require(a.call.constraint.from == a.region, "malformed function evidence binder")
         v.tpe match {
@@ -141,7 +153,7 @@ object Core {
         val argument = v.tpe.asInstanceOf[Type.Function].argument
         require(!rs(a.region) && !bs.contains(a.call.name), "function binders are not fresh")
         require(a.call.distance.isInstanceOf[Distance.Variable], "function distance must be abstract")
-        term(body, bs.updated(a.call.name, a.call), rs + a.region, a.region, vs.updated(parameter, argument), cs)
+        term(body, bs.updated(a.call.name, a.call), rs + a.region, a.region, vs.updated(parameter, argument), cs, ks.updated(a.call.distance.asInstanceOf[Distance.Variable].name, Annotations.Kind.Distance))
       case ValueNode.CapabilityLambda(r, operations, requirements, body) =>
         v.tpe match {
           case Type.CapabilityPoly(parameter, declared, result, _, _, obligations) =>
@@ -154,9 +166,9 @@ object Core {
         require(!rs(r), "capability region is not fresh")
         require(requirements.map(_.name).distinct.size == requirements.size, "duplicate residual evidence binder")
         require(requirements.forall(b => !bs.contains(b.name) && b.distance.isInstanceOf[Distance.Variable]), "invalid residual evidence binder")
-        value(body, bs ++ requirements.map(b => b.name -> b), rs + r, region, vs, cs.updated(r, operations))
+        value(body, bs ++ requirements.map(b => b.name -> b), rs + r, region, vs, cs.updated(r, operations), ks ++ requirements.map(b => b.distance.asInstanceOf[Distance.Variable].name -> Annotations.Kind.Distance))
       case ValueNode.Instantiate(f, c, evs) =>
-        value(f, bs, rs, region, vs, cs); value(c, bs, rs, region, vs, cs); evs.foreach(proof(_, bs, rs))
+        value(f, bs, rs, region, vs, cs, ks); value(c, bs, rs, region, vs, cs, ks); evs.foreach(proof(_, bs, rs))
         f.tpe match {
           case Type.CapabilityPoly(parameter, _, _, _, _, obligations) =>
             require(evs.size == obligations.size, "missing residual evidence argument")
@@ -175,21 +187,44 @@ object Core {
         require(args.size == ctor.fields.size, "constructor arity mismatch")
         args.zip(ctor.fields).foreach { (arg, field) =>
           require(TypeEquality.same(Contracts.erase(arg.tpe), Contracts.erase(field._2)), "constructor field type mismatch")
-          value(arg, bs, rs, region, vs, cs)
+          value(arg, bs, rs, region, vs, cs, ks)
         }
-      case ValueNode.Primitive(_, args) => args.foreach(value(_, bs, rs, region, vs, cs))
+      case ValueNode.Primitive(_, args) => args.foreach(value(_, bs, rs, region, vs, cs, ks))
+      case ValueNode.KindLambda(parameter, kind, body) =>
+        require(v.tpe == Type.KindPoly(parameter, kind, body.tpe), "kind abstraction contract mismatch")
+        require(!ks.contains(parameter) && !rs(parameter) && !bs.contains(parameter), "kind binder is not fresh")
+        Annotations.validateKind(kind, ks, rs)
+        val regions = if kind == Annotations.Kind.Region then rs + parameter else rs
+        val bindings = kind match {
+          case Annotations.Kind.Evidence(a, d, b) => bs.updated(parameter, Binding(parameter, Constraint(a, b), d))
+          case _ => bs
+        }
+        value(body, bindings, regions, region, vs, cs, ks.updated(parameter, kind))
+      case ValueNode.InstantiateKind(body, argument) =>
+        value(body, bs, rs, region, vs, cs, ks)
+        Annotations.validateArgument(argument, ks, rs)
+        argument match {
+          case Annotations.Argument.Evidence(Annotations.Proof.Checked(w)) => proof(w, bs, rs)
+          case _ => ()
+        }
+        body.tpe match {
+          case Type.KindPoly(parameter, kind, result) =>
+            require(Annotations.sameKind(kind, Annotations.kindOf(argument, ks)), "annotation argument kind mismatch")
+            require(TypeEquality.same(v.tpe, Annotations.substitution(parameter, argument).typ(result)), "annotation application result mismatch")
+          case _ => throw Diagnostic("Core: annotation application of a non-polymorphic value")
+        }
       case ValueNode.TypeLambda(parameter, body) =>
         require(v.tpe == Type.TypePoly(parameter, body.tpe), "type abstraction contract mismatch")
-        value(body, bs, rs, region, vs, cs)
+        value(body, bs, rs, region, vs, cs, ks)
       case ValueNode.InstantiateType(body, argument) =>
         body.tpe match {
           case Type.TypePoly(parameter, result) =>
             require(TypeEquality.same(v.tpe, Contracts.instantiate(result, parameter, argument)), "type application result mismatch")
           case _ => throw Diagnostic("Core: type application of a non-polymorphic value")
         }
-        value(body, bs, rs, region, vs, cs)
-      case ValueNode.ProofAbstraction(body) => value(body, bs, rs, region, vs, cs)
-      case ValueNode.ProofApplication(body) => value(body, bs, rs, region, vs, cs)
+        value(body, bs, rs, region, vs, cs, ks)
+      case ValueNode.ProofAbstraction(body) => value(body, bs, rs, region, vs, cs, ks)
+      case ValueNode.ProofApplication(body) => value(body, bs, rs, region, vs, cs, ks)
       case ValueNode.Variable(n) =>
         val declared = vs.getOrElse(n, throw Diagnostic("Core: unbound value " + n))
         require(TypeEquality.same(Contracts.erase(declared), Contracts.erase(v.tpe)), "variable type differs from its binding")
@@ -200,21 +235,21 @@ object Core {
       case ValueNode.Unit => require(Contracts.base(v.tpe) == Type.Unit, "mistyped unit")
       case ValueNode.Token(n) => require(v.tpe == Type.Token(n), "mistyped token")
     }
-    def term(t: Term, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]]): Unit = {
+    def term(t: Term, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]], ks: Map[String, Annotations.Kind]): Unit = {
       require(t.region == region, "term moved to a different region")
       t.node match {
-        case Node.Return(v) => value(v, bs, rs, region, vs, cs)
+        case Node.Return(v) => value(v, bs, rs, region, vs, cs, ks)
         case Node.Assert => ()
         case Node.Let(n, first, body) =>
-          term(first, bs, rs, region, vs, cs)
-          term(body, bs, rs, region, vs.updated(n, first.tpe.value), cs)
+          term(first, bs, rs, region, vs, cs, ks)
+          term(body, bs, rs, region, vs.updated(n, first.tpe.value), cs, ks)
         case Node.LetRec(n, f, body) =>
-          value(f, bs, rs, region, vs.updated(n, f.tpe), cs)
-          term(body, bs, rs, region, vs.updated(n, f.tpe), cs)
-        case Node.Ascribe(body) => term(body, bs, rs, region, vs, cs)
-        case Node.If(c, a, b) => value(c, bs, rs, region, vs, cs); term(a, bs, rs, region, vs, cs); term(b, bs, rs, region, vs, cs)
+          value(f, bs, rs, region, vs.updated(n, f.tpe), cs, ks)
+          term(body, bs, rs, region, vs.updated(n, f.tpe), cs, ks)
+        case Node.Ascribe(body) => term(body, bs, rs, region, vs, cs, ks)
+        case Node.If(c, a, b) => value(c, bs, rs, region, vs, cs, ks); term(a, bs, rs, region, vs, cs, ks); term(b, bs, rs, region, vs, cs, ks)
         case Node.Match(v, cases) =>
-          value(v, bs, rs, region, vs, cs)
+          value(v, bs, rs, region, vs, cs, ks)
           val owner = Contracts.base(v.tpe) match {
             case Type.Data(n) => n
             case _ => throw Diagnostic("Core: match scrutinee is not data")
@@ -227,10 +262,10 @@ object Core {
             require(c.bindings.size == fields.size && c.bindings.map(_._1).distinct.size == c.bindings.size, "invalid pattern binders")
             require(c.bindings.zip(fields).forall((a, b) => TypeEquality.same(Contracts.erase(a._2), Contracts.erase(b._2))), "mistyped pattern field")
             require(TypeEquality.same(Contracts.erase(c.body.tpe.value), Contracts.erase(t.tpe.value)), "match branch result mismatch")
-            term(c.body, bs, rs, region, vs ++ c.bindings, cs)
+            term(c.body, bs, rs, region, vs ++ c.bindings, cs, ks)
           }
         case Node.Apply(f, a, evs) =>
-          value(f, bs, rs, region, vs, cs); value(a, bs, rs, region, vs, cs); evs.foreach(proof(_, bs, rs))
+          value(f, bs, rs, region, vs, cs, ks); value(a, bs, rs, region, vs, cs, ks); evs.foreach(proof(_, bs, rs))
           f.tpe match {
             case Type.Function(_, _, _, Some(target), _) =>
               require(evs.size == 1 && evs.head.constraint == Constraint(region, target), "incorrect function call evidence")
@@ -239,7 +274,7 @@ object Core {
             case _ => throw Diagnostic("Core: invalid function application")
           }
         case Node.Perform(receiver, operation, a, ev, typing) =>
-          value(a, bs, rs, region, vs, cs); proof(ev, bs, rs)
+          value(a, bs, rs, region, vs, cs, ks); proof(ev, bs, rs)
           require(ev.constraint.from == region, "operation evidence starts in the wrong region")
           val target = vs.get(receiver) match {
             case Some(Type.Capability(r)) => r
@@ -250,16 +285,15 @@ object Core {
           require(ev.constraint.to == target, "operation evidence targets a different capability")
           require(operations.exists(_.name == operation) && typing.signature.name == operation, "unknown operation slot")
           require(TypeEquality.same(Contracts.erase(typing.signature.result), Contracts.erase(typing.inferred.value)), "operation result differs from its signature")
-          def depth(c: AnswerContext): Int = c match {
-            case AnswerContext.Hole => 0
-            case AnswerContext.Layer(_, _, rest, _) => 1 + depth(rest)
-          }
-          require(ev.distance.concrete.contains(depth(typing.context)), "ATC depth differs from evidence distance")
+          Annotations.validateArgument(Annotations.Argument.Context(typing.context), ks, rs)
+          require(Evidence.sameDistance(ev.distance, Annotations.depth(typing.context, ks)), "ATC depth differs from evidence distance")
           typing.inferred.effect match {
             case Syntax.Effect.Change(initial, finalAnswer) =>
               require(TypeEquality.same(initial, typing.context.plug(typing.signature.initialAnswer)), "incorrect ATC plugging")
               def peel(c: AnswerContext, answer: Computation): Unit = c match {
                 case AnswerContext.Hole => () // The hole's refinement subtyping obligation was discharged by Checker.
+                case c @ (_: AnswerContext.Variable | _: AnswerContext.Compose) =>
+                  require(TypeEquality.same(answer, c.plug(typing.signature.finalAnswer)), "abstract ATC differs from operation answer")
                 case AnswerContext.Layer(v, i, rest, returned) => answer.effect match {
                   case Syntax.Effect.Change(ai, af) =>
                     require(TypeEquality.same(Computation(v, Syntax.Effect.Change(i, af), returned), answer), "ATC differs from inherited answer")
@@ -273,15 +307,15 @@ object Core {
         case Node.Handle(r, edge, body, returned, ret, ops) =>
           require(edge.constraint == Constraint(r, region) && edge.distance == Distance.Numeral(1), "incorrect handler edge")
           require(!rs(r) && !bs.contains(edge.name), "handler binders are not fresh")
-          term(body, bs.updated(edge.name, edge), rs + r, r, vs, cs.updated(r, ops.map(_.signature)))
-          term(ret, bs, rs, region, vs.updated(returned, body.tpe.value), cs)
+          term(body, bs.updated(edge.name, edge), rs + r, r, vs, cs.updated(r, ops.map(_.signature)), ks)
+          term(ret, bs, rs, region, vs.updated(returned, body.tpe.value), cs, ks)
           ops.foreach { o =>
             val k = Type.Continuation(o.signature.result, o.signature.initialAnswer, region, Set.empty, o.signature.returned)
-            term(o.body, bs, rs, region, vs.updated(o.parameter, o.signature.argument).updated(o.continuation, k), cs)
+            term(o.body, bs, rs, region, vs.updated(o.parameter, o.signature.argument).updated(o.continuation, k), cs, ks)
           }
       }
     }
-    term(root, Map.empty, Set.empty, Top, Map.empty, Map.empty)
+    term(root, Map.empty, Set.empty, Top, Map.empty, Map.empty, Map.empty)
   }
 
   def show(program: Program): String = {
@@ -297,6 +331,8 @@ object Core {
         case ValueNode.Constructor(n, _) => n
         case ValueNode.Primitive(op, _) => op
         case ValueNode.LocalLambda(p, r, _) => s"lambda local[$r] $p"
+        case ValueNode.KindLambda(p, k, _) => s"KindLambda [$p: $k]"
+        case ValueNode.InstantiateKind(_, a) => s"InstantiateKind [$a]"
         case ValueNode.TypeLambda(p, _) => s"TypeLambda [$p]"
         case ValueNode.InstantiateType(_, t) => s"InstantiateType [${Syntax.show(t)}]"
         case _ => v.node.productPrefix
@@ -309,6 +345,8 @@ object Core {
         case ValueNode.Instantiate(f, c, es) => line(n + 1, s"evidence arguments $es"); value(f, n + 1); value(c, n + 1)
         case ValueNode.Primitive(_, args) => args.foreach(value(_, n + 1))
         case ValueNode.Constructor(_, args) => args.foreach(value(_, n + 1))
+        case ValueNode.KindLambda(_, _, b) => value(b, n + 1)
+        case ValueNode.InstantiateKind(b, _) => value(b, n + 1)
         case ValueNode.TypeLambda(_, b) => value(b, n + 1)
         case ValueNode.InstantiateType(b, _) => value(b, n + 1)
         case ValueNode.ProofAbstraction(b) => value(b, n + 1)

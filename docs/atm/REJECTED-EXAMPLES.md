@@ -1,5 +1,12 @@
 # Previously rejected examples: fixes and remaining limits
 
+**2026-11-09 update:** the two original files below retain their unsupported
+syntax as negative regressions. Checked explicit annotations now express the
+missing abstractions: see [ANNOTATIONS.md](ANNOTATIONS.md) and
+[`examples/atm/annotations`](../../examples/atm/annotations/). Both annotated
+patterns execute without reinstating `replaceAnswer` or inlining the helpers.
+The older diagnosis below describes the unannotated forms.
+
 For a single overview of all benchmark families, contracts and commands, start
 with [BENCHMARKS.md](BENCHMARKS.md). This report explains the individual repairs.
 
@@ -7,7 +14,7 @@ Checked on 2026-11-06. The scope here is every existing
 `examples/atm/**/*.effekt` file, not the unported rows of the paper benchmark table.
 The initial fresh run found 18 accepted files, 12 blocked positive examples,
 and six intentional negatives. That repair increment had 28 accepted files, two unsupported examples and six
-negatives. After the ARM migration, the current inventory, including the six inference examples, has **58 accepted
+negatives. After the ARM migration, the archived 2026-11-06 inventory, including the six inference examples, had **58 accepted
 files, three unsupported examples, and 22 intentional negatives**.
 Of the ten repairs, seven use added language support and three also narrow their
 generic contracts to explicit answer-type parameters. The distinction is
@@ -91,12 +98,12 @@ opaque-effect polymorphism and the old `repeatable`/`after` bounds remain
 unsupported. The original generic APIs have therefore been narrowed, while
 their closed examples and effectful executions have been retained.
 
-## Unsupported examples
+## Retained unsupported syntax and annotated repairs
 
-| Example | Remaining blocker | What an honest fix requires |
+| Original example | Why its old syntax is rejected | Explicit repair |
 | --- | --- | --- |
-| [`callback-under-handler`](../../examples/atm/callback-under-handler.effekt) | The closure is defined outside a later caller-owned delimiter and called beneath it. Its ordinary-function body reaches symbolic-distance ATC inference. A local arrow cannot be called at both regions. | A checked caller/ATC-indexed computation contract, with explicit ATC abstraction/instantiation and the relevant target kinds/codomain family. Moving the closure into the inner handler or restoring `replaceAnswer` would avoid the intended abstraction rather than implement it. |
-| [`multiple-capabilities`](../../examples/atm/multiple-capabilities.effekt) | The old `capfun here` assumes an unknown relative handler tail. Current capability bounds do not establish a concrete relative distance between the two abstract handlers for ATC inference. | Checked relative-region/distance/evidence/ATC binders or sufficient explicit annotations, supported by a declarative target checker. Inlining the two-handler helper would lose the intended reusable abstraction. |
+| [`callback-under-handler`](../../examples/atm/callback-under-handler.effekt) | The closure is defined outside a later caller-owned delimiter and called beneath it. Its ordinary-function body reaches symbolic-distance ATC inference. A local arrow cannot be called at both regions. | The [annotated outer call](../../examples/atm/annotations/polymorphic-outer-call.effekt) abstracts over `R`, `D`, `Ev(R,D,h)`, and `ATC(D)`, then instantiates them at the call site. |
+| [`multiple-capabilities`](../../examples/atm/multiple-capabilities.effekt) | The old `capfun here` assumes an unknown relative handler tail. Current capability bounds do not establish a concrete relative distance between the two abstract handlers for ATC inference. | The [annotated two-capability helper](../../examples/atm/annotations/multiple-capabilities.effekt) keeps both capabilities abstract and takes checked relative evidence `Ev(d,1,c)`. |
 
 These programs remain in place. Their comments describe the intended prototype
 behavior, not a guarantee from the current checker. Symbolic-distance ATC
@@ -107,8 +114,8 @@ There is one additional restriction on the new forms: ordinary functions cannot
 synthesize local-function results indexed by their fresh abstract caller region,
 because Core does not yet retain Definition 17's caller-indexed codomain family.
 The checker rejects that case explicitly. A stable local result annotation is
-supported and tested. General computation/ATC-kind quantification, polymorphic
-operation signatures and region-polymorphic datatypes are still missing. Closed
+supported and tested. Implicit caller-indexed codomain translation, polymorphic
+operation signatures, and region-polymorphic datatypes are still missing. Closed
 pure function fields at the top region are now implemented.
 
 The inference suite additionally contains

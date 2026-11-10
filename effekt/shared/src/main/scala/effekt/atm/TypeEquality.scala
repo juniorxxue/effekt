@@ -8,10 +8,11 @@ import Syntax.*
 object TypeEquality {
   def same(a: Type, b: Type): Boolean = value(a, b, Binders(), Binders())
   def same(a: Computation, b: Computation): Boolean = computation(a, b, Binders(), Binders())
+  def sameContext(a: Evidence.AnswerContext, b: Evidence.AnswerContext): Boolean = context(a, b, Binders(), Binders())
   def same(a: Effect, b: Effect): Boolean = effect(a, b, Binders(), Binders())
   def sameOperations(a: List[Signature], b: List[Signature]): Boolean = operations(a, b, Binders(), Binders())
 
-  private case class Binders(capabilities: List[String] = Nil, effects: List[String] = Nil, types: List[String] = Nil, predicates: List[String] = Nil, terms: List[String] = Nil)
+  private case class Binders(capabilities: List[String] = Nil, effects: List[String] = Nil, types: List[String] = Nil, predicates: List[String] = Nil, terms: List[String] = Nil, annotations: List[String] = Nil)
   // An unnamed parameter still occupies a binder position. Omitting that slot
   // could identify an outer dependency on one side with an inner one on the other.
   // The empty sentinel cannot occur as a resolved source identifier.
@@ -25,6 +26,9 @@ object TypeEquality {
     case (Type.Variable(x), Type.Variable(y)) => key(x, left.types) == key(y, right.types)
     case (Type.Refined(x, a, p), Type.Refined(y, b, q)) =>
       value(a, b, left, right) && formula(p, q, left.copy(terms = x :: left.terms), right.copy(terms = y :: right.terms))
+    case (Type.KindPoly(x, k, a), Type.KindPoly(y, l, b)) =>
+      kind(k, l, left, right) && value(a, b, bindKind(x, k, left), bindKind(y, l, right))
+    case (Type.AbstractResult(a), Type.AbstractResult(b)) => form(a, b, left, right)
     case (Type.TypePoly(x, a), Type.TypePoly(y, b)) =>
       value(a, b, left.copy(types = x :: left.types), right.copy(types = y :: right.types))
     case (Type.PredicatePoly(x, args, a), Type.PredicatePoly(y, params, b)) =>
@@ -64,13 +68,47 @@ object TypeEquality {
       s == t && formula(a, b, left.copy(terms = x :: left.terms), right.copy(terms = y :: right.terms))
     case _ => a == b
   }
-  private def computation(a: Computation, b: Computation, left: Binders, right: Binders): Boolean =
-    value(a.value, b.value, left, right) && ((a.effect, b.effect) match {
+  private def bindKind(n: String, k: Annotations.Kind, b: Binders): Binders = k match {
+    case Annotations.Kind.Region => b.copy(capabilities = n :: b.capabilities)
+    case _ => b.copy(annotations = n :: b.annotations)
+  }
+  private def distance(a: Evidence.Distance, b: Evidence.Distance, left: Binders, right: Binders): Boolean = {
+    def rename(d: Evidence.Distance, bs: Binders): Evidence.Distance = d match {
+      case Evidence.Distance.Variable(n) => Evidence.Distance.Variable(key(n, bs.annotations).toString)
+      case Evidence.Distance.Plus(a, b) => Evidence.Distance.Plus(rename(a, bs), rename(b, bs))
+      case _ => d
+    }
+    Evidence.sameDistance(rename(a, left), rename(b, right))
+  }
+  private def kind(a: Annotations.Kind, b: Annotations.Kind, left: Binders, right: Binders): Boolean = (a, b) match {
+    case (Annotations.Kind.Context(d), Annotations.Kind.Context(e)) => distance(d, e, left, right)
+    case (Annotations.Kind.Evidence(a, d, b), Annotations.Kind.Evidence(c, e, f)) =>
+      key(a, left.capabilities) == key(c, right.capabilities) && key(b, left.capabilities) == key(f, right.capabilities) && distance(d, e, left, right)
+    case _ => a == b
+  }
+  private def context(a: Evidence.AnswerContext, b: Evidence.AnswerContext, left: Binders, right: Binders): Boolean = (a, b) match {
+    case (Evidence.AnswerContext.Hole, Evidence.AnswerContext.Hole) => true
+    case (Evidence.AnswerContext.Variable(a), Evidence.AnswerContext.Variable(b)) => key(a, left.annotations) == key(b, right.annotations)
+    case (Evidence.AnswerContext.Compose(a, b), Evidence.AnswerContext.Compose(c, d)) => context(a, c, left, right) && context(b, d, left, right)
+    case (Evidence.AnswerContext.Layer(v, i, r, n), Evidence.AnswerContext.Layer(w, j, s, m)) =>
+      value(v, w, left, right) && computation(i, j, left.copy(terms = bind(n, left.terms)), right.copy(terms = bind(m, right.terms))) && context(r, s, left, right)
+    case _ => false
+  }
+  private def form(a: ComputationForm, b: ComputationForm, left: Binders, right: Binders): Boolean = (a, b) match {
+    case (ComputationForm.Variable(a), ComputationForm.Variable(b)) => key(a, left.annotations) == key(b, right.annotations)
+    case (ComputationForm.Context(a, c), ComputationForm.Context(b, d)) => context(a, b, left, right) && computation(c, d, left, right)
+    case _ => false
+  }
+  private def computation(a: Computation, b: Computation, left: Binders, right: Binders): Boolean = (a.form, b.form) match {
+    case (Some(a), Some(b)) => form(a, b, left, right)
+    case (None, None) => value(a.value, b.value, left, right) && ((a.effect, b.effect) match {
       case (Effect.Change(ai, af), Effect.Change(bi, bf)) =>
         computation(ai, bi, left.copy(terms = bind(a.returned, left.terms)), right.copy(terms = bind(b.returned, right.terms))) &&
           computation(af, bf, left, right)
       case _ => effect(a.effect, b.effect, left, right)
     })
+    case _ => false
+  }
 
   private def effect(a: Effect, b: Effect, left: Binders, right: Binders): Boolean = (a, b) match {
     case (Effect.Pure, Effect.Pure) => true

@@ -1,6 +1,6 @@
 # ATM frontend: implementation and usage
 
-Documentation snapshot: **2026-11-06**. Commands below run from the repository root.
+Documentation snapshot: **2026-11-10**. Commands below run from the repository root.
 
 This checkout is based on Effekt **v0.3.0**, commit
 `cd18ad896b9f1c856a9d6002fd0a5733e5cb9a15`, with its pinned Kiama submodule.
@@ -48,6 +48,8 @@ Effekt lowering.
 | --- | --- |
 | [Benchmark overview](BENCHMARKS.md) | Single-file outline of families, contracts, all current inputs, coverage and run commands |
 | [Artifact status](ARTIFACT-STATUS.md) | Current implementation and remaining priorities |
+| [Explicit annotations](ANNOTATIONS.md) | Region, distance, evidence, computation and ATC binders, arguments and checking |
+| [Native syntax differences](SYNTAX-DIFFERENCES.md) | Restored syntax, remaining frontend gaps, and intentional ATM extensions |
 | [Paper fidelity](FIDELITY.md) | Rule correspondence, explicit extensions and missing target types/kinds |
 | [Direct Lifted backend](DIRECT-LIFTED.md) | Core-to-Lifted translation, evidence and validation boundary |
 | [Example repairs](REJECTED-EXAMPLES.md) | Ten repaired examples and current unsupported/negative cases |
@@ -63,8 +65,8 @@ the symbolic-distance ATC limitation.
 Their dedicated supplement table records inference and typechecking time.
 
 For benchmark orientation, [BENCHMARKS.md](BENCHMARKS.md) is self-contained.
-There are **83 existing `.effekt` files: 58 accepted, 22 intentional negatives and
-three unsupported**. Seven blocked examples were repaired through added language
+The archived 2026-11-06 inventory contains **83 `.effekt` files: 58 accepted,
+22 intentional negatives and three unsupported**. Seven blocked examples were repaired through added language
 support; three more use narrower explicit answer-type annotations. Separately,
 **All 52 pinned upstream ARM files** have ports (31 accept, 21 fail their contracts).
 One upstream distribution UNSAT label conflicts with its unchanged SAT assertion.
@@ -146,24 +148,126 @@ its argument type, result type and required region from the expected arrow.
 This works for function arguments, operation arguments and handler returns.
 Without an expected arrow, the domain annotation is still required.
 Likewise, a handler in a checking position can omit its result annotation:
-`try { ... } with h { ... }` uses the expected computation type. A handler in a
-synthesis-only position needs a computation-type annotation on the whole handler:
-`try { ... } with h { ... }: ComputationType`. The legacy spelling
-`with h: ComputationType { ... }` also annotates the whole computation, not the
-capability `h`; prefer the trailing form to make that distinction clear.
+`try { ... } with h { ... }` uses the expected computation type. In synthesis,
+a partial surface pass can infer the returned value type `T` from the body and
+return clause. It proposes `T / pure` in empty inherited mode, or `T / (C => C)`
+under inherited answer `C`, and then checks the complete handler normally.
+This annotation-generation step extends the printed algorithm: `A_Handle`
+itself remains checking-only. It is not general inference of answer-changing
+contracts or refinements. Source abstractions without result contracts and other
+unsupported projections need an annotation on the whole handler:
+`try { ... } with h { ... }: ComputationType`. Explicit annotations are always
+checked as supplied. The legacy spelling
+`with h: ComputationType { ... }` remains accepted for archived inputs.
+If the name after `:` is a declared interface, `with h: File { ... }` instead
+uses native Effekt's named-interface syntax. Prefer trailing computation
+annotations to avoid this legacy ambiguity.
 
 Answer transitions use `Int / (Int => Bool)`. Parentheses enclose the whole
 transition, including nested computation endpoints, as in
 `Unit / (Int / (Int => Bool) => Int / (Int => Bool))`.
 Function-valued endpoints remain explicitly grouped:
 `Int / (((Int) => Int) => Bool)`. Effect sequences use `(E; F)`; the separator
-distinguishes them from answer transitions. Square brackets remain in type,
-predicate, and effect instantiation and in explicit local-region selectors.
+distinguishes them from answer transitions. Square brackets also delimit typelike instantiation, explicit operation annotations,
+and local-region selectors.
 The old bracketed answer transitions are accepted for archived regression inputs.
 A dependent computation result can
 be written `(answer: Int) / ({r: Int | r == answer} => Int)`; `answer` scopes only
 over the initial answer. A computation can be explicitly annotated with a trailing
 `: ComputationType`.
+
+Operation clauses may omit the answer transition and use an empty argument list:
+
+```effekt
+def read(): Int = { resume(42) }
+def close(): Unit = { resume() }
+```
+
+The result annotation describes the operation's returned value. For a handler
+checked against computation type `C`, an omitted transition is inferred as
+`C => C`; the clause and its resumption are checked with that explicit contract.
+This is contextual inference for answer-preserving clauses, not general inference
+of answer-type modification or a claim that the operation invocation is pure.
+`()` introduces an inaccessible Unit argument. Explicit `/ (C1 => C2)` contracts
+and named arguments remain supported and can be mixed with inferred clauses.
+Capability signature annotations still require explicit answer contracts because
+they have no enclosing handler computation to supply `C`.
+
+Named interfaces use native Effekt syntax:
+
+```effekt
+interface File {
+  def read(): Int
+  def close(): Unit
+}
+def main(): Int = {
+  try { h.close(); h.read() } with h: File {
+    def read() = resume(42)
+    def close() = resume(())
+  }
+}
+```
+
+The declaration supplies omitted clause argument/result types. Explicit types
+must agree with it, and implementations must provide every operation exactly
+once. Declarations are checked at top level, so a handler-local alias cannot
+change their meaning. Parameterized declarations such as `interface Reader[A]`
+and implementations such as `with h: Reader[Int]` are supported. Functions and
+operations can have multiple value parameters. Interfaces specify value
+signatures; each implementation still supplies or contextually infers its own
+ATM answer contract. Interface names do not introduce nominal capability types
+into the paper calculus. See [syntax differences](SYNTAX-DIFFERENCES.md) for
+the remaining native interface features.
+
+Native calls such as `resume(readInt(c))`, computations inside arithmetic and
+constructors, and multiple arguments elaborate to ordinary `let` bindings and
+pairs. Effects execute once in left-to-right order; short-circuited operands stay
+inside their branch. Native `type` declarations, postfix `match`, multiline cases
+and wildcard fields are accepted. Ordinary recursive `def` selects the existing
+recursive checker when its body contains a free self reference.
+
+Multiple top-level helpers/values, acyclic forward references, top-level aliases,
+native `def id[A](x: A): A = x` / `id[Int](42)` syntax, and omitted `main` result
+annotations are supported. Inferred closed results must still be pure and pass
+escape/residual checks. See [syntax differences](SYNTAX-DIFFERENCES.md) for the
+remaining native forms and inference limitations.
+
+Omitted handler return clauses elaborate to a fresh identity return clause.
+Clause and function bodies can be expressions, and newlines separate ordinary
+statements. Local functions can also have empty argument lists. The ATM shortcut
+`resume()` denotes `resume(())`; native Effekt requires the latter spelling for
+a Unit resumption.
+
+The [reusable Fig. 1 example](../../examples/atm/file-reusable.effekt) now uses
+native `def file(c: Int) {body: {File} => Int}`, `body {f}`, and nested
+`file(7) { {a} => ... }` calls. It has no explicit typelike parameters or handler
+computation annotations. The mock-backed program checks at `Int / pure` and
+returns 42 through direct Lifted/Chez, as it does in native Effekt/JS.
+This is the single maintained executable version; the former paper copies
+`file_simple_atm.effekt` and `file_simple_reusable.effekt` are consolidated here.
+
+From the Effekt repository root, run it directly:
+
+```sh
+sbt 'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt'
+```
+
+Or compile it to Scheme and execute the generated file with Chez:
+
+```sh
+sbt 'effektJVM/runMain effekt.atm.Main --emit examples/atm/file-reusable.effekt /tmp/file-reusable.ss'
+chez --script /tmp/file-reusable.ss
+```
+
+Native block functions are contextually specialized by region and answer
+contract. Each specialization remains an ordinary runtime function receiving
+its callback as an argument; neither body is substituted into its caller.
+The callback receives a checked capability and evidence argument. This is an
+additional surface pass using the existing exact-region function bridge, not
+unrestricted block/capture polymorphism or a new symbolic-distance ATC rule.
+The [inlined companion](../../examples/atm/file-nested.effekt) remains for
+certificate and execution comparisons. See [FIDELITY.md](FIDELITY.md#native-blocks-contextual-specialization)
+for the paper comparison and precise limits.
 
 Operation clauses implicitly bind their resumption as `resume`, following
 Effekt's syntax:
@@ -183,16 +287,23 @@ the existing continuation typing and region restrictions. A handler's body and
 return clause do not receive its resumption binding. The old explicit
 `resume k` suffix remains accepted for archived regression fixtures.
 
-`typefun [A] { ... }` and `f[type Int]` introduce and instantiate value-type
+Handler capabilities can be used directly as values: `invoke(h)` passes the
+capability bound by `h`, `val saved = h` aliases it, and `f{h}` supplies it to a
+capability abstraction. The nearest lexical term binding wins: a local value
+can shadow a capability, and an inner handler or capability parameter can
+shadow an outer value. The old value spelling `cap(h)` remains accepted for
+compatibility; the type annotation `cap(h)` still denotes that capability's type.
+
+`fun [A] { ... }` and `f[Int]` introduce and instantiate value-type
 quantification. `predfun [P(Int)] { ... }` and
-`f[pred (n: Int) => n >= 0]` do the same for rigid refinement predicates.
+`f[(n: Int) => n >= 0]` do the same for rigid refinement predicates.
 Type arguments may mention capabilities in the current context; handler escape
 checks still apply after instantiation. Refinements support Int, Bool, Unit and
 logical pairs, including formulas such as `{u: Unit | u == ()}` and
 `{v: Int | forall n: Int. n + 0 == n}`. Quantified formula variables are scoped
 and sorted; their names are freshened before substitution or SMT serialization.
 `capfun (c: { def ask(Unit): Int / (Int => Int); }) { ... }` abstracts a
-capability/region, and `f{cap(h)}` instantiates it. There is no implicit permission
+capability/region, and `f{h}` instantiates it. There is no implicit permission
 to call that capability inside a lambda at a symbolic ATC distance.
 Capability instantiation uses `S_Cap`: an implementation may accept a broader
 operation argument and provide a stronger result/answer contract. Handler region
@@ -237,17 +348,31 @@ explained in [FIDELITY.md](FIDELITY.md).
 For repeated/composed callbacks, explicit value-type parameters can describe
 pure answer endpoints: `(Answer => Answer)` is repeatable, and
 `(Middle => Final)` followed by `(Initial => Middle)` composes to
-`(Initial => Final)`. This does not implement arbitrary computation-type or
-opaque-effect polymorphism; the three adapted examples record that restriction.
+`(Initial => Final)`. Those three adapted examples retain this restriction. General computation-type
+parameters are available separately through the explicit `Cty` annotation forms.
+
+## Explicit evidence and answer contexts
+
+The frontend now exposes `Reg`, `Dist`, `Ev(R, D, S)`, `ATC(D)`, and `Cty`
+binders and arguments. `h.op[E; K](v)` checks the supplied evidence's
+endpoints and the context's depth before plugging the operation's answers.
+Either annotation may be omitted: a single name in `h.op[X](v)` is classified
+by its in-scope evidence or ATC kind.
+These forms support callbacks with symbolic ATCs, including the annotated
+[outer-call](../../examples/atm/annotations/polymorphic-outer-call.effekt) and
+[two-capability](../../examples/atm/annotations/multiple-capabilities.effekt)
+examples. See [ANNOTATIONS.md](ANNOTATIONS.md) for syntax, scope rules, execution,
+and remaining backend restrictions.
 
 ## Deliberate boundaries
 
 The paper algorithm is partial. In particular, an operation whose handler is
 outside an ordinary region-polymorphic function has a deferred witness with symbolic distance.
-`atc` cannot peel a variable number of layers, so the checker rejects it, including
-inside an unused function. A function that installs its own handler is unaffected.
-The supplement's page 37 explicitly leaves ATC abstraction for these programs to
-future work. The old `replaceAnswer` function-call extension has been removed.
+`atc` cannot peel a variable number of layers, so an unannotated invocation is
+rejected, including inside an unused function. An explicit context and matching
+evidence supply a declarative alternative without assigning that distance zero. A function that installs its own handler is unaffected.
+The older supplement's page 37 identifies ATC abstraction as future work;
+the explicit annotation forms now provide it. The old `replaceAnswer` function-call extension has been removed.
 
 `capfun here`, scoped capability tails, answer-effect sequences, and
 `repeatable`/`after` bounds belong to the former prototype and are rejected.
@@ -256,8 +381,7 @@ is undefined. Unrestricted effect quantification can still occur in types, but
 it does not enable computation rules with an unknown final-answer projection.
 
 The frontend covers the currently implemented source forms, not every kind/type
-constructor in the paper grammar. General computation-type/ATC-kind quantification,
-polymorphic operation-signature binders, polymorphic datatypes and inference of
+constructor in the paper grammar. Polymorphic operation-signature binders, polymorphic datatypes and inference of
 unknown refinement predicates are not implemented. Higher-order value types,
 explicit type/predicate quantification, annotated recursion, logical pairs and
 lexical type aliases are supported. There is no termination proof for recursion.
@@ -284,6 +408,7 @@ explicitly. The retained legacy emitter uses finite answer sums and JavaScript
 | `A_Return*`, `A_Let*`, `A_SubC` | `inferTerm`, inherited-answer mode, `checkTerm`, `ascribe` |
 | `A_If*`, guarded join/meet | `Checker.guarded` |
 | `A_Do` | Evidence reconstruction, dependent substitution, `Evidence.atc` |
+| Explicit declarative invocation and kind instantiation | `Annotations`, `Checker.resolveArgument`, `inferOperation`; `Core.validate` checks scoped kinds and symbolic ATC depths |
 | `A_Handle`, `A_HRet`, `A_HOp` | Fresh region/edge; residual scope check; separate clause modes and continuation arrow; return-mode bridge explained in FIDELITY.md |
 | `S_Fun`, `S_Refine`, `S_CPureImpure`, `S_CImpure` | `Checker.subtype`; sorted SMT verification conditions |
 | Declarative `T_HRet` bridge | Explicit `return effect`; expected computation supplies the inherited final answer |

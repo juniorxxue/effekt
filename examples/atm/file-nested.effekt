@@ -1,0 +1,30 @@
+// Fig. 1: native interface/call syntax, with inferred ATM computation types.
+// Mock descriptors contain integers; closeFile has no operating-system effect.
+// Inlined companion for comparing evidence and execution with file-reusable.effekt.
+interface File {
+  def read(): Int
+  def close(): Unit
+}
+
+def readInt(c: Int): Int = c
+def closeFile(c: Int): Unit = ()
+
+def main() = {
+  val c = 7
+  val d = 35
+  try {
+    try {
+      val x = a.read()
+      val y = b.read()
+      a.close()
+      b.close()
+      x + y
+    } with b: File {
+      def read() = resume(readInt(d))
+      def close() = { closeFile(d); resume(()) }
+    }
+  } with a: File {
+    def read() = resume(readInt(c))
+    def close() = { closeFile(c); resume(()) }
+  }
+}

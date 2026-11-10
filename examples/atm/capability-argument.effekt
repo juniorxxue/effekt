@@ -4,7 +4,7 @@ def main(): Bool = {
     def local invoke(c: cap(h)): Int / (Int => Bool) = {
       c.ask()
     }
-    invoke(cap(h))
+    invoke(h)
   } with h: Bool {
     def ask(arg: Unit): Int / (Int => Bool) = {
       val n = resume(42);
