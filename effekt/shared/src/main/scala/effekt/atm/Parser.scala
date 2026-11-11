@@ -158,23 +158,6 @@ object Parser {
       }
       args.toList
     }
-    private var blockParameters = Set.empty[String]
-    private var blockFunctions = Set.empty[String]
-    private def blockParameter(): BlockParameter = {
-      expect("{"); val name = identifier(); expect(":"); expect("{")
-      val interface = identifier(); val args = typeArguments()
-      if current == "," then fail("Native blocks with several capability parameters are not supported yet")
-      expect("}"); expect("=>"); val result = tpe(); expect("}")
-      BlockParameter(name, interface, args, result)
-    }
-    private def blockArgument(): BlockArgument = {
-      expect("{")
-      val result = if accept("{") then {
-        val cap = identifier(); expect("}"); expect("=>")
-        BlockArgument.Literal(cap, statements())
-      } else BlockArgument.Forward(identifier())
-      expect("}"); result
-    }
     private case class Definition(name: String, wrap: Term => Term, dependencies: Set[String])
     private def definition(): Definition = {
       val recursive = accept("rec")
@@ -183,25 +166,12 @@ object Parser {
       val name = identifier()
       val types = typeParameters()
       val params = parameters(required = true)
-      val block = if current == "{" then Some(blockParameter()) else None
-      if current == "{" then fail("Several native block parameters are not supported yet")
-      if block.nonEmpty then {
-        if recursive || local || types.nonEmpty then fail("Native block definitions currently infer their own contextual specialization")
-        blockFunctions += name
-      }
+      if current == "{" then fail("Native block inference is unsupported; use explicit capability, region, computation, and evidence parameters")
       val param = params.binder; val arg = params.argument
       val res = if accept(":") then Some(params.result(computation())) else None
       expect("=")
-      val saved = blockParameters
-      blockParameters ++= block.map(_.name)
-      val body = try params.bind(term()) finally blockParameters = saved
+      val body = params.bind(term())
       accept(";")
-      if block.nonEmpty then {
-        val b = block.get
-        if params.fields.exists(_._1 == b.name) then fail("Duplicate block/value parameter")
-        val d = BlockDefinition(name, param, arg, b, res, body)
-        return Definition(name, rest => Term.BlockDefine(d, rest), Surface.free(body) -- Set(param, b.name, name))
-      }
       val free = Surface.free(body) - param
       if recursive || free(name) then {
         if types.nonEmpty then fail("Recursive polymorphic definitions are not supported yet")
@@ -772,19 +742,7 @@ object Parser {
         else if accept("match") then result = atomize(Term.Match(result, matchCases()))
         else if current == "(" && !newlineBeforeCurrent then {
           val arg = argument()
-          result = (result, current) match {
-            case (Value.Variable(n), "{") if blockFunctions(n) || tokens.lift(position + 1).exists(_.text == "{") =>
-              atomize(Term.BlockApply(n, arg, blockArgument()))
-            case _ => atomize(Term.Apply(result, arg))
-          }
-        }
-        else if current == "{" && !newlineBeforeCurrent && (result match {
-          case Value.Variable(n) => blockParameters(n)
-          case _ => false
-        }) then {
-          val Value.Variable(n) = result: @unchecked
-          take(); val cap = atomize(term()); expect("}")
-          result = atomize(Term.BlockInvoke(n, cap))
+          result = atomize(Term.Apply(result, arg))
         }
         else if current == "{" && !newlineBeforeCurrent then {
           take(); val capability = atomize(term()); expect("}"); result = Value.Instantiate(result, capability)

@@ -105,7 +105,6 @@ object Core {
         case S.Handle(r, _, _, _, ret, _) => Node.Handle(r, t.handlerEvidence.get,
           term(t.children.head, r), ret, term(t.children(1), region), t.operations.map(o =>
             Operation(o.source.signature, o.source.parameter, o.source.continuation, term(o.body, region))))
-        case _: S.BlockDefine | _: S.BlockApply | _: S.BlockInvoke => throw Diagnostic("Core: unresolved native block elaboration")
         case _: S.InferredHandle => throw Diagnostic("Core: unresolved handler result annotation")
         case _: S.ExplicitReturn => throw Diagnostic("Core: unresolved explicit return clause")
         case _: S.AnnotatedPerform | _: S.SingleAnnotatedPerform => throw Diagnostic("Core: unresolved operation annotation")

@@ -101,28 +101,6 @@ object AtmReference {
     }
   }
   private def term(source: Syntax.Term, env: Environment): Computation = source match {
-    case Syntax.Term.BlockDefine(d, body) =>
-      val function = Value.Function {
-        case Value.Pair(arg, block) => term(d.definition, env.bind(d.parameter, arg).bind(d.block.name, block))
-        case _ => throw new IllegalStateException("Native block function expects its argument and block")
-      }
-      term(body, env.bind(d.name, function))
-    case Syntax.Term.BlockApply(n, a, b) =>
-      val block = b match {
-        case Syntax.BlockArgument.Literal(c, body) => Value.Function {
-          case Value.Capability(id) => term(body, env.withCapability(c, id))
-          case _ => throw new IllegalStateException("Native block expects a capability")
-        }
-        case Syntax.BlockArgument.Forward(n) => env.values(n)
-      }
-      env.values(n) match {
-        case Value.Function(f) => f(Value.Pair(value(a, env), block))
-        case _ => throw new IllegalStateException("Native block call expects a function")
-      }
-    case Syntax.Term.BlockInvoke(n, c) => env.values(n) match {
-      case Value.Function(f) => f(value(c, env))
-      case _ => throw new IllegalStateException("Native block invocation expects a block")
-    }
     case Syntax.Term.Return(v) => Computation.Returned(value(v, env))
     case Syntax.Term.TypeAlias(_, _, b) => term(b, env)
     case Syntax.Term.AnnotationAlias(_, _, b) => term(b, env)

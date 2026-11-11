@@ -1,6 +1,6 @@
 # Native Effekt and the ATM frontend: syntax differences
 
-Updated 2026-11-10 against the **native Effekt v0.3.0 frontend in this checkout**
+Updated 2026-11-12 against the **native Effekt v0.3.0 frontend in this checkout**
 (base commit `cd18ad896b9f1c856a9d6002fd0a5733e5cb9a15`). The native compiler
 remains present and unchanged. This compares its syntax with the separate ATM
 frontend, rather than with the latest upstream language.
@@ -9,7 +9,6 @@ frontend, rather than with the latest upstream language.
 
 | Form | Current ATM support |
 | --- | --- |
-| `def file(c: Int) {body: {File} => Int}`; `file(c) { {f} => ... }`; `body {f}` | Contextual block inference and checked function specialization. Runtime function/callback calls are retained, with inferred capability/evidence parameters. Same-region block forwarding also works. |
 | `interface File { def read(): Int def close(): Unit }` | Named declarations, inherited clause value signatures, and checked repeated annotations. |
 | `interface Reader[A] { def read(): A }`; `with h: Reader[Int]` | Interface type parameters and explicit instantiation. Declarations are resolved in their own scope before instantiation. |
 | `def op(x: Int, y: Int): Int` | Multiple function/lambda/operation parameters and arguments elaborate to nested pairs. Missing clause types come from the interface; mixed explicit/omitted annotations are checked. |
@@ -27,18 +26,18 @@ frontend, rather than with the latest upstream language.
 | Zero arguments and newline-separated ordinary statements | Supported; semicolons remain accepted. |
 | Names ending in `?`, `!`, `$` | Accepted. Primitive spellings `add`, `not`, `fst`, `snd` also work as operation member names. |
 
-The [reusable Fig. 1 example](../../examples/atm/file-reusable.effekt) now uses
-the original native block syntax with top-level pure mocks, inferred results,
-and `resume(readInt(c))`. It passes both ATM and native Effekt. The
-[inlined companion](../../examples/atm/file-nested.effekt) remains a comparison
-fixture. Specialization supplies explicit checked block contracts; no helper
-or callback body is substituted into the other.
+The [reusable Fig. 1 example](../../examples/atm/file-reusable.effekt) uses
+explicit region/computation parameters, capability/evidence abstractions,
+handler/operation contracts, and ATCs. It is checked once as a polymorphic
+value and reused at two computation types. The old contextual specialization
+pass has been removed. The [inlined companion](../../examples/atm/file-nested.effekt)
+remains a comparison fixture. The explicit source requires the ATM frontend.
 
 ## Remaining gaps and their reasons
 
 | Native feature | Remaining work |
 | --- | --- |
-| General native block/capture polymorphism | The implemented subset has one block parameter with one capability parameter, a statically named helper, a projected result type, and a compatible identity-answer contract at its invocations. Recursive block schemes, several block/capability parameters, escaping first-class blocks, and forwarding across a new delimiter remain unsupported. Helpers are checked per contextual specialization; this is not once-for-all modular inference. |
+| Native block parameters, block literals/invocation, and capture inference | Unsupported. The former contextual specialization checked a helper separately at each use; it was removed. Explicit capability, region, computation and evidence parameters plus ATCs support reusable helpers checked once. General block scheme inference remains work. |
 | Chained `with` clauses | Native Effekt binds the capabilities under **one shared handler region** (`Typer.scala`, `core/Transformer.scala`). Rewriting these as several nested ATM handlers would add delimiters and change evidence distances. Correct capability-group elaboration is still needed. |
 | `effect Ask(): Int`, unnamed handlers and single-operation handler shorthand | Declaration and handler desugaring remain missing. These are not inherent ATM restrictions. |
 | `do read()` and inferred capability arguments | Native operation/name resolution and implicit capability passing are not integrated; use explicit receivers. This also affects reusable helpers with native effect annotations. |
@@ -95,25 +94,22 @@ and [`Checker.scala`](../../effekt/shared/src/main/scala/effekt/atm/Checker.scal
 `AtmNativeSyntaxTests` covers evaluation order, short circuiting, native declarations,
 generics, recursion, wildcard fields, and rejected type/escape errors. Accepted
 cases run through the reference interpreter and optimized/unoptimized Chez.
-The Fig. 1 tests still compare inferred/explicit evidence and ATC certificates,
-including distances 1, 0, 1, 0. The same example body is also tested by native
-Effekt/JS, with a printing entry point, independently of the ATM source emitter.
+`AtmExplicitFileTests` checks one generic helper/handler body in Core, two
+computation instantiations, explicit evidence/ATC distances 1, 0, 1, 0,
+and rejection of invalid unused helper definitions and invalid annotations.
+Accepted cases run through the independent source interpreter and optimized/
+unoptimized direct Chez. The explicit reusable example returns **42**; its
+descriptor-sensitive variant returns **735**. It no longer has the same source
+as the native Effekt/JS comparison from the historical block experiment.
 
 ```
 sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile'
 ```
 
-The final reusable-block run passed **410 tests**, and Scala.js compilation
-passed; details are in [VALIDATION.md](VALIDATION.md). Fig. 1
-returns **42** through direct Chez and native Effekt/JS. The legacy source emitter does not support the generated explicit evidence-kind abstraction; it remains tested with the inlined companion.
-An instrumented variant appends tags after each resumption returns; both ATM
-and native Effekt return **424231**. This checks nested resumption behavior
-in addition to the original arithmetic result.
-
-The subsequent plain-polymorphism change passed a 424-test full run and,
-after the final alias-name parser refinement, 101 focused tests plus Scala.js
-compilation. Its annotated outer-call example returns **true**; the accepted
-polymorphic file example returns **42**. See [VALIDATION.md](VALIDATION.md).
+Current and historical results, including removal of the specialization tests,
+are recorded in [VALIDATION.md](VALIDATION.md). The legacy source emitter does
+not support explicit evidence-kind abstraction and remains tested with the
+inlined companion.
 
 These are compiler and execution checks, not a mechanized correspondence or
 soundness theorem. [FIDELITY.md](FIDELITY.md) records the algorithm boundary.

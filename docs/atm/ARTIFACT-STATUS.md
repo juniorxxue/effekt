@@ -153,8 +153,9 @@ remain distinct from a type-soundness or compiler-preservation proof.
    arbitrary abstract ATC result projections still require backend support.
    See [FIDELITY.md](FIDELITY.md).
 2. **Port the complete motivating programs with their original properties.**
-   The reusable mock-backed Fig. 1 now checks with native blocks and contextual
-   specialization; see [FIDELITY.md](FIDELITY.md#native-blocks-contextual-specialization).
+   The reusable mock-backed Fig. 1 checks with explicit polymorphic parameters,
+   evidence and ATCs. Its definition is checked once; contextual specialization
+   was removed. See [FIDELITY.md](FIDELITY.md#reusable-helpers-explicit-polymorphism).
    Remaining work includes the polymorphic close protocol, nested state handlers
    with result exactly 3, and the file/GUI protocol. The current
    nested state example still needs polymorphic operation contracts and its

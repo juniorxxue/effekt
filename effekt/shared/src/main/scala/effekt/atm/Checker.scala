@@ -102,10 +102,7 @@ object Checker {
       s"$name#$nextIdentity"
     }
 
-    private case class Environment(blockDefinitions: Map[String, BlockScheme] = Map.empty,
-                                   blockUses: Map[String, BlockUse] = Map.empty,
-                                   blockResults: Map[String, Type] = Map.empty,
-                                   values: Map[String, Type] = Map.empty,
+    private case class Environment(values: Map[String, Type] = Map.empty,
                                    capabilities: Map[String, List[Signature]] = Map.empty,
                                    names: Map[String, String] = Map.empty,
                                    effects: Map[String, String] = Map.empty,
@@ -123,8 +120,7 @@ object Checker {
       def bind(name: String, tpe: Type, symbolic: Option[Expr] = None): Environment =
         bindIdentity(name, tpe, fresh(name), symbolic)
       def bindIdentity(name: String, tpe: Type, identity: String, symbolic: Option[Expr] = None): Environment = {
-        val next = copy(values = values.updated(name, tpe), blockDefinitions = blockDefinitions - name,
-          blockUses = blockUses - name, blockResults = blockResults - name)
+        val next = copy(values = values.updated(name, tpe))
         if !refined then next else Contracts.sort(tpe) match {
           case None => next.copy(logicalNames = logicalNames - name)
           case Some(sort) =>
@@ -163,198 +159,9 @@ object Checker {
       // A later value binder is selected by inferValue before this capability.
       def withCapability(name: String, identity: String, ops: List[Signature]): Environment =
         copy(capabilities = capabilities.updated(identity, ops), names = names.updated(name, identity),
-          values = values - name, logicalNames = logicalNames - name, annotations = annotations - name,
-          blockDefinitions = blockDefinitions - name, blockUses = blockUses - name, blockResults = blockResults - name)
+          values = values - name, logicalNames = logicalNames - name, annotations = annotations - name)
       def enterHandler(name: String, identity: String, ops: List[Signature], edge: Binding): Environment =
         withCapability(name, identity, ops).copy(region = identity, delta = edge :: delta)
-    }
-
-    private case class BlockScheme(definition: BlockDefinition, environment: Environment,
-        captures: List[(String, String, Type)], identity: String)
-    private class BlockUse(val parameter: BlockParameter, val argument: BlockArgument,
-        val caller: Environment, val declaration: Environment, val parent: String) {
-      var stack = checkingBlocks
-      var callback: Option[CheckedValue] = None
-    }
-    private var checkingBlocks = Set.empty[String]
-
-    private def blockHeaders(p: BlockParameter, env: Environment): List[Signature] = {
-      val schema = interfaces.getOrElse(p.interfaceName, fail(s"Unknown interface ${p.interfaceName}"))
-      require(schema.parameters.size == p.interfaceArguments.size, s"Wrong number of type arguments for interface ${p.interfaceName}")
-      val actuals = schema.parameters.zip(p.interfaceArguments.map(resolve(_, env))).toMap
-      val mapper = new Annotations.Mapper {
-        override def after(t: Type): Type = t match {
-          case Type.Variable(n) if actuals.contains(n) => actuals(n)
-          case _ => t
-        }
-      }
-      schema.operations.values.toList.sortBy(_.name).map(mapper.signature)
-    }
-    private def blockResult(s: BlockScheme): Type = {
-      val d = s.definition
-      val scope = s.environment.copy(values = s.environment.values - d.block.name,
-        names = s.environment.names - d.block.name, blockDefinitions = s.environment.blockDefinitions - d.block.name)
-        .bind(d.parameter, resolve(d.argument, s.environment))
-        .copy(blockResults = s.environment.blockResults.updated(d.block.name, resolve(d.block.result, s.environment)))
-      d.result.fold(projectedValue(d.definition, scope, Map.empty))(c => resolve(c, scope).value)
-    }
-    private def defineBlock(d: BlockDefinition, body: Term, env: Environment, inherited: Option[Computation]): CheckedTerm = {
-      blockHeaders(d.block, env); resolve(d.block.result, env); resolve(d.argument, env)
-      val names = (Surface.free(d.definition) -- Set(d.parameter, d.block.name, d.name)).toList.sorted
-      // Save the lexical values now. Specializations later receive them as
-      // ordinary arguments, so caller shadowing cannot capture a helper's free names.
-      val captures = names.filterNot(env.blockDefinitions.contains).map { name =>
-        (name, fresh("blockCapture"), value(Value.Variable(name), env))
-      }
-      val scheme = BlockScheme(d, env, captures.map((n, a, v) => (n, a, v.tpe)), fresh(d.name))
-      val scope = captures.foldLeft(env) { case (e, (_, alias, v)) => e.bind(alias, v.tpe) }
-      val checked = infer(body, scope.copy(blockDefinitions = scope.blockDefinitions.updated(d.name, scheme),
-        values = scope.values - d.name, names = scope.names - d.name,
-        blockUses = scope.blockUses - d.name, blockResults = scope.blockResults - d.name), inherited)
-      captures.foldRight(checked) { case ((_, alias, v), rest) =>
-        val binding = CheckedTerm(Term.Return(v.source), Computation(v.tpe), v.captures, List(v), residuals = v.residuals)
-        finishTerm(CheckedTerm(Term.Let(alias, binding.source, rest.source), rest.tpe, binding.captures ++ rest.captures,
-          children = List(binding, rest), logic = rest.logic, symbolic = rest.symbolic))
-      }
-    }
-    private def invokeBlock(name: String, capability: Value, env: Environment, inherited: Option[Computation]): CheckedTerm = {
-      val use = env.blockUses.getOrElse(name, fail(s"Unknown native block $name"))
-      val cap = value(capability, env)
-      val actual = cap.tpe match {
-        case Type.Capability(r) => r
-        case _ => fail("A native capability block needs a capability argument")
-      }
-      require(env.region == actual, "A native capability block must be invoked at its capability's region", DiagnosticKind.Unsupported)
-      val edge = Evidence.known(actual, use.parent, env.delta).getOrElse(
-        throw Diagnostic("A native block invocation needs known evidence to its caller region", DiagnosticKind.Unsupported))
-      require(edge.distance.concrete.nonEmpty, "A native block invocation needs a concrete relative distance", DiagnosticKind.Unsupported)
-      val ops = env.capabilities(actual).sortBy(_.name)
-      val headers = blockHeaders(use.parameter, use.declaration)
-      require(ops.map(_.name) == headers.map(_.name) && ops.zip(headers).forall { (a, b) =>
-        TypeEquality.same(a.argument, b.argument) && TypeEquality.same(a.result, b.result)
-      }, s"Capability does not implement block interface ${use.parameter.interfaceName}")
-      val answer = inherited.getOrElse(throw Diagnostic("A native capability block needs an inherited answer", DiagnosticKind.Unsupported))
-      val result = Computation(resolve(use.parameter.result, use.declaration), Effect.Change(answer, answer))
-      val callback = use.callback match {
-        case Some(v) =>
-          val p = v.tpe.asInstanceOf[Type.CapabilityPoly]
-          val k = open(p.body, p.parameter, actual).asInstanceOf[Type.KindPoly]
-          require(TypeEquality.sameOperations(p.operations.map(open(_, p.parameter, actual)), ops) &&
-            Annotations.sameKind(k.kind, Kind.Evidence(actual, edge.distance, use.parent)) &&
-            TypeEquality.same(k.body.asInstanceOf[Type.LocalFunction].result, result),
-            "A block parameter is invoked with incompatible answer or region contracts", DiagnosticKind.Unsupported)
-          v
-        case None =>
-          val BlockArgument.Literal(parameter, body) = use.argument: @unchecked
-          val region = fresh(parameter); val evidence = fresh("blockEvidence"); val unit = fresh("blockUnit")
-          val signatures = ops.map(open(_, actual, region))
-          val witness = Binding(evidence, Constraint(region, use.parent), edge.distance)
-          val kind = Kind.Evidence(region, edge.distance, use.parent)
-          val scope = use.caller.withCapability(parameter, region, signatures).copy(region = region,
-            delta = witness :: use.caller.delta, kinds = use.caller.kinds.updated(evidence, kind))
-          val expected = open(result, actual, region)
-          val savedStack = checkingBlocks
-          checkingBlocks = use.stack
-          val checkedBody = try checkTerm(body, expected, scope) finally checkingBlocks = savedStack
-          require(!checkedBody.residuals.exists(_.constraint.free(region)),
-            "Native block inference left a residual mentioning its bound capability")
-          val localType = Type.LocalFunction(Type.Unit, expected, checkedBody.captures, Some(region))
-          val local = finishValue(CheckedValue(Value.LocalLambda(unit, Some(Type.Unit), None, body),
-            localType, checkedBody.captures, body = Some(checkedBody)))
-          val abstraction = finishValue(CheckedValue(Value.KindLambda(evidence, kind, local.source),
-            Type.KindPoly(evidence, kind, local.tpe), local.captures, List(local), quantified = List(witness)))
-          val captures = abstraction.captures - region
-          val value = finishValue(CheckedValue(Value.CapabilityLambda(region, signatures, abstraction.source),
-            Type.CapabilityPoly(region, signatures, abstraction.tpe, captures), captures, List(abstraction)))
-          use.callback = Some(value)
-          value
-      }
-      // Ordinary checked capability and evidence applications supply the actual
-      // handler edge. No distance is guessed and no residual is discarded.
-      val proofName = fresh("blockInvocationEvidence")
-      val function = Value.InstantiateKind(Value.Instantiate(Value.Variable(name), capability),
-        Argument.Evidence(Proof.Variable(proofName)))
-      infer(Term.Apply(function, Value.Unit), env.bind(name, callback.tpe)
-        .withAnnotation(proofName, Argument.Evidence(Proof.Checked(edge))), inherited)
-    }
-    private def applyBlock(name: String, argument: Value, block: BlockArgument,
-        env: Environment, inherited: Option[Computation]): CheckedTerm = {
-      require(!env.values.contains(name), s"$name is a value, not a native block function")
-      val scheme = env.blockDefinitions.getOrElse(name, fail(s"Unknown native block function $name"))
-      require(!checkingBlocks(scheme.identity), "Recursive native block specialization is not supported yet", DiagnosticKind.Unsupported)
-      val d = scheme.definition
-      val forwarding = block match {
-        case BlockArgument.Forward(n) => Some(n -> env.blockUses.getOrElse(n, fail(s"Unknown native block $n")))
-        case _ => None
-      }
-      forwarding.foreach { (_, outer) =>
-        require(outer.parent == env.region, "Forwarding a native block across a new delimiter needs a more general block scheme", DiagnosticKind.Unsupported)
-        require(TypeEquality.sameOperations(blockHeaders(outer.parameter, outer.declaration), blockHeaders(d.block, scheme.environment)) &&
-          TypeEquality.same(resolve(outer.parameter.result, outer.declaration), resolve(d.block.result, scheme.environment)),
-          "Forwarded block declarations disagree")
-      }
-      val actualBlock = forwarding.fold(block)(_._2.argument)
-      val caller = forwarding.fold(env)(_._2.caller)
-      val domain = resolve(d.argument, scheme.environment)
-      val arg = checkValue(argument, domain, env)
-      val use = new BlockUse(d.block, actualBlock, caller, scheme.environment, env.region)
-      forwarding.foreach { (_, outer) => use.stack = outer.stack }
-      val result = d.result match {
-        case Some(c) if c.effect != Effect.Pure => resolve(c, scheme.environment)
-        case _ => adapt(Computation(blockResult(scheme)), inherited, env)
-      }
-      val scope = scheme.environment.copy(region = env.region, delta = env.delta,
-        values = scheme.environment.values - d.block.name, names = scheme.environment.names - d.block.name,
-        blockDefinitions = scheme.environment.blockDefinitions - d.block.name,
-        capabilities = env.capabilities ++ scheme.environment.capabilities,
-        kinds = env.kinds ++ scheme.environment.kinds,
-        blockUses = scheme.environment.blockUses.updated(d.block.name, use),
-        blockResults = scheme.environment.blockResults.updated(d.block.name, resolve(d.block.result, scheme.environment)))
-        .bind(d.parameter, domain)
-      checkingBlocks += scheme.identity
-      // A nested call of the same helper in the supplied block is not recursion
-      // in the helper definition. invokeBlock temporarily restores the caller's stack.
-      val checked = try checkTerm(d.definition, result, scope) finally checkingBlocks -= scheme.identity
-      val callback = use.callback.getOrElse(throw Diagnostic("A native block parameter must be invoked to infer its contract", DiagnosticKind.Unsupported))
-      val argumentBlock = forwarding match {
-        case Some((n, outer)) =>
-          outer.callback.foreach(v => require(TypeEquality.same(v.tpe, callback.tpe),
-            "A forwarded block has incompatible invocation contracts", DiagnosticKind.Unsupported))
-          outer.callback = Some(callback)
-          CheckedValue(Value.Variable(n), callback.tpe, callback.captures)
-        case None => callback
-      }
-      val captured = scheme.captures.map { (_, alias, _) => value(Value.Variable(alias), env) }
-      val parameters = (d.parameter -> domain) :: (d.block.name -> callback.tpe) :: scheme.captures.map((n, _, t) => n -> t)
-      val parameter = fresh("blockArguments")
-      val tuple = Surface.tuple(parameters.map(_._2))
-      val projectionEnv = env.bind(parameter, tuple)
-      val definition = parameters.zipWithIndex.foldRight(checked) { case (((n, _), i), rest) =>
-        val v = value(Surface.projection(Value.Variable(parameter), i, parameters.size), projectionEnv)
-        val binding = CheckedTerm(Term.Return(v.source), Computation(v.tpe), v.captures, List(v))
-        finishTerm(CheckedTerm(Term.Let(n, binding.source, rest.source), rest.tpe, binding.captures ++ rest.captures,
-          children = List(binding, rest), logic = rest.logic))
-      }
-      val functionType = Type.LocalFunction(tuple, result, definition.captures, Some(env.region))
-      val lambda = finishValue(CheckedValue(Value.LocalLambda(parameter, Some(tuple), None, definition.source),
-        functionType, definition.captures, body = Some(definition)))
-      def pack(vs: List[CheckedValue]): CheckedValue = vs match {
-        case v :: Nil => v
-        case v :: rest =>
-          val tail = pack(rest)
-          finishValue(CheckedValue(Value.Primitive("pair", List(v.source, tail.source)),
-            Type.Pair(v.tpe, tail.tpe), v.captures ++ tail.captures, List(v, tail)))
-        case Nil => value(Value.Unit, env)
-      }
-      val args = pack(arg :: argumentBlock :: captured)
-      require(subtype(args.tpe, tuple, env.effectBounds, env.logic), "Native block arguments do not meet the inferred function contract")
-      val functionName = fresh(name + "Specialization")
-      val function = CheckedValue(Value.Variable(functionName), functionType, lambda.captures)
-      val call = finishTerm(CheckedTerm(Term.Apply(function.source, args.source), result,
-        function.captures ++ args.captures, List(function, args), logic = env.logic))
-      val binding = finishTerm(CheckedTerm(Term.Return(lambda.source), Computation(functionType), lambda.captures, List(lambda)))
-      finishTerm(CheckedTerm(Term.Let(functionName, binding.source, call.source), result,
-        binding.captures ++ call.captures, children = List(binding, call), logic = env.logic))
     }
 
     private case class InterfaceSchema(parameters: List[String], operations: Map[String, Signature])
@@ -1330,9 +1137,6 @@ object Checker {
         checked.children.flatMap(_.residuals) ++ checked.operations.flatMap(_.body.residuals)).distinct)
     }
     private def inferTerm(term: Term, env: Environment, inherited: Option[Computation]): CheckedTerm = term match {
-      case Term.BlockDefine(d, body) => defineBlock(d, body, env, inherited)
-      case Term.BlockApply(n, a, b) => applyBlock(n, a, b, env, inherited)
-      case Term.BlockInvoke(n, c) => invokeBlock(n, c, env, inherited)
       case Term.Match(scrutinee, cases) => inferMatch(term, scrutinee, cases, env, inherited, None)
       case Term.AnnotationAlias(name, definition, body) =>
         val (alias, residuals) = resolveArgument(definition, env)
@@ -1515,11 +1319,6 @@ object Checker {
         case _ => unsupported()
       }
       term match {
-        case Term.BlockInvoke(n, _) => env.blockResults.getOrElse(n, fail(s"Unknown native block $n"))
-        case Term.BlockApply(n, _, _) => blockResult(env.blockDefinitions.getOrElse(n, unsupported()))
-        case Term.BlockDefine(d, b) =>
-          val scheme = BlockScheme(d, env, Nil, fresh(d.name))
-          projectedValue(b, env.copy(blockDefinitions = env.blockDefinitions.updated(d.name, scheme)), headers)
         case Term.Return(v) => result(v)
         case Term.Let(name, binding, body) =>
           val t = projectedValue(binding, env, headers)

@@ -1,6 +1,6 @@
 # Paper fidelity: repairs and remaining work
 
-Updated 2026-11-10; the earlier rule audit used `popl27-paper152.pdf` and
+Updated 2026-11-12; the earlier rule audit used `popl27-paper152.pdf` and
 `popl27-paper152-supplemental.pdf`, on Effekt v0.3.0.
 
 The implementation is a tested subset of the algorithm, not a full transcription
@@ -102,80 +102,91 @@ spelling uses the existing type abstraction/application machinery.
 
 When `main` omits its result, the checker synthesizes the complete program and
 retains the pure-final-computation, capability-escape and residual-obligation
-checks. Native blocks use the additional contextual pass described below; full
-block/capture or effect-set inference is not claimed.
+checks. Native block/capture inference and native effect-set inference remain
+unsupported; reusable helpers can use explicit polymorphic parameters below.
 Empty handlers retain a region and distance-one edge; they are not optimized
 away before checking. These conveniences do not change the evidence/ATC rules
 or establish an operational correspondence theorem for the compiler.
 
-## Native blocks: contextual specialization
+## Reusable helpers: explicit polymorphism
 
-`def file(c: Int) {body: {File} => Int}` is retained as a reusable source
-function. `BlockDefine` records its lexical environment and block declaration.
-At a `BlockApply`, `Checker.applyBlock` projects the result value type, combines
-it with the inherited answer, and checks a specialization of the helper at the
-caller's exact region. The helper's value parameters and callback remain
-runtime arguments. Free values are saved under fresh names at declaration time
-and supplied as environment arguments, preserving lexical shadowing.
+The contextual native-block specialization pass from commit `506d5024e` has
+been removed. It saved a helper's syntax/environment at its declaration and
+checked its body separately at each use. That was an additional mechanism,
+not inference of a polymorphic type by the paper's algorithm. In particular,
+an unused helper did not receive the full body check. The `BlockDefine`,
+`BlockApply`, and `BlockInvoke` syntax, checker environments, elaboration, and
+reference-interpreter paths are all gone. Native block declarations now report
+that explicit parameters are required.
 
-When the helper executes `body {f}`, `invokeBlock` checks the supplied interface
-and obtains an actual witness from the capability region to the specialization's
-caller region using `Evidence.known`. The witness must have concrete distance
-`d`. The block is checked as a capability abstraction containing an evidence
-abstraction and an exact-region Unit function. Schematically, for caller region
-`rho`, operation signatures `ops`, inherited answer `C`, and block result `R`:
+[`file-reusable.effekt`](../../examples/atm/file-reusable.effekt) instead binds
+one ordinary polymorphic value:
 
+```effekt
+val file = fun [R: Reg, C: Cty] local[R](c: Int) {
+  fun local[R](body: forall cap f: {
+    def read(): Int / (C => C);
+    def close(): Unit / (C => C);
+  }. (forall E: Ev(f, 1, R).
+        (local[f] (Unit) => Int / (Int => C)))): C { ... }
+};
 ```
-forall cap f: ops.
-  forall e: Ev(f, d, rho).
-    local[f] (Unit) => R / (C => C)
-```
 
-The callback body is checked with the corresponding bound evidence in `delta`.
-The actual block invocation supplies its capability and the checked witness;
-`Core.validate` verifies the kind, endpoints, distance, and instantiated type.
-For Fig. 1 both callback edges have distance one. The operation distances remain
-**1, 0, 1, 0**, and `Evidence.atc` reconstructs the same contexts as for the
-inlined companion. The outer helper result is `Int / pure`; the inner result is
-`Int / (Int => Int)`. Each callback's default transition preserves the inherited
-answer, as with the existing omitted-operation-contract convention.
+Its handler is annotated `: C`, both operation clauses supply `C => C`, and
+it calls `body{h}[step(h)]()`. The callback's initial answer is explicitly
+`Int / pure`; its final answer is `C`. Thus the identity return clause is
+checked at `Int / pure` even when `C` is abstract. The definition is checked
+once under its declared binders; calls instantiate the checked type. The two
+instantiations are `file[here, Int](7)` and
+`file[a, Int / (Int => Int)](35)`.
 
-The comparison with `defn/algorithmic.ott` and
-`PLDI27/sections/implementation.otex` has the following boundary:
+The callbacks explicitly bind capabilities and distance-one evidence. Calls
+to outer `a` supply `[EB; Int / (Int => [])]`; calls to inner `b` supply
+`[refl; []]`. Evidence endpoints and ATC depths are checked; no symbolic
+distance is guessed. Operation distances are **1, 0, 1, 0**. `interface File`,
+`read(): Int`, and `close(): Unit` remain. Descriptors are mock read results;
+closing has no OS effect. This is a fully annotated ATM program, not a program
+accepted unchanged by the native Effekt frontend.
 
-- `A_Do` and `atc` are unchanged: symbolic distances still reject, and a concrete
-  distance must match the number of retained answer layers. The new evidence
-  fact is a quantified, checked argument, not a guessed distance.
-- The handler is checked by the existing `A_Handle` implementation, including
-  its residual and region-escape checks. Residual obligations from generated
-  function bindings are propagated to enclosing abstractions and the program
-  boundary; none are discarded.
-- Exact-region helper/callback arrows use the existing declarative
-  `T_Abs`/`T_App` bridge described below, not the printed region-polymorphic
-  `A_Abs` rule. Capability and evidence applications remain explicit in Core.
-- **The contextual specialization pass is additional surface elaboration.**
-  The paper does not provide these native block schemes, their inference rule,
-  or a proof of this pass. It does not imply that arbitrary symbolic-distance
-  programs now satisfy the printed algorithm. No compiler correspondence or
-  soundness theorem is claimed for this extension.
+`AtmExplicitFileTests` checks one generic helper binding and one handler body
+in Core, two different computation instantiations, reference/Chez agreement,
+and rejection of a bad definition even when unused. It also rejects wrong
+argument/result types, evidence, ATC depth, and computation instantiations.
+The [inlined companion](../../examples/atm/file-nested.effekt) remains useful
+for comparison and exercises the optional annotation-generation conveniences.
 
-`AtmBlockTests` inspects Core to ensure helper lambdas/calls survive and their
-callback operations have not been substituted into the helper bodies. The
-independent source interpreter executes native block closures directly; it does
-not execute the inferred specialization. Both optimized and unoptimized Chez
-are compared with this interpreter and native Effekt on Fig. 1.
+The explicit `local[R]` arrows still use the declarative `T_Abs`/`T_App`
+bridge described below. This change removes contextual specialization; it does
+not make every frontend feature a literal implementation of printed `A_Abs`.
+The legacy source emitter cannot emit explicit evidence-kind abstractions;
+use direct Lifted/Chez for this example.
 
-Current limits: one block parameter with one capability parameter, statically
-named nonrecursive helpers, and one compatible callback answer/region contract
-per specialization. Invocation must be at the capability's own region with
-known evidence to the caller. Same-region forwarding is supported; forwarding
-across a new delimiter is rejected. Headers and free names are checked when a
-scheme is defined; its full body is checked separately for each use, not once
-as a principal polymorphic library signature. Definitions that never invoke
-their block cannot infer its contract. General escaping blocks, higher-rank
-capture inference, and arbitrary callback answer transitions remain work.
-The direct Lifted backend supports the generated evidence abstraction; the
-legacy source emitter still rejects explicit evidence-kind abstractions.
+## Audit of other additional mechanisms (2026-11-12)
+
+The audit compared the ATM parser, checker, evidence/annotation machinery,
+Core elaboration and lowering with `defn/algorithmic.ott` and
+`PLDI27/sections/implementation.otex`. Searches for special-case names,
+example constants, fallbacks and prototype paths found no remaining branch
+that recognizes Fig. 1, `file`, or `File`. This is a scoped source review and
+regression check, not a proof that the implementation has no bugs.
+
+| Mechanism | Finding and disposition |
+| --- | --- |
+| Native block contextual specialization | Removed in full; explicit quantified helper replaces it. |
+| `handlerResultValue` / `projectedValue`, and default operation `C => C` | Extra, partial annotation generation. Candidates still undergo full handler/clause checks; there is no retry under a weaker annotation. Retained for general surface convenience. The reusable Fig. 1 supplies these annotations explicitly. |
+| `closeLet` refinement closing | Extra annotation generation, followed by escape and subtype checks. Retained and described above; not a printed inference rule. |
+| `checkTermInMode` for ordinary handler returns | Explicit synthesis/subsumption reconciliation of the printed mode mismatch. Retained and disclosed below. Fig. 1's generic helper return has a pure expected answer. |
+| `local` / `local[R]` and `return effect` | Explicit declarative bridges, not implicit guesses. Retained with exact-region/contract checks. Fig. 1 uses `local[R]`; it does not use `return effect`. |
+| Named interfaces, zero arguments, expression sequencing, pairs, plain `fun`, prefixless arguments | General surface elaboration into checked forms. Retained; no example name or constant selects a typing path. |
+| Symbolic-distance ATC inference | Still rejects. Explicit evidence and ATCs must satisfy their kinds, endpoints, depth and answer contracts. No fallback assigns distance zero or discards answer layers. |
+| Scoped capability tails, answer sequences, `repeatable`/`after` bounds | Old prototype forms remain rejected by the checker. |
+| ARM benchmark specializations/state passing | Source-level adaptations, not compiler branches. Kept with the disclosures in [BENCHMARKS.md](BENCHMARKS.md); not evidence of support for the original generic APIs. |
+
+The reusable helper uses currying and direct mock clauses. Sequencing a pure
+call before a computation with abstract type `C` remains unsupported by the
+current answer-mode/`let` composition checks; no special relaxation was added
+to accommodate mocks. General block scheme inference, abstract ATC result
+projection in the backend, and the other coverage gaps below remain open.
 
 ## Omitted handler annotations: additional surface inference
 
@@ -203,7 +214,7 @@ ATC depths, residuals, return contracts, and scope escape. No supplied annotatio
 is weakened or retried under a different type. Unsupported projections require
 an explicit annotation; this is not principal or complete inference.
 
-For Fig. 1, this generates outer `Int / pure` and inner
+For the inlined Fig. 1 companion, this generates outer `Int / pure` and inner
 `Int / (Int / pure => Int / pure)`. The operation annotations are completed
 using those computations before `A_Do` reconstructs depth-zero or depth-one
 contexts. `AtmHandlerInferenceTests` also checks a Bool-valued inner handler

@@ -88,19 +88,7 @@ object Syntax {
     case InstantiatePolymorphic(function: Value, alternatives: List[PolymorphicArgument])
     case Primitive(name: String, arguments: List[Value])
   }
-  // Native block schemes are specialized to checked local functions, never
-  // expanded by substituting a callback or helper body at its call site.
-  case class BlockParameter(name: String, interfaceName: String, interfaceArguments: List[Type], result: Type)
-  case class BlockDefinition(name: String, parameter: String, argument: Type,
-      block: BlockParameter, result: Option[Computation], definition: Term)
-  enum BlockArgument {
-    case Literal(capability: String, body: Term)
-    case Forward(name: String)
-  }
   enum Term {
-    case BlockDefine(definition: BlockDefinition, body: Term)
-    case BlockApply(name: String, argument: Value, block: BlockArgument)
-    case BlockInvoke(name: String, capability: Value)
     case TypeAlias(name: String, definition: Type, body: Term)
     case AnnotationAlias(name: String, definition: Annotations.Argument, body: Term)
     case Return(value: Value)

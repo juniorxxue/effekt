@@ -71,12 +71,6 @@ object Surface {
     case _ => Set.empty
   }
   def free(t: Term): Set[String] = t match {
-    case Term.BlockDefine(d, b) => (free(d.definition) -- Set(d.parameter, d.block.name, d.name)) ++ (free(b) - d.name)
-    case Term.BlockApply(n, a, b) => free(a) + n ++ (b match {
-      case BlockArgument.Literal(c, body) => free(body) - c
-      case BlockArgument.Forward(n) => Set(n)
-    })
-    case Term.BlockInvoke(n, c) => free(c) + n
     case Term.Return(v) => free(v)
     case Term.Let(n, a, b) => free(a) ++ (free(b) - n)
     case Term.LetRec(n, p, _, _, d, b, _) => (free(d) -- Set(n, p)) ++ (free(b) - n)

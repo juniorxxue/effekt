@@ -278,7 +278,6 @@ object Lowering {
       case Term.Return(_) => value(t.values.head, env)
       case Term.Assert(_) => "()"
       case Term.Ascribe(_, _) => term(t.children.head, env)
-      case _: Term.BlockDefine | _: Term.BlockApply | _: Term.BlockInvoke => throw Diagnostic("Unresolved native block elaboration")
       case _: Term.InferredHandle => throw Diagnostic("Unresolved handler result annotation")
       case _: Term.ExplicitReturn => throw Diagnostic("Unresolved explicit return clause")
       case Term.LetRec(name, parameter, _, _, _, _, _) =>

@@ -155,15 +155,6 @@ object Contracts {
       term(o.body)
     }
     def term(t: Term): Unit = t match {
-      case Term.BlockDefine(d, b) =>
-        ty(d.argument); d.result.foreach(comp); d.block.interfaceArguments.foreach(ty); ty(d.block.result)
-        term(d.definition); term(b)
-      case Term.BlockApply(_, a, b) =>
-        value(a); b match {
-          case BlockArgument.Literal(_, body) => term(body)
-          case _ => ()
-        }
-      case Term.BlockInvoke(_, c) => value(c)
       case Term.AnnotationAlias(_, a, b) => annotation(a); term(b)
       case Term.AnnotatedPerform(_, _, a, _, c) => value(a); c.foreach(k => annotation(Annotations.Argument.Context(k)))
       case Term.SingleAnnotatedPerform(_, _, a, _) => value(a)

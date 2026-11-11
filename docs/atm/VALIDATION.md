@@ -521,11 +521,15 @@ The reusable `file` helper remains inlined: native block/capture polymorphism
 and its interaction with ATM region/answer inference are not implemented.
 These checks do not establish a mechanized elaboration or backend theorem.
 
-## 2026-11-10: rechecking the reusable Fig. 1 (before block elaboration)
+## 2026-11-10: rechecking the reusable Fig. 1 (historical)
+
+This section records the old native-block source, available at
+`506d5024e:examples/atm/file-reusable.effekt`; the current file uses explicit
+polymorphic parameters. See the 2026-11-12 removal entry below.
 
 Recovered the original `def file(c: Handle) {body: {File} => Int}` form from
 `lexical-effects/PLDI27/examples/file_simple.effekt`. The complete mock-backed
-[comparison source](../../examples/atm/file-reusable.effekt) uses `Int` descriptors, top-level
+comparison source at `506d5024e:examples/atm/file-reusable.effekt` uses `Int` descriptors, top-level
 pure mock primitives, inferred results, `resume(readInt(c))`, and nested
 `file(7)` / `file(35)` calls. There are no explicit typelike parameters.
 
@@ -563,11 +567,14 @@ the saved rank-2 helper only established separate uses at different result
 types. Compiler code was not changed by this recheck, and the full suite was
 not rerun.
 
-## 2026-11-10: reusable Fig. 1 with inferred native blocks
+## 2026-11-10: reusable Fig. 1 with inferred native blocks (removed)
+
+This experiment was removed on 2026-11-12. Its source and tests are preserved
+in commit `506d5024e`; these results do not describe the current example.
 
 Implemented native block declarations, literals, capability-block invocation,
-and same-region forwarding. The maintained executable is
-[`examples/atm/file-reusable.effekt`](../../examples/atm/file-reusable.effekt).
+and same-region forwarding. The executable at that checkpoint was
+`506d5024e:examples/atm/file-reusable.effekt`.
 The former paper copies `file_simple_atm.effekt` and `file_simple_reusable.effekt`,
 and the duplicate under `docs/atm/native/`, have been consolidated into this file.
 The paper retains its short typesetting listings. The executable uses
@@ -596,7 +603,7 @@ explicit typelike arguments or handler computation annotations.
   at the two zero-distance invocations. Generated evidence arguments are
   validated by the existing elaboration/Core checks.
 
-The [paper comparison](FIDELITY.md#native-blocks-contextual-specialization)
+The paper comparison in `506d5024e:docs/atm/FIDELITY.md`
 separates the added contextual specialization pass from the unchanged printed
 `A_Do`/`atc` behavior and the preexisting exact-region declarative bridge.
 This is not a new soundness or elaboration-correspondence theorem. The direct
@@ -660,3 +667,49 @@ The 83-example inventory above remains an archived measurement; there are now
 88 example source files, and benchmark timings were not regenerated.
 
 Build/test log: `/private/tmp/effekt-commit-20261111/tests.log`.
+
+## 2026-11-12: remove contextual block specialization
+
+Removed the native-block syntax nodes, deferred helper environments, per-call
+body checking, generated specializations, and corresponding reference paths.
+The reusable [Fig. 1 source](../../examples/atm/file-reusable.effekt) now has
+explicit region/computation parameters, capability/evidence binders, handler
+and operation contracts, and ATCs. One polymorphic helper definition is checked
+before its uses; unused definitions are also checked. `interface File` and the
+zero-argument `read`/`close` signatures remain.
+
+The [fidelity audit](FIDELITY.md#audit-of-other-additional-mechanisms-2026-11-12)
+documents the remaining annotation-generation passes and declarative bridges.
+It found no remaining compiler branch selecting Fig. 1 by names or constants.
+The new helper uses the existing explicit `local[R]` bridge, so this removal
+does not establish that every frontend construct is a printed algorithm rule.
+
+Validation:
+
+```sh
+sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile' \
+  'effektJVM/runMain effekt.atm.Main --check-json examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-polymorphic.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/annotations/polymorphic-outer-call.effekt'
+```
+
+- **420 ATM tests passed, 0 failures/errors**; Scala.js compilation passed.
+  The previous 22 specialization tests were replaced by 16 explicit-helper
+  tests: 426 - 22 + 16 = 420. The focused 16-test run also passed.
+- The reusable example checks at **Int / pure** and returns **42**.
+  The other polymorphic file returns **42**, and the annotated outer call
+  returns **true**.
+- Core contains **one** polymorphic `file` binding and handler body, with
+  two computation instantiations. Explicit operation certificates have
+  distances **1, 0, 1, 0** and two hole ATCs.
+- New regressions compare the independent source interpreter with optimized
+  and unoptimized direct Chez. Descriptor-sensitive execution returns **735**;
+  changed descriptors and renamed helper/interface also work. Invalid unused
+  helper bodies, wrong argument/result contracts, and invalid evidence/ATCs
+  reject. The original symbolic-distance inference failure still rejects.
+- `git diff --check` passed. No paper rules or benchmark timings were changed.
+
+Logs: `/private/tmp/effekt-remove-specialization/targeted.log` and
+`/private/tmp/effekt-remove-specialization/validation.log`.
+These checks do not constitute a mechanized compiler correspondence proof.

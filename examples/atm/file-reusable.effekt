@@ -1,26 +1,42 @@
-// Fig. 1 with a reusable file handler and mock integer descriptors.
-// Native blocks and their ATM contracts are inferred; helpers remain runtime functions.
+// Reusable Fig. 1 with explicit region, computation, and evidence parameters.
+// Mock descriptors contain their read result; closing has no OS effect.
 interface File {
   def read(): Int
   def close(): Unit
 }
 
-def readInt(c: Int): Int = c
-def closeFile(c: Int): Unit = ()
-
-def file(c: Int) {body: {File} => Int} =
-  try { body {f} } with f: File {
-    def read() = resume(readInt(c))
-    def close() = { closeFile(c); resume(()) }
-  }
-
-def main() =
-  file(7) { {a} =>
-    file(35) { {b} =>
-      val x = a.read()
-      val y = b.read()
-      a.close()
-      b.close()
-      x + y
+def main(): Int = {
+  val file = fun [R: Reg, C: Cty] local[R](c: Int) {
+    fun local[R](body: forall cap f: {
+      def read(): Int / (C => C);
+      def close(): Unit / (C => C);
+    }. (forall E: Ev(f, 1, R). (local[f] (Unit) => Int / (Int => C)))): C {
+      try {
+        body{h}[step(h)]()
+      } with h: File {
+        def read(): Int / (C => C) = resume(c)
+        def close(): Unit / (C => C) = resume(())
+        return x => x
+      }: C
     }
-  }
+  };
+  file[here, Int](7)(capfun (a: {
+    def read(): Int / (Int => Int);
+    def close(): Unit / (Int => Int);
+  }) {
+    fun [EA: Ev(a, 1, top)] local[a](): Int / (Int => Int) {
+      file[a, Int / (Int => Int)](35)(capfun (b: {
+        def read(): Int / (Int / (Int => Int) => Int / (Int => Int));
+        def close(): Unit / (Int / (Int => Int) => Int / (Int => Int));
+      }) {
+        fun [EB: Ev(b, 1, a)] local[b](): Int / (Int => Int / (Int => Int)) {
+          val x = a.read[EB; Int / (Int => [])]()
+          val y = b.read[refl; []]()
+          a.close[EB; Int / (Int => [])]()
+          b.close[refl; []]()
+          x + y
+        }
+      })
+    }
+  })
+}

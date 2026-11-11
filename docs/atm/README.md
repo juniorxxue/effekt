@@ -238,13 +238,15 @@ statements. Local functions can also have empty argument lists. The ATM shortcut
 `resume()` denotes `resume(())`; native Effekt requires the latter spelling for
 a Unit resumption.
 
-The [reusable Fig. 1 example](../../examples/atm/file-reusable.effekt) now uses
-native `def file(c: Int) {body: {File} => Int}`, `body {f}`, and nested
-`file(7) { {a} => ... }` calls. It has no explicit typelike parameters or handler
-computation annotations. The mock-backed program checks at `Int / pure` and
-returns 42 through direct Lifted/Chez, as it does in native Effekt/JS.
-This is the single maintained executable version; the former paper copies
-`file_simple_atm.effekt` and `file_simple_reusable.effekt` are consolidated here.
+The [reusable Fig. 1 example](../../examples/atm/file-reusable.effekt) uses
+one explicitly polymorphic `file` value with region/computation parameters
+`[R: Reg, C: Cty]`. Its callbacks declare their capabilities and evidence;
+operation calls supply ATCs. The helper is checked once and instantiated at
+both nested call sites, with no contextual specialization. `interface File`,
+`read(): Int`, and `close(): Unit` remain. The mock-backed program checks at
+`Int / pure` and returns 42 through direct Lifted/Chez.
+The former paper copies `file_simple_atm.effekt` and
+`file_simple_reusable.effekt` are consolidated here.
 
 From the Effekt repository root, run it directly:
 
@@ -259,15 +261,13 @@ sbt 'effektJVM/runMain effekt.atm.Main --emit examples/atm/file-reusable.effekt 
 chez --script /tmp/file-reusable.ss
 ```
 
-Native block functions are contextually specialized by region and answer
-contract. Each specialization remains an ordinary runtime function receiving
-its callback as an argument; neither body is substituted into its caller.
-The callback receives a checked capability and evidence argument. This is an
-additional surface pass using the existing exact-region function bridge, not
-unrestricted block/capture polymorphism or a new symbolic-distance ATC rule.
-The [inlined companion](../../examples/atm/file-nested.effekt) remains for
-certificate and execution comparisons. See [FIDELITY.md](FIDELITY.md#native-blocks-contextual-specialization)
-for the paper comparison and precise limits.
+Native block inference is unsupported. The former per-call specialization
+pass was removed; the explicit version uses ordinary quantified values and
+the documented exact-region `local[R]` bridge. The
+[inlined companion](../../examples/atm/file-nested.effekt) remains for comparison.
+See [FIDELITY.md](FIDELITY.md#reusable-helpers-explicit-polymorphism) for the
+explicit contract and the audit of remaining extensions beyond the printed
+algorithm. This fully annotated ATM source requires the ATM frontend.
 
 Operation clauses implicitly bind their resumption as `resume`, following
 Effekt's syntax:
