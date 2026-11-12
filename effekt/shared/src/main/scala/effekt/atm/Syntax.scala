@@ -106,7 +106,7 @@ object Syntax {
     case Ascribe(body: Term, expected: Computation)
     case Assert(condition: Value)
     case LetRec(name: String, parameter: String, argument: Type, result: Computation, definition: Term, body: Term, region: Option[String] = None, caller: Option[String] = None)
-    // Only permitted as a handler return clause, selected by return effect.
+    // Compatibility spelling selected by return effect; checked like ordinary returns.
     case ExplicitReturn(body: Term)
     case If(condition: Value, whenTrue: Term, whenFalse: Term)
     case Match(scrutinee: Value, cases: List[MatchCase])

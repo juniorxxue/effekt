@@ -24,6 +24,7 @@ For the suite outline and current per-family coverage, use
 | A capability binder did not scope over its operation signatures | Signature resolution introduces the fresh region first; equality also alpha-renames that region in signatures | A quantified operation's function parameter can refer to the bound region |
 | Lambda domains were mandatory even in checking mode | `fun (x) { ... }` obtains its domain and codomain from an expected arrow | Ordinary checking machinery is exercised through operation arguments and handler returns; a wrong result is rejected |
 | Handler result annotations were always mandatory | `try { ... } with h { ... }` is checked against an available expected computation type | Direct checking and a handler inside a region-polymorphic function; residuals are retained for abstraction |
+| Ordinary return clauses retained empty mode after the `A_HRet` revision | Both return spellings check under `pi(C)`; the separate empty-mode bridge is removed | `AtmReturnTests` covers outer operations, dependent answers, compatibility, and contract/scope rejections; the archived ordinary-return example now checks and executes |
 | Unit refinements and universal formulas were missing | Added the singleton Unit logical sort/literal and scoped, sorted `forall` formulas; SMT uses a singleton datatype and quantifiers | Valid/invalid formulas, sort errors, binder shadowing and alpha-equivalence |
 
 The three original reproduction files are in `examples/atm/fidelity/`.
@@ -160,8 +161,8 @@ regression check, not a proof that the implementation has no bugs.
 | Native block contextual specialization | Removed in full; explicit quantified helper replaces it. |
 | `handlerResultValue` / `projectedValue`, and default operation `C => C` | Extra, partial annotation generation. Candidates still undergo full handler/clause checks; there is no retry under a weaker annotation. Retained for general surface convenience. The reusable Fig. 1 supplies these annotations explicitly. |
 | `closeLet` refinement closing | Extra annotation generation, followed by escape and subtype checks. Retained and described above; not a printed inference rule. |
-| `checkTermInMode` for ordinary handler returns | Explicit synthesis/subsumption reconciliation of the printed mode mismatch. Retained and disclosed below. Fig. 1's generic helper return has a pure expected answer. |
-| Fixed-region contracts and `return effect` | Explicit declarative bridges retained with exact-region/contract checks. `local` syntax is removed. Curried Fig. 1 uses the fixed-region bridge for its returned callback consumer, but does not use `return effect`. |
+| Handler return checking | Uses `pi(C)` from the expected return computation, following the revised `A_HRet`; the old empty-mode bridge is removed. `return effect` is a compatibility spelling. |
+| Fixed-region contracts | Explicit declarative bridge retained with exact-region/contract checks. `local` syntax is removed. Curried Fig. 1 uses the fixed-region bridge for its returned callback consumer. |
 | Named interfaces, zero arguments, expression sequencing, pairs, plain `fun`, prefixless arguments | General surface elaboration into checked forms. Retained; no example name or constant selects a typing path. |
 | Symbolic-distance ATC inference | Still rejects. Explicit evidence and ATCs must satisfy their kinds, endpoints, depth and answer contracts. No fallback assigns distance zero or discards answer layers. |
 | Scoped capability tails, answer sequences, `repeatable`/`after` bounds | Old prototype forms remain rejected by the checker. |
@@ -205,44 +206,37 @@ contexts. `AtmHandlerInferenceTests` also checks a Bool-valued inner handler
 under an Int answer, multiple nesting levels, and invalid arguments/clauses.
 
 This is an implementation extension that feeds annotations to the existing
-checker, not a claim that the paper already infers those annotations. The
-separate return-clause mode bridge below remains relevant, and no mechanized
-soundness theorem for these Scala passes is claimed.
+checker, not a claim that the paper already infers those annotations. Return
+clauses use the revised rule described below. No mechanized soundness theorem
+for these Scala passes is claimed.
 
-## Handler return mode: an explicit rule reconciliation
+## Handler return mode: revised `A_HRet`
 
-The supplement's `A_HRet` checks the return body under empty inherited mode
-against `C`. Its general `A_SubC` conclusion, however, checks under `pi(C)`.
-For impure `C`, these are different modes. Merely renaming an implementation
-function would not resolve that discrepancy.
+The maintained algorithm at paper revision `75dbbef` checks a return body
+against `C` under `pi(C)`. This replaces the empty-mode premise in the earlier
+paper snapshots. Both `return x => { M }` and the compatibility spelling
+`return effect x => { M }` now use that revised rule:
 
-The implementation retains empty inherited mode and uses this explicit bridge:
-
-```
-Gamma | delta | rho | empty |- M synthesizes D
-Gamma |- D <: C
-------------------------------------------------  return-clause bridge
-check the return clause against C, retaining M's elaboration
+```text
+Gamma, x:T | delta | rho | pi(C) |- M checks C
 ```
 
-For `return V`, value checking supplies the expected value type before producing
-the pure computation `D`. This also permits an unannotated lambda in a return
-clause. The final subsumption is checked in the return-clause context, not under
-facts from the handled body's execution path.
+`Checker.checkTerm` obtains the inherited mode from the expected computation.
+Pure expected answers still select empty mode. Impure expected answers supply
+their final answer, allowing ordinary return clauses to infer operation ATCs.
+The separate empty-mode synthesis/subsumption bridge is no longer used.
 
-The declarative justification is `T_Sub` after elaboration of `M`; a pure `D`
-can meet an impure `C` only when `S_CPureImpure` establishes the required answer
-subtyping premise. This is a proposed reconciliation of the printed mode rules,
-not a claim that the printed algorithm already contains this bridge. The code
-makes the choice explicit in `checkTermInMode`.
+Checking remains in the ambient region outside the handled delimiter, with
+the returned-value assumption and outer capabilities only. The handled body's
+internal path assumptions are not exported. Dependent initial answers are
+instantiated with the return binder before checking. For `return V`, the
+implementation still checks `V` against its expected value type; this surface
+extension permits an unannotated lambda in a return clause.
 
-The explicit surface form `return effect x => { M }` now opts into checking `M`
-against the known return computation `C` under `pi(C)`. This is a second,
-deliberate declarative `T_HRet` bridge, not the printed `A_HRet` rule. The default
-form remains unchanged. Checking is in the ambient region outside the handled
-delimiter, with the returned-value assumption and outer capabilities only.
-`return-effects.effekt` exercises an outer operation in this clause. Regressions
-reject the wrong answer type and use of the exited handler's capability.
+`AtmReturnTests` covers both spellings, dependent return contracts, and rejection
+of invalid contracts and use of the exited capability. This alignment concerns
+return-clause checking; it does not establish correspondence or soundness for
+the whole Scala checker or its other extensions.
 
 ## Explicit fixed-region functions
 

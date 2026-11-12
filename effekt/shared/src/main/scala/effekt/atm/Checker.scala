@@ -1294,9 +1294,6 @@ object Checker {
       }
     }
 
-    private def checkTerm(term: Term, expected: Computation, env: Environment): CheckedTerm =
-      checkTermInMode(term, expected, env, finalAnswer(expected))
-
     private def inferMatch(source: Term, scrutinee: Value, cases: List[MatchCase], env: Environment,
         inherited: Option[Computation], expected: Option[Computation]): CheckedTerm = {
       val v = value(scrutinee, env)
@@ -1326,7 +1323,7 @@ object Checker {
           bound.logicalNames.get(n).fold(p)(id => Expr.Exists(id, bound.logic.variables(id), p))
         }
         val body = expected.fold(closeLet(infer(c.body, scope, inherited), env, scope, wholeComputation = true))(
-          checkTermInMode(c.body, _, scope, inherited))
+          checkTerm(c.body, _, scope))
         (bindings, guard, body)
       }
       val result = expected.getOrElse(branches.init.foldRight(branches.last._3.tpe) {
@@ -1337,11 +1334,9 @@ object Checker {
         patternBindings = branches.map(_._1)), env)
     }
 
-    // The explicit mode is needed by the return-clause bridge: synthesize in
-    // empty mode, then apply declarative subsumption to the required answer.
-    // This is not the printed A_SubC mode conclusion when expected is impure.
-    private def checkTermInMode(term: Term, expected: Computation, env: Environment,
-                                inherited: Option[Computation]): CheckedTerm = {
+    // A_SubC and A_HRet use the expected computation's final-answer mode.
+    private def checkTerm(term: Term, expected: Computation, env: Environment): CheckedTerm = {
+      val inherited = finalAnswer(expected)
       val checked = term match {
         case Term.Match(scrutinee, cases) => finishTerm(inferMatch(term, scrutinee, cases, env, inherited, Some(expected)))
         case Term.InferredHandle(cap, operations, body, returned, onReturn) =>
@@ -1706,17 +1701,15 @@ object Checker {
       }
       require(!free(initial).contains(identity), s"Capability $cap escapes through the handler's return contract")
       val returnEnv = env.bind(returned, checkedBody.tpe.value)
-      // Preserve A_HRet's empty inherited mode. For impure expected answers,
-      // use an explicit synthesis/subsumption bridge (see FIDELITY.md).
       val returnAnswer = checkedBody.tpe.returned.fold(initial)(id =>
         Contracts.substitute(initial, id, Expr.Variable(returnEnv.logicalNames.getOrElse(returned,
           fail("Dependent handler answer requires a logical return value")))))
-      val checkedReturn = onReturn match {
-        // Explicit declarative T_HRet checking: the clause runs outside the
-        // handled region but may itself have the annotated answer effect.
-        case Term.ExplicitReturn(body) => checkTerm(body, returnAnswer, returnEnv)
-        case _ => checkTermInMode(onReturn, returnAnswer, returnEnv, None)
+      // Both spellings follow A_HRet in the ambient region, outside the handler.
+      val returnBody = onReturn match {
+        case Term.ExplicitReturn(body) => body
+        case body => body
       }
+      val checkedReturn = checkTerm(returnBody, returnAnswer, returnEnv)
       val checkedOps = ops.map { op =>
         require(op.parameter != op.continuation, "An operation argument and resumption need distinct names")
         val k = Type.Continuation(op.result, op.initialAnswer, env.region, env.capabilities.keySet, op.returned)

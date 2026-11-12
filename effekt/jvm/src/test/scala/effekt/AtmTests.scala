@@ -55,7 +55,9 @@ class AtmTests extends munit.FunSuite {
     reject(original("effect-polymorphic"), "final-answer projection is undefined")
   }
   test("a continuation cannot be returned through an ordinary arrow") { reject(original("stored-resumption"), "~>") }
-  test("return clauses have empty inherited-answer mode") { reject(original("return-effects"), "inherited final answer") }
+  test("A_HRet accepts the original effectful return clause without a syntax opt-in") {
+    run(original("return-effects"), "false")
+  }
   test("protocol violation is rejected at the ATC hole") { reject(source("file-protocol-invalid"), "requires answer Open") }
   test("unbound capability is rejected") { reject("def main(): Int = { missing.ask() }", "Unknown") }
   test("handler capability cannot escape") {

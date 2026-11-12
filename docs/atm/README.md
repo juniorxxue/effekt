@@ -1,6 +1,6 @@
 # ATM frontend: implementation and usage
 
-Documentation snapshot: **2026-11-10**. Commands below run from the repository root.
+Documentation snapshot: **2026-11-12**. Commands below run from the repository root.
 
 This checkout is based on Effekt **v0.3.0**, commit
 `cd18ad896b9f1c856a9d6002fd0a5733e5cb9a15`, with its pinned Kiama submodule.
@@ -9,9 +9,10 @@ backends are available. See [MIGRATION-v0.3.0.md](MIGRATION-v0.3.0.md) for the p
 
 The ATM checker implements a subset of the region/evidence algorithm
 from Section 6.1 of the supplied paper and supplemental Section 3 (Figures 9--15).
-Explicit fixed-region contracts and `return effect` expose additional declarative
-rules through checked surface forms. They are documented separately from the
-printed inference rules. The former ordered-handler-stack checker is not used
+Explicit fixed-region contracts expose additional declarative rules through
+checked surface forms. They are documented separately from the printed inference
+rules. Handler return checking follows the revised `A_HRet` described in
+[FIDELITY.md](FIDELITY.md). The former ordered-handler-stack checker is not used
 as a fallback.
 
 The repaired discrepancies, deliberate surface elaborations, and remaining
@@ -109,9 +110,9 @@ See [VALIDATION.md](VALIDATION.md) for the distinct runs.
 - Computation types now retain dependent result binders. Conditional answers use
   guarded joins and meets with the paper's variance. Answer subtyping uses
   `S_CPureImpure` and `S_CImpure`, without the old erased-shape equality restriction.
-- Default handler return clauses use empty inherited-answer mode. Explicit
-  `return effect x => { ... }` checks against the annotated answer under its
-  final-answer mode, as a declarative `T_HRet` bridge. Their logical context
+- Handler return clauses check against their expected computation `C` under
+  `pi(C)`, following the revised `A_HRet`. `return effect x => { ... }` is a
+  compatibility spelling with the same checking behavior. Their logical context
   contains the returned value's type, not the body's internal path assumptions.
 
 The old stack-lifting, scoped-tail and repeatable/after-constraint design is
@@ -362,11 +363,11 @@ fixed-region recursion remains at the enclosing lexical region. Curried Fig. 1
 uses a fixed-region function as the ordinary helper's result; its ordinary
 argument domain remains caller-independent.
 
-`return effect x => { ... }` explicitly enables effects in a handler's return
-clause using its known result contract. The clause executes outside the exited
-handler and cannot invoke that handler's capability. Ordinary `return x =>`
-keeps the previous empty-mode rule. Both extensions and their limitations are
-explained in [FIDELITY.md](FIDELITY.md).
+`return x => { ... }` checks using its expected computation's final-answer
+mode. `return effect x => { ... }` remains a compatibility spelling with the
+same behavior. The clause executes outside the exited handler and cannot
+invoke that handler's capability. See [FIDELITY.md](FIDELITY.md) for the
+revised rule and its scope.
 
 For repeated/composed callbacks, explicit value-type parameters can describe
 pure answer endpoints: `(Answer => Answer)` is repeatable, and
@@ -432,9 +433,8 @@ explicitly. The retained legacy emitter uses finite answer sums and JavaScript
 | `A_If*`, guarded join/meet | `Checker.guarded` |
 | `A_Do` | Evidence reconstruction, dependent substitution, `Evidence.atc` |
 | Explicit declarative invocation and kind instantiation | `Annotations`, `Checker.resolveArgument`, `inferOperation`; `Core.validate` checks scoped kinds and symbolic ATC depths |
-| `A_Handle`, `A_HRet`, `A_HOp` | Fresh region/edge; residual scope check; separate clause modes and continuation arrow; return-mode bridge explained in FIDELITY.md |
+| `A_Handle`, revised `A_HRet`, `A_HOp` | Fresh region/edge; residual scope check; clauses check under their expected computation's final-answer mode; operation continuations retain their exact region |
 | `S_Fun`, `S_Refine`, `S_CPureImpure`, `S_CImpure` | `Checker.subtype`; sorted SMT verification conditions |
-| Declarative `T_HRet` bridge | Explicit `return effect`; expected computation supplies the inherited final answer |
 | `S_Cap` | `Checker.operationsSubtype`; contravariant arguments and covariant dependent computation contracts |
 
 ## Run and inspect

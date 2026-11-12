@@ -80,9 +80,11 @@ unsupported. These extensions do not constitute the paper's complete kind system
 Ten previously blocked examples now check and execute: seven through added
 language support and three through narrower answer-type annotations. Explicit `local` arrows
 and local recursion implement fixed-region functions; same-region resumptions
-can be stored under those arrows. Explicit `return effect` permits checked
-effects in return clauses. Both are declarative bridges, distinguished from the
-printed inference rules in [FIDELITY.md](FIDELITY.md). Three old effect-bound
+can be stored under those arrows. That increment also introduced `return effect`
+as a declarative bridge. Return checking now follows the revised `A_HRet` for
+ordinary clauses too; `return effect` remains a compatibility spelling. The
+fixed-region extension is still distinguished from the algorithmic rules in
+[FIDELITY.md](FIDELITY.md). Three old effect-bound
 examples use explicit pure answer endpoints, with their original closed
 runtime witnesses retained. General opaque-effect polymorphism is not added.
 

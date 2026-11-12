@@ -906,3 +906,54 @@ sbt -batch \
 
 Logs: `/private/tmp/effekt-named-capabilities-final.log` and
 `/private/tmp/effekt-named-capabilities-full.log` (CLI runs).
+
+## 2026-11-12: return clauses use the revised `A_HRet`
+
+Starting from `b61f0aea`, ordinary handler returns now check under `pi(C)`
+from their expected computation, matching the maintained paper's `A_HRet`
+at revision `75dbbef`. `return effect` remains a compatibility spelling.
+`checkTermInMode` and the special empty-mode return bridge are removed;
+checking derives its mode from the expected type. Return-binder substitution,
+scope checks, subtyping, and runtime lowering are retained.
+
+Validation used Java 26.0.2, sbt 1.9.7, Scala 3.3.1, Z3 4.15.4, Chez 10.4.1,
+Node 25.9.0, and pinned Kiama `ab6aef78`.
+
+```sh
+sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' \
+  'effektJVM/testOnly effekt.core.* effekt.lifted.mono.MonomorphizationTests' \
+  'effektJS/compile' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-polymorphic.effekt'
+python3 docs/atm/check_examples.py --output /tmp/effekt-return-examples.json
+```
+
+- The unchanged baseline passed **485 ATM tests**. The revised checker passed
+  **499 ATM tests** and **35 Core/monomorphization tests**, with zero failures
+  or errors. Scala.js compilation passed. Both file examples still return **42**.
+- The old rejection test for ordinary effectful returns now checks and executes
+  that same archived source. It is the only changed existing test expectation.
+- **14 new regressions** cover both spellings, outer-operation ATC inference,
+  dependent return-answer substitution and mismatch rejection, pure expected
+  contracts, wrong value types, exited capabilities, identical Core elaboration,
+  and a pure return body under an impure expected contract. Executable cases
+  agree with the source interpreter and optimized/unoptimized Chez and legacy
+  Effekt/JavaScript backends.
+- Existing ARM contract classifications, negative checks, and runtime tests
+  pass. Benchmark sources, stored timings, and paper rules are unchanged.
+  The documentation distinguishes this revised rule from remaining extensions;
+  these checks do not establish a new mechanized soundness or correspondence
+  theorem for the Scala implementation.
+- All **89 current examples** match the existing inventory: 64 accepted,
+  21 contract rejections, one type rejection, and three unsupported cases.
+  Unsupported cases remain limitations, not successful negative tests.
+
+The archived coverage hash validator (`python3 docs/atm/paper_coverage.py`)
+still fails on `examples/atm/arm/amb-1-SAT.effekt`. The same failure occurs on
+the unchanged `b61f0aea` snapshot: the manifest records `a5821640...`, while
+both baseline and current source hash to `7e5ffa26...`. This pre-existing stale
+manifest is not counted as a passing check or repaired by this change.
+
+Logs: `/private/tmp/effekt-return-baseline.log`,
+`/private/tmp/effekt-return-focused.log`, and `/private/tmp/effekt-return-full.log`.
+Example report: `/private/tmp/effekt-return-examples.json`.

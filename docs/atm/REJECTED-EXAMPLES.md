@@ -42,7 +42,7 @@ entries remain limitations, never counted as successful negative tests.
 | [`effectful-callback`](../../examples/atm/effectful-callback.effekt) | Local callback parameter and local higher-order helper | `false` |
 | [`polymorphic-callback`](../../examples/atm/polymorphic-callback.effekt) | Capability-polymorphic helper with a callback at the instantiated capability's region | `false` |
 | [`stored-resumption`](../../examples/atm/stored-resumption.effekt) | Expose the actual continuation as a compatible local arrow, return it, and call it at its ambient region | `42` |
-| [`return-effects`](../../examples/atm/return-effects.effekt) | Explicit `return effect` checks the return body against the known effectful answer contract | `false` |
+| [`return-effects`](../../examples/atm/return-effects.effekt) | The revised `A_HRet` checks ordinary returns against the known effectful answer contract; `return effect` remains compatible | `false` |
 | [`effect-polymorphic`](../../examples/atm/effect-polymorphic.effekt) | Replace opaque `E` with value-type parameters `Initial`/`Final` in `(Initial => Final)`; use local callbacks | `false` |
 | [`repeatable-effect`](../../examples/atm/repeatable-effect.effekt) | Replace `E: repeatable` with `(Answer => Answer)`; both callback invocations remain | `88` |
 | [`composed-effects`](../../examples/atm/composed-effects.effekt) | Replace `F: after(E)` with `(Middle => Final)` followed by `(Initial => Middle)`; retain both effects/resumptions | `200` |
@@ -78,11 +78,11 @@ Fixed-region functions cannot be silently promoted to ordinary functions, invoke
 beneath an extra delimiter or exported with a local handler region in their
 type. Returned continuations keep their exact ambient call region.
 
-Similarly, `return effect` is an explicit bridge to declarative `T_HRet`, with
-the known return contract providing the inherited final answer. Default return
-clauses keep the previous empty inherited mode. The explicit clause is checked
-outside the exited handler; it cannot use that handler's capability. See
-[FIDELITY.md](FIDELITY.md) for both rule distinctions.
+Handler return clauses now follow the revised `A_HRet`: the known return
+contract provides the inherited final answer. `return effect` remains a
+compatibility spelling. Both forms are checked outside the exited handler and
+cannot use that handler's capability. See [FIDELITY.md](FIDELITY.md) for the
+rule revision and the separate fixed-region extension.
 
 The last three callback annotations in the table quantify over **value types
 as pure answer endpoints**, not arbitrary computation types or opaque effects.
