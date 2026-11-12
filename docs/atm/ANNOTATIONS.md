@@ -13,8 +13,36 @@ introduces a left-to-right telescope. Each kind can refer to earlier parameters
 and enclosing bindings. The corresponding type is written with nested
 `forall R: Reg. (body)` quantifiers. Plain value-type parameters use `fun [A]`;
 value parameters can follow directly, as in `fun [A](x: A): A { x }`.
-The older `typefun` spelling remains an alias. `effectfun`, `predfun`, and
-`capfun` forms remain available.
+Answer-effect parameters use `fun [E: Eff] { value }`, with the type
+`forall E: Eff. (T)`. They share the bracket list with value types and other
+kinded parameters, for example `fun [A, E: Eff, R: Reg](x: A): A { x }`.
+Named definitions also accept these parameters. `Eff` denotes ATM answer
+effects, not native Effekt effect sets. Bare arguments such as `f[pure]` and
+`f[(Int => Bool)]` select the answer-effect grammar from the parameter's kind.
+
+Capability values use ordinary parameter and application syntax:
+
+```effekt
+val forward: (c: { def ask(): Int / (Int => Int); }) => cap(c) =
+  fun (c: { def ask(): Int / (Int => Int); }) { c };
+// Within a compatible handler h:
+val saved = forward(h);
+```
+
+The structural parameter contract introduces an abstract capability region;
+its name scopes over its own operation contracts and the result. The checker
+retains capability subtyping, residual evidence bounds, and handler escape
+checks. This elaborates to the existing capability abstraction/instantiation
+rules, without adding a caller binder or handler delimiter. Its body remains a
+value, commonly a returned function; computations belong in that function.
+For example, `fun (c: { ... }) () at [c]: C { ... }` is the curried spelling of
+`fun (c: { ... }) { fun () at [c]: C { ... } }`. Multiple capability arguments
+can likewise use nested functions and chained calls `f(h)(k)`.
+
+The older `typefun`, `capfun`, `effectfun`, `forall cap`, `forall effect`, and
+brace capability applications remain parser aliases for archived source
+compatibility. Maintained examples use `fun`, capability arrows and ordinary
+calls. `predfun` is unchanged.
 
 Arguments need no kind prefix: the next quantified parameter determines how
 each argument is checked. Both grouped and chained brackets are accepted:
@@ -31,6 +59,7 @@ the same checked abstractions/applications as the older tagged forms.
 
 | Kind | Argument syntax | Meaning |
 | --- | --- | --- |
+| `Eff` | `[pure]`, `[(Int => Bool)]` | An answer effect |
 | `Reg` | `[top]`, `[h]`, `[R]` | A lexical region; `top` denotes the program's ambient region |
 | `Dist` | `[1]`, `[D + 1]` | A nonnegative distance; sums are equal modulo associativity, commutativity, and zero |
 | `Ev(R, D, S)` | `[E]` | Evidence from exactly `R` to `S`, at distance `D` |

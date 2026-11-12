@@ -1,7 +1,7 @@
 // Check (Middle => Final) followed by (Initial => Middle) using a shared
 // endpoint parameter, instead of the superseded after(E) composition bound.
 def main(): Int = {
-  val pair = capfun (c: { def first(): Int / (Bool => Int); def second(): Int / (Int => Bool); }) {
+  val pair = fun (c: { def first(): Int / (Bool => Int); def second(): Int / (Int => Bool); }) {
     typefun [Final] { typefun [Middle] { typefun [Initial] {
       fun (f: ((Unit) =>[c] Int / (Middle => Final))) at [c]:
           ((((Unit) =>[c] Int / (Initial => Middle))) =>[c] Int / (Initial => Final)) {
@@ -15,7 +15,7 @@ def main(): Int = {
     } } }
   };
   try {
-    val local = pair{cap(h)}[type Int][type Bool][type Int];
+    val local = pair(h)[type Int][type Bool][type Int];
     val withFirst = local(fun (u: Unit) at [h]: Int / (Bool => Int) { h.first() });
     withFirst(fun (u: Unit) at [h]: Int / (Int => Bool) { h.second() })
   } with h: Int {

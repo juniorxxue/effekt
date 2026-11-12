@@ -32,8 +32,8 @@ class AtmCapabilityNamesTests extends munit.FunSuite {
   }
 
   test("capability abstraction accepts a bare handler name and its parameter is a value") {
-    run(program("val saved = forward{h}; saved.ask()", """
-      val forward = capfun (c: { def ask(Unit): Int / (Int => Int); }) { c };
+    run(program("val saved = forward(h); saved.ask()", """
+      val forward = fun (c: { def ask(Unit): Int / (Int => Int); }) { c };
     """), "42")
   }
 
@@ -61,9 +61,9 @@ class AtmCapabilityNamesTests extends munit.FunSuite {
   }
 
   test("a capability parameter shadows an outer value") {
-    run(program("val saved = forward{h}; saved.ask()", """
+    run(program("val saved = forward(h); saved.ask()", """
       val c = 7;
-      val forward = capfun (c: { def ask(Unit): Int / (Int => Int); }) { c };
+      val forward = fun (c: { def ask(Unit): Int / (Int => Int); }) { c };
     """), "42")
   }
 
@@ -72,8 +72,8 @@ class AtmCapabilityNamesTests extends munit.FunSuite {
   }
 
   test("a value shadow cannot supply the old capability to a polymorphic call") {
-    reject(program("val h = 7; val saved = forward{h}; saved.ask()", """
-      val forward = capfun (c: { def ask(Unit): Int / (Int => Int); }) { c };
+    reject(program("val h = 7; val saved = forward(h); saved.ask()", """
+      val forward = fun (c: { def ask(Unit): Int / (Int => Int); }) { c };
     """), "Capability instantiation expects a capability")
   }
 

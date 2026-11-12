@@ -105,7 +105,7 @@ class AtmPolymorphicSyntaxTests extends munit.FunSuite {
   }
   test("effect and predicate arguments also use the quantified parameter") {
     run("""def main(): Int = {
-      val byEffect = effectfun [F] { 42 };
+      val byEffect = fun [F: Eff] { 42 };
       val byPredicate = predfun [P(Int)] { fun (x: {v: Int | P(v)}): Int { x } };
       byPredicate[(x: Int) => x == 42](byEffect[pure])
     }""", "42")

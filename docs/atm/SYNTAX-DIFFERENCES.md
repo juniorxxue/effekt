@@ -74,6 +74,15 @@ retain a distinction between multiple arguments and an explicitly packed pair.
 
 ## Intentional ATM meanings and extensions
 
+- Capabilities are passed with `fun (c: { def op(): T / (C1 => C2); }) { value }`
+  and `f(h)`. Their dependent arrow is `(c: { ... }) => T`; the structural
+  contract binds the abstract region using the existing capability rules.
+  Answer effects use `fun [E: Eff]` and `f[pure]`. The prototype `capfun` and
+  `effectfun` keywords and brace calls remain compatibility aliases only.
+  Capability-abstraction bodies remain values; effectful work goes in returned
+  ordinary or fixed-region functions. This does not implement native block
+  inference or general named-interface value types.
+
 - `T / (C1 => C2)` describes answer-type modification. Native `/ Effects`
   describes effect sets; these cannot simply be relabeled as one another.
 - ATM `resume()` means `resume(())`. Native Effekt expects the Unit argument;

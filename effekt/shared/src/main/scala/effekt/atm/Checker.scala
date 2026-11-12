@@ -844,21 +844,7 @@ object Checker {
           Type.CapabilityPoly(region, ops, checked.tpe, cs, None, captured), cs, List(checked),
           quantified = captured.map(_.binding), discharged = captured.map(_.name).toSet)
       case Value.Instantiate(function, capability) =>
-        val f = value(function, env)
-        val cap = value(capability, env)
-        val actual = cap.tpe match {
-          case Type.Capability(name) => name
-          case other => fail(s"Capability instantiation expects a capability, found ${show(other)}")
-        }
-        val scheme = f.tpe match {
-          case p: Type.CapabilityPoly => p
-          case other => fail(s"Cannot instantiate ${show(other)}")
-        }
-        require(operationsSubtype(env.capabilities(actual), scheme.operations.map(open(_, scheme.parameter, actual)), env.effectBounds, env.logic),
-          "Capability instantiation has a different operation or answer contract")
-        val requirements = Evidence.instantiate(scheme.parameter, actual, scheme.obligations, env.delta, fresh)
-        CheckedValue(v, open(scheme.body, scheme.parameter, actual), f.captures ++ cap.captures, List(f, cap),
-          residuals = requirements.flatMap(_.residuals), evidence = requirements.map(_.witness))
+        instantiateCapability(value(function, env), value(capability, env), env)
       case Value.KindLambda(parameter, k, body) =>
         val kind = resolveKind(k, env)
         val id = fresh(parameter)
@@ -893,6 +879,22 @@ object Checker {
       case Value.InstantiateEffect(function, effect) =>
         instantiate(v, value(function, env), env)
 
+    }
+
+    private def instantiateCapability(f: CheckedValue, cap: CheckedValue, env: Environment): CheckedValue = {
+      val actual = cap.tpe match {
+        case Type.Capability(name) => name
+        case other => fail(s"Capability instantiation expects a capability, found ${show(other)}")
+      }
+      val scheme = f.tpe match {
+        case p: Type.CapabilityPoly => p
+        case other => fail(s"Cannot instantiate ${show(other)}")
+      }
+      require(operationsSubtype(env.capabilities(actual), scheme.operations.map(open(_, scheme.parameter, actual)), env.effectBounds, env.logic),
+        "Capability instantiation has a different operation or answer contract")
+      val requirements = Evidence.instantiate(scheme.parameter, actual, scheme.obligations, env.delta, fresh)
+      finishValue(CheckedValue(Value.Instantiate(f.source, cap.source), open(scheme.body, scheme.parameter, actual),
+        f.captures ++ cap.captures, List(f, cap), residuals = requirements.flatMap(_.residuals), evidence = requirements.map(_.witness)))
     }
 
     private def instantiateBare(checked: CheckedValue, alternatives: List[PolymorphicArgument], env: Environment): CheckedValue = {
@@ -1307,6 +1309,12 @@ object Checker {
           children = List(first, second)), env)
       case Term.Apply(function, argument) =>
         val (f, contexts) = callValue(function, env)
+        if f.tpe.isInstanceOf[Type.CapabilityPoly] then {
+          require(contexts.isEmpty, "Supply call-context arguments after the capability argument")
+          val applied = instantiateCapability(f, value(argument, env), env)
+          return CheckedTerm(Term.Return(applied.source), adapt(Computation(applied.tpe), inherited, env),
+            applied.captures, List(applied), logic = env.logic, symbolic = applied.symbolic)
+        }
         val (param, declaredResult, parameter, reconstruction) = f.tpe match {
           case fn: Type.Function =>
             val ev = reconstruct(env.region, fn.region.getOrElse(fail("Unresolved function region")), env)
@@ -1452,7 +1460,8 @@ object Checker {
         case Term.Let(name, binding, body) =>
           val t = projectedValue(binding, env, headers)
           projectedValue(body, env.bind(name, t), headers - name)
-        case Term.Apply(f, _) => result(f) match {
+        case Term.Apply(f, a) => result(f) match {
+          case _: Type.CapabilityPoly => result(Value.Instantiate(f, a))
           case Type.Function(_, r, _, _, _, _) => Contracts.erase(r.value)
           case Type.FixedFunction(_, r, _, _, _) => Contracts.erase(r.value)
           case Type.Continuation(_, r, _, _, _) => Contracts.erase(r.value)

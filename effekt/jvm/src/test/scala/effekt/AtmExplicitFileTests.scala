@@ -104,7 +104,7 @@ class AtmExplicitFileTests extends munit.FunSuite {
     reject(source.replace("x + y", "b"), "Expected Int")
   }
   test("explicit evidence cannot erase a handler edge") {
-    reject(source.replace("body{h}[step(h)][[]]()", "body{h}[refl][[]]()"), "Annotation kind mismatch")
+    reject(source.replace("body(h)[step(h)][[]]()", "body(h)[refl][[]]()"), "Annotation kind mismatch")
   }
   test("an outer operation requires its one-layer explicit ATC") {
     reject(source.replace("[path(b) + EB + PA; J[layer(Int, K[Int], K)]]", "[path(b) + EB + PA; J]"), "ATC depth differs")

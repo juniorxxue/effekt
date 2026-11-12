@@ -108,7 +108,54 @@ object Parser {
     }
     private def pureValue(): Value = expression(Term.Return(value())) match {
       case Term.Return(v) => v
+      // Capability application is a value operation. In a value-only body its
+      // ordinary call spelling is checked against CapabilityPoly, not guessed
+      // from the argument's spelling.
+      case Term.Apply(f, a) => Value.Instantiate(f, a)
       case _ => fail("A polymorphic abstraction body must be a value; put computations inside a function")
+    }
+
+    private enum ParameterKind {
+      case ValueType
+      case AnswerEffect(bound: EffectBound)
+      case Annotation(kind: Kind)
+    }
+    private def abstractionParameters(): List[(String, ParameterKind)] = {
+      expect("[")
+      val params = scala.collection.mutable.ListBuffer.empty[(String, ParameterKind)]
+      def parameter(): Unit = {
+        val name = identifier()
+        val k = if !accept(":") then ParameterKind.ValueType
+          else if accept("Eff") then ParameterKind.AnswerEffect(optionalBound())
+          else ParameterKind.Annotation(kind())
+        params += ((name, k))
+      }
+      parameter(); while accept(",") do parameter()
+      if params.map(_._1).distinct.size != params.size then fail("Duplicate type abstraction parameter")
+      expect("]"); params.toList
+    }
+    private def abstractValue(params: List[(String, ParameterKind)], body: Value): Value =
+      params.foldRight(body) { case ((n, k), b) => k match {
+        case ParameterKind.ValueType => Value.TypeLambda(n, b)
+        case ParameterKind.AnswerEffect(bound) => Value.EffectLambda(n, b, bound)
+        case ParameterKind.Annotation(kind) => Value.KindLambda(n, kind, b)
+      }}
+
+    // A structural capability contract is distinguished from a refinement by
+    // its declarations. The parameter binds its region in the contract too.
+    private def capabilityParameter: Boolean = current == "(" &&
+      tokens.lift(position + 2).exists(_.text == ":") &&
+      tokens.lift(position + 3).exists(_.text == "{") &&
+      tokens.lift(position + 4).exists(t => t.text == "def" || t.text == "}")
+    private def capabilityFunction(named: Boolean = false): Value = {
+      expect("("); val name = identifier(); expect(":"); val ops = signatures(); expect(")")
+      if named then expect("=")
+      val body = if accept("{") then { val v = pureValue(); expect("}"); v }
+        else if named then pureValue()
+        else if capabilityParameter then capabilityFunction()
+        else if current == "(" then function()
+        else fail("A capability parameter must be followed by a value body or another parameter list")
+      Value.CapabilityLambda(name, ops, body)
     }
 
     private case class Parameters(fields: List[(String, Option[Type])], binder: String) {
@@ -162,7 +209,14 @@ object Parser {
     private def definition(): Definition = {
       val recursive = accept("rec")
       val name = identifier()
-      val types = typeParameters()
+      val types = if current == "[" then abstractionParameters() else Nil
+      if capabilityParameter then {
+        val value = abstractValue(types, capabilityFunction(named = true))
+        accept(";")
+        val dependencies = Surface.free(value)
+        if recursive || dependencies(name) then fail("Recursive capability-polymorphic definitions are not supported yet")
+        return Definition(name, rest => Term.Let(name, Term.Return(value), rest), dependencies)
+      }
       val params = parameters(required = true)
       val region = fixedRegion()
       val (caller, contexts) = callParameters()
@@ -185,7 +239,7 @@ object Parser {
         } else if contexts.nonEmpty then Value.ContextLambda(param, arg,
           res.getOrElse(fail("A context-polymorphic definition needs a result annotation")), contexts, body, caller)
           else res.fold[Value](Value.InferredLambda(param, arg, body, caller))(Value.Lambda(param, arg, _, body, caller))
-        val value = types.foldRight(function)(Value.TypeLambda.apply)
+        val value = abstractValue(types, function)
         Definition(name, rest => Term.Let(name, Term.Return(value), rest), free)
       }
     }
@@ -527,6 +581,10 @@ object Parser {
         case "Unit" => take(); Type.Unit
         case "cap" => take(); expect("("); val name = identifier(); expect(")"); Type.Capability(name)
         case "(" =>
+          if allowArrow && capabilityParameter then {
+            take(); val name = identifier(); expect(":"); val ops = signatures(); expect(")"); expect("=>")
+            return Type.CapabilityPoly(name, ops, tpe())
+          }
           take()
           val parameter = if tokens.lift(position + 1).exists(_.text == ":") then {
             val name = identifier(); expect(":"); Some(name)
@@ -561,8 +619,14 @@ object Parser {
             val name = identifier(); val args = predicateSorts(); expect("."); expect("(")
             val body = tpe(); expect(")"); Type.PredicatePoly(name, args, body)
           } else if current != "effect" then {
-            val name = identifier(); expect(":"); val k = kind(); expect("."); expect("(")
-            val body = tpe(); expect(")"); Type.KindPoly(name, k, body)
+            val name = identifier(); expect(":")
+            if accept("Eff") then {
+              val bound = optionalBound(); expect("."); expect("(")
+              val body = tpe(); expect(")"); Type.EffectPoly(name, body, bound)
+            } else {
+              val k = kind(); expect("."); expect("(")
+              val body = tpe(); expect(")"); Type.KindPoly(name, k, body)
+            }
           } else {
             expect("effect")
             val name = identifier()
@@ -709,7 +773,11 @@ object Parser {
         }
       case "cap" => take(); expect("("); val name = identifier(); expect(")"); Value.Capability(name)
       case "token" => take(); expect("("); val name = identifier(); expect(")"); Value.Token(name)
-      case "fun" => take(); if current == "[" then polymorphicFunction() else function()
+      case "fun" =>
+        take()
+        if current == "[" then polymorphicFunction()
+        else if capabilityParameter then capabilityFunction()
+        else function()
       case "capfun" =>
         take(); expect("("); val name = identifier(); expect(":")
         val ops = signatures(); expect(")"); expect("{"); val body = pureValue(); expect("}")
@@ -737,16 +805,10 @@ object Parser {
       case _ => Value.Variable(identifier())
     }
     private def polymorphicFunction(): Value = {
-      expect("[")
-      val params = scala.collection.mutable.ListBuffer.empty[(String, Option[Kind])]
-      def parameter(): Unit = { val n = identifier(); params += ((n, if accept(":") then Some(kind()) else None)) }
-      parameter(); while accept(",") do parameter()
-      if params.map(_._1).distinct.size != params.size then fail("Duplicate type abstraction parameter")
-      expect("]")
-      val body = if accept("{") then { val b = pureValue(); expect("}"); b } else function()
-      params.toList.foldRight(body) { case ((n, k), b) =>
-        k.fold[Value](Value.TypeLambda(n, b))(Value.KindLambda(n, _, b))
-      }
+      val params = abstractionParameters()
+      val body = if accept("{") then { val b = pureValue(); expect("}"); b }
+        else if capabilityParameter then capabilityFunction() else function()
+      abstractValue(params, body)
     }
     private val primitives = Map("+" -> "add", "-" -> "sub", "*" -> "mul", "/" -> "div", "%" -> "mod",
       "==" -> "eq", "!=" -> "ne", "<" -> "lt", "<=" -> "le", ">" -> "gt", ">=" -> "ge", "&&" -> "and", "||" -> "or")

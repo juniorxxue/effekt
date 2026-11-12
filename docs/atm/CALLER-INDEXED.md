@@ -167,7 +167,7 @@ The source structure is:
 ```effekt
 val file = fun [C: Cty] (c: Int)[R: Reg] {
   fun (body: /* B(R), written out in the example */) at [R]: C {
-    // Install handler h and invoke body{h}[step(h)][[]]().
+    // Install handler h and invoke body(h)[step(h)][[]]().
   }
 };
 file[Int](7)(/* outer callback */)

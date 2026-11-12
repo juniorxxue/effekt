@@ -294,7 +294,7 @@ return clause do not receive its resumption binding. The old explicit
 `resume k` suffix remains accepted for archived regression fixtures.
 
 Handler capabilities can be used directly as values: `invoke(h)` passes the
-capability bound by `h`, `val saved = h` aliases it, and `f{h}` supplies it to a
+capability bound by `h`, `val saved = h` aliases it, and `f(h)` supplies it to a
 capability abstraction. The nearest lexical term binding wins: a local value
 can shadow a capability, and an inner handler or capability parameter can
 shadow an outer value. The old value spelling `cap(h)` remains accepted for
@@ -308,8 +308,13 @@ checks still apply after instantiation. Refinements support Int, Bool, Unit and
 logical pairs, including formulas such as `{u: Unit | u == ()}` and
 `{v: Int | forall n: Int. n + 0 == n}`. Quantified formula variables are scoped
 and sorted; their names are freshened before substitution or SMT serialization.
-`capfun (c: { def ask(Unit): Int / (Int => Int); }) { ... }` abstracts a
-capability/region, and `f{h}` instantiates it. There is no implicit permission
+`fun (c: { def ask(Unit): Int / (Int => Int); }) { ... }` abstracts a
+capability/region, and `f(h)` supplies that capability as an ordinary value
+argument. Its dependent type is `(c: { ... }) => T`. The body remains a value,
+usually a returned function, and the parameter retains the existing region,
+contract, and residual-evidence checks. `fun [E: Eff] { ... }` abstracts an
+answer effect; `f[pure]` or `f[(Int => Bool)]` supplies it. The legacy `capfun`
+and `effectfun` spellings remain aliases for archived sources. There is no implicit permission
 to call that capability inside a lambda at a symbolic ATC distance.
 Capability instantiation uses `S_Cap`: an implementation may accept a broader
 operation argument and provide a stronger result/answer contract. Handler region

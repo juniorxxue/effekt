@@ -257,8 +257,8 @@ class AtmTests extends munit.FunSuite {
   }
   test("capability quantification substitutes generative region identities") {
     run("""def main(): Int = {
-      val alias = capfun (c: { def ask(Unit): Int / (Int => Int); }) { cap(c) };
-      try { val target = alias{cap(h)}; target.ask() } with h: Int {
+      val alias = fun (c: { def ask(Unit): Int / (Int => Int); }) { cap(c) };
+      try { val target = alias(h); target.ask() } with h: Int {
         def ask(u: Unit): Int / (Int => Int) = { resume(42) }
         return x => { x }
       }

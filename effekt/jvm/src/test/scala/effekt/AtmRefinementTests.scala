@@ -261,10 +261,10 @@ class AtmRefinementTests extends munit.FunSuite {
   }
   test("refinements do not make a symbolic ATC distance concrete") {
     reject("""def main(): {r: Int | r == 42} = {
-      val invoke = capfun (c: { def ask(u: Unit): {v: Int | v == 42} / ({r: Int | r == 42} => {r: Int | r == 42}); }) {
+      val invoke = fun (c: { def ask(u: Unit): {v: Int | v == 42} / ({r: Int | r == 42} => {r: Int | r == 42}); }) {
         fun (u: Unit): {v: Int | v == 42} / ({r: Int | r == 42} => {r: Int | r == 42}) { c.ask() }
       };
-      try { invoke{cap(h)}() } with h: {r: Int | r == 42} {
+      try { invoke(h)() } with h: {r: Int | r == 42} {
         def ask(u: Unit): {v: Int | v == 42} / ({r: Int | r == 42} => {r: Int | r == 42}) = { resume(42) }
         return r => { r }
       }

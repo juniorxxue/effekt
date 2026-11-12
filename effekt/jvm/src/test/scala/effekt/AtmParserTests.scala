@@ -47,10 +47,15 @@ class AtmParserTests extends munit.FunSuite {
   }
 
   test("capability and effect instantiation chain before ordinary application") {
-    val body = parse("def main(): Int = { helper{cap(h)}[effect (E; F)](42) }").body
-    assertEquals(body, Term.Apply(Value.InstantiateEffect(
-      Value.Instantiate(Value.Variable("helper"), Value.Capability("h")),
-      Effect.Sequence(Effect.Variable("E"), Effect.Variable("F"))), Value.Integer(42)))
+    val body = parse("def main(): Int = { helper(h)[effect (E; F)](42) }").body
+    body match {
+      case Term.Let(n, Term.Apply(Value.Variable("helper"), Value.Variable("h")),
+          Term.Apply(Value.InstantiateEffect(Value.Variable(m), e), Value.Integer(x))) =>
+        assertEquals(n, m)
+        assertEquals(e, Effect.Sequence(Effect.Variable("E"), Effect.Variable("F")))
+        assertEquals(x, BigInt(42))
+      case other => fail(s"Unexpected application sequence: $other")
+    }
   }
 
   test("function capture annotations and nested answer effects remain distinct") {
@@ -69,7 +74,7 @@ class AtmParserTests extends munit.FunSuite {
     val source = parse("def main(): Int / (((Int) => Int) => ((Int) => Int)) = { 0 }")
     assertEquals(source.result.effect, Effect.Change(Computation(function), Computation(function)))
     val quantified = Type.EffectPoly("E", function)
-    val polySource = parse("def main(): Int / ((forall effect E. (((Int) => Int))) => Bool) = { 0 }")
+    val polySource = parse("def main(): Int / ((forall E: Eff. (((Int) => Int))) => Bool) = { 0 }")
     assertEquals(polySource.result.effect, Effect.Change(Computation(quantified), Computation(Type.Bool)))
   }
 
@@ -143,7 +148,7 @@ class AtmParserTests extends munit.FunSuite {
     "trailing input" -> "def main(): Int = { 1 } ignored",
     "missing closing block" -> "def main(): Int = { 1",
     "missing answer endpoint" -> "def main(): Int / (Int => ) = { 1 }",
-    "missing bound separator" -> "def main(): Int = { effectfun [E repeatable] { 1 } }",
+    "missing kind separator" -> "def main(): Int = { fun [E Eff] { 1 } }",
     "redefining a reserved primitive" -> "def main(): Int = { val add = 0; add }") do {
     test(s"rejects $name") { assert(Parser.parse(source).isLeft) }
   }

@@ -37,8 +37,8 @@ class AtmFidelityTests extends munit.FunSuite {
     }""", "local handler region")
   }
   private val variantCapability = """def main(): Int = {
-    val alias = capfun (c: { def ask(x: {v: Int | v >= 0}): Int / (Int => Int); }) { cap(c) };
-    try { val target = alias{cap(h)}; target.ask(0) } with h: Int {
+    val alias = fun (c: { def ask(x: {v: Int | v >= 0}): Int / (Int => Int); }) { cap(c) };
+    try { val target = alias(h); target.ask(0) } with h: Int {
       def ask(x: Int): {v: Int | v == 42} / (Int => Int) = { resume(42) }
       return x => { x }
     }
@@ -105,7 +105,7 @@ class AtmFidelityTests extends munit.FunSuite {
   }
   test("a capability quantifier binds its region in operation signatures") {
     val p = check("""def main(): Int = {
-      val family = capfun (c: { def op(((Unit) => Int) at {c}): Int / (Int => Int); }) { cap(c) };
+      val family = fun (c: { def op(((Unit) => Int) at {c}): Int / (Int => Int); }) { cap(c) };
       42
     }""")
     val scheme = p.body.children.head.values.head.tpe.asInstanceOf[Syntax.Type.CapabilityPoly]

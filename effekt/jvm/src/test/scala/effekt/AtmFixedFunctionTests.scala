@@ -36,9 +36,9 @@ class AtmFixedFunctionTests extends munit.FunSuite {
   }
   test("capability subsumption renames local regions inside operation answers") {
     checked("""def main(): Unit = {
-      val f: forall cap c: {
+      val f: (c: {
         def tick(Unit): Unit / (((Int) =>[c] Int) => ((Int) =>[c] Int));
-      }. (Unit) = capfun (d: {
+      }) => (Unit) = fun (d: {
         def tick(Unit): Unit / (((Int) =>[d] Int) => ((Int) =>[d] Int));
       }) { () };
       ()

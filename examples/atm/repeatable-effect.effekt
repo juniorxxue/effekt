@@ -1,7 +1,7 @@
 // Equal answer endpoints express the required composition property explicitly.
 // The pure callback is embedded in the identity transition by subsumption.
 def main(): Int = {
-  val twice = capfun (c: { def ask(): Int / (Int => Int); }) {
+  val twice = fun (c: { def ask(): Int / (Int => Int); }) {
     typefun [Answer] {
       fun (f: ((Unit) =>[c] Int / (Answer => Answer))) at [c]:
           Int / (Answer => Answer) {
@@ -12,7 +12,7 @@ def main(): Int = {
     }
   };
   try {
-    val localTwice = twice{cap(h)};
+    val localTwice = twice(h);
     val pureResult = localTwice[type Int](fun (u: Unit) at [h]: Int { 1 });
     val effectResult = localTwice[type Int](fun (u: Unit) at [h]: Int / (Int => Int) { h.ask() });
     pureResult + effectResult

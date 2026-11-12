@@ -1,8 +1,8 @@
-// The outer abstraction opens an unknown tail. The inner abstraction retains
-// its abstract outer capability and is instantiated immediately inside it.
+// Both capability regions are abstract. Without relative evidence and an ATC,
+// the checker cannot reconstruct the operation's symbolic handler distance.
 def main(): Bool = {
-  val both = capfun (c: { def ask(): Int / (Int => Bool); }) {
-    capfun (d: { def bump(): Int / (Int / (Int => Bool) => Int / (Int => Bool)); }) {
+  val both = fun (c: { def ask(): Int / (Int => Bool); }) {
+    fun (d: { def bump(): Int / (Int / (Int => Bool) => Int / (Int => Bool)); }) {
       fun (u: Unit): Int / (Int / (Int => Int) => Int / (Int => Bool)) {
         val a = d.bump();
         val b = c.ask();
@@ -12,7 +12,7 @@ def main(): Bool = {
   };
   try {
     try {
-      val local = both{cap(outer)}{cap(inner)};
+      val local = both(outer)(inner);
       local()
     } with inner: Int / (Int => Bool) {
       def bump(x: Unit): Int / (Int / (Int => Bool) => Int / (Int => Bool)) = {

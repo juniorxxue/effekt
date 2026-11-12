@@ -174,15 +174,17 @@ object Syntax {
       s"(${parameter.fold("")(p => displayName(p) + ": ")}${show(arg)}) =>[${region.map(displayName).getOrElse("<unresolved>")}] ${show(result)}"
     case Type.Continuation(arg, result, region, _, parameter) =>
       s"(${parameter.fold("")(p => displayName(p) + ": ")}${show(arg)} ~> ${show(result)}) @${displayName(region)}"
-    case Type.CapabilityPoly(parameter, _, body, _, _, obligations) =>
-      s"forall cap ${displayName(parameter)}[${obligations.map(_.constraint).mkString(", ")}]. ${show(body)}"
+    case Type.CapabilityPoly(parameter, operations, body, _, _, obligations) =>
+      val contract = operations.map(o => s"def ${o.name}(${show(o.argument)}): ${show(o.result)} / (${show(o.initialAnswer)} => ${show(o.finalAnswer)});").mkString(" ")
+      val requirements = if obligations.isEmpty then "" else s" where ${obligations.map(_.constraint).mkString(", ")}"
+      s"(${displayName(parameter)}: { $contract }) => ${show(body)}$requirements"
     case Type.EffectPoly(parameter, body, bound) =>
       val constraint = bound match {
         case EffectBound.Any => ""
         case EffectBound.Repeatable => " repeatable"
         case EffectBound.After(prefix) => s" after (${show(prefix)})"
       }
-      s"forall effect ${displayName(parameter)}$constraint. ${show(body)}"
+      s"forall ${displayName(parameter)}: Eff$constraint. ${show(body)}"
     case Type.KindPoly(parameter, kind, body) => s"forall ${displayName(parameter)}: $kind. (${show(body)})"
     case Type.AbstractResult(c) => s"value(${Annotations.show(c)})"
   }

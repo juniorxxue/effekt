@@ -1,0 +1,8 @@
+// Eff parameters describe answer effects; they are supplied in type brackets.
+// The effect is retained in the callback's type without executing it abstractly.
+def main(): Int = {
+  val keep = fun [E: Eff] {
+    fun (callback: ((Unit) =>[top] Int / E)) { callback }
+  };
+  keep[pure](fun () at [top]: Int { 42 })()
+}

@@ -117,6 +117,7 @@ object AtmReference {
     case Syntax.Term.Let(name, first, rest) => bind(term(first, env))(v => term(rest, env.bind(name, v)))
     case Syntax.Term.Apply(function, argument) => value(function, env) match {
       case Value.Function(call) => call(value(argument, env))
+      case Value.CapabilityAbstraction(instantiate) => Computation.Returned(instantiate(value(argument, env)))
       case other => throw new IllegalStateException(s"Cannot call $other")
     }
     case Syntax.Term.If(condition, whenTrue, whenFalse) => value(condition, env) match {
