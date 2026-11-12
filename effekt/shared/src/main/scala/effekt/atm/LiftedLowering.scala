@@ -106,9 +106,9 @@ object LiftedLowering {
       case Type.Data(n) => dataTypes(n)
       case Type.Variable(n) => env.types.getOrElse(n, throw Diagnostic("Unbound Lifted type variable " + n))
       case Type.Pair(a, b) => L.ValueType.Data(pair, List(target(a, env), target(b, env)))
-      case Type.Function(a, c, _, _, _) => L.ValueType.Boxed(function(List(target(a, env)), target(c.value, env), 1))
+      case Type.Function(a, c, _, _, _, _) => L.ValueType.Boxed(function(List(target(a, env)), target(c.value, env), 1))
       case Type.Continuation(a, c, _, _, _) => L.ValueType.Boxed(function(List(target(a, env)), target(c.value, env)))
-      case Type.LocalFunction(a, c, _, _, _) => L.ValueType.Boxed(function(List(target(a, env)), target(c.value, env)))
+      case Type.FixedFunction(a, c, _, _, _) => L.ValueType.Boxed(function(List(target(a, env)), target(c.value, env)))
       case Type.Capability(r) => L.ValueType.Boxed(env.caps.getOrElse(r, throw Diagnostic("Unbound Lifted capability " + r)).block.tpe)
       case Type.AbstractResult(Syntax.ComputationForm.Variable(n)) =>
         env.types.getOrElse(n, throw Diagnostic("Unbound Lifted computation parameter " + n))
@@ -212,13 +212,13 @@ object LiftedLowering {
         val equal = equality(args.head.tpe, value(args.head, env), value(args(1), env), env)
         if op == "eq" then equal else primitive("not", List(equal), L.Type.TBoolean)
       case V.Primitive(name, args) => primitive(name, args.map(value(_, env)), target(v.tpe, env))
-      case V.LocalLambda(parameter, _, body) =>
-        val local = v.tpe.asInstanceOf[Type.LocalFunction]
+      case V.FixedLambda(parameter, _, body) =>
+        val local = v.tpe.asInstanceOf[Type.FixedFunction]
         val id = Id("atmLocalArg"); val argType = target(local.argument, env)
         L.Expr.Box(L.Block.BlockLit(Nil, List(L.Param.ValueParam(id, argType)),
           term(body, env.bind(parameter, L.Expr.ValueVar(id, argType)))))
       case V.Lambda(parameter, a, body) =>
-        val Type.Function(arg, _, _, _, _) = v.tpe: @unchecked
+        val Type.Function(arg, _, _, _, _, _) = v.tpe: @unchecked
         val id = Id("atmArg"); val ev = new L.EvidenceSymbol()
         val argType = target(arg, env)
         val inner = env.bind(parameter, L.Expr.ValueVar(id, argType)).copy(evidence = env.evidence.updated(a.call.name, ev))
@@ -269,7 +269,7 @@ object LiftedLowering {
           val inner = env.bind(name, L.Expr.Box(L.Block.BlockVar(id, tpe)))
           val L.Expr.Box(block) = value(f, inner): @unchecked
           L.Stmt.Scope(List(L.Definition.Def(id, block)), term(body, inner))
-        case N.Apply(f, a, evs) =>
+        case N.Apply(f, a, evs, _) =>
           L.Stmt.App(L.Block.Unbox(value(f, env)), Nil, evs.map(proof(_, env)) :+ value(a, env))
         case N.If(c, a, b) => L.Stmt.If(value(c, env), term(a, env), term(b, env))
         case N.Match(v, cases) =>

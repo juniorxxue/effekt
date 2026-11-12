@@ -1,7 +1,7 @@
 // Passing a capability preserves its identity and full operation answer contract.
 def main(): Bool = {
   try {
-    def local invoke(c: cap(h)): Int / (Int => Bool) = {
+    def invoke(c: cap(h)) at [h]: Int / (Int => Bool) = {
       c.ask()
     }
     invoke(h)

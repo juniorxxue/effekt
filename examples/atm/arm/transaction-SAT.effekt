@@ -2,33 +2,33 @@
 // The private reference is represented by the committed handler result:
 // return commits s; MyExn aborts to the original 0. No other code can access r.
 def main(): Bool = {
-  def test(b: Bool): {r: Int | r != 2 && (r == 0 || r == 42)} = {
+  def test(b: Bool)[R: Reg]: {r: Int | r != 2 && (r == 0 || r == 42)} = {
     val run = try {
       state.update(1); state.update(2);
       if (b) { state.abort(); () } else { () };
       val two = state.lookup();
       state.update(3); state.update(40 + two)
-    } with state: (local (s: Int) => {r: Int | r == 0 || r == 42}) {
+    } with state: ((s: Int) =>[R] {r: Int | r == 0 || r == 42}) {
       def lookup(u: Unit): {i: Int | i == 2} /
-        ((local (s: Int) => {r: Int | r == 0 || r == 42}) =>
-         (local (s: {i: Int | i == 2}) => {r: Int | r == 0 || r == 42})) = {
-        fun local (s: {i: Int | i == 2}): {r: Int | r == 0 || r == 42} {
+        (((s: Int) =>[R] {r: Int | r == 0 || r == 42}) =>
+         ((s: {i: Int | i == 2}) =>[R] {r: Int | r == 0 || r == 42})) = {
+        fun (s: {i: Int | i == 2}) at [R]: {r: Int | r == 0 || r == 42} {
           val next = resume(s); next(s)
         }
       }
       def update(value: Int): Unit /
-        ((local (s: {i: Int | i == value}) => {r: Int | r == 0 || r == 42}) =>
-         (local (s: Int) => {r: Int | r == 0 || r == 42})) = {
-        fun local (s: Int): {r: Int | r == 0 || r == 42} {
+        (((s: {i: Int | i == value}) =>[R] {r: Int | r == 0 || r == 42}) =>
+         ((s: Int) =>[R] {r: Int | r == 0 || r == 42})) = {
+        fun (s: Int) at [R]: {r: Int | r == 0 || r == 42} {
           val next = resume(); next(value)
         }
       }
       def abort(u: Unit): {i: Int | false} /
-        ((local (s: {i: Int | i == 2}) => {r: Int | r == 0 || r == 42}) =>
-         (local (s: {i: Int | i == 2}) => {r: Int | r == 0 || r == 42})) = {
-        fun local (s: {i: Int | i == 2}): {r: Int | r == 0 || r == 42} { 0 }
+        (((s: {i: Int | i == 2}) =>[R] {r: Int | r == 0 || r == 42}) =>
+         ((s: {i: Int | i == 2}) =>[R] {r: Int | r == 0 || r == 42})) = {
+        fun (s: {i: Int | i == 2}) at [R]: {r: Int | r == 0 || r == 42} { 0 }
       }
-      return u => { fun local (s: {i: Int | i == 42}): {r: Int | r == 0 || r == 42} { s } }
+      return u => { fun (s: {i: Int | i == 42}) at [R]: {r: Int | r == 0 || r == 42} { s } }
     };
     run(0)
   }

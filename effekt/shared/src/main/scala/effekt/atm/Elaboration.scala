@@ -52,7 +52,7 @@ object Elaboration {
         case _: Term.Apply => t.values.head.tpe match {
           case _: Type.Function if t.evidence.size != 1 => throw Diagnostic("A_App is missing its evidence argument")
           case _: Type.Continuation if t.evidence.nonEmpty => throw Diagnostic("A_KApp must be a plain application")
-          case _: Type.LocalFunction if t.evidence.nonEmpty => throw Diagnostic("A local call must be a plain application")
+          case _: Type.FixedFunction if t.evidence.nonEmpty => throw Diagnostic("A local call must be a plain application")
           case _ => ()
         }
         case _ => ()

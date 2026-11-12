@@ -3,9 +3,9 @@
 def main(): Int = {
   val pair = capfun (c: { def first(): Int / (Bool => Int); def second(): Int / (Int => Bool); }) {
     typefun [Final] { typefun [Middle] { typefun [Initial] {
-      fun local[c] (f: (local[c] (Unit) => Int / (Middle => Final))):
-          (local[c] ((local[c] (Unit) => Int / (Initial => Middle))) => Int / (Initial => Final)) {
-        fun local[c] (g: (local[c] (Unit) => Int / (Initial => Middle))):
+      fun (f: ((Unit) =>[c] Int / (Middle => Final))) at [c]:
+          ((((Unit) =>[c] Int / (Initial => Middle))) =>[c] Int / (Initial => Final)) {
+        fun (g: ((Unit) =>[c] Int / (Initial => Middle))) at [c]:
             Int / (Initial => Final) {
           val a = f();
           val b = g();
@@ -16,8 +16,8 @@ def main(): Int = {
   };
   try {
     val local = pair{cap(h)}[type Int][type Bool][type Int];
-    val withFirst = local(fun local (u: Unit): Int / (Bool => Int) { h.first() });
-    withFirst(fun local (u: Unit): Int / (Int => Bool) { h.second() })
+    val withFirst = local(fun (u: Unit) at [h]: Int / (Bool => Int) { h.first() });
+    withFirst(fun (u: Unit) at [h]: Int / (Int => Bool) { h.second() })
   } with h: Int {
     def first(x: Unit): Int / (Bool => Int) = {
       val b = resume(20);

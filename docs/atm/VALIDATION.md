@@ -613,6 +613,9 @@ explicit evidence-kind abstractions and is not claimed to pass this source.
 
 ## 2026-11-10: plain polymorphic syntax
 
+Historical checkpoint: the `here` spelling shown below has since been removed;
+see [named caller regions](CALLER-INDEXED.md) for the current syntax.
+
 Polymorphic abstractions now use `fun [A] { ... }` or
 `fun [R: Reg, D: Dist, E: Ev(R,D,h), K: ATC(D)] { ... }`. Value parameters
 can follow directly, as in `fun [A](x: A): A { x }`. The previous `typefun`
@@ -713,3 +716,153 @@ sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile' \
 Logs: `/private/tmp/effekt-remove-specialization/targeted.log` and
 `/private/tmp/effekt-remove-specialization/validation.log`.
 These checks do not constitute a mechanized compiler correspondence proof.
+
+## 2026-11-12: caller-indexed functions and removal of `local`
+
+Historical checkpoint, superseded by the domain-removal entry below. Ordinary
+function types retained caller-indexed families. This checkpoint included the
+approved explicit ATC abstraction and an additional caller-dependent domain
+extension; the latter has since been removed. Current boundaries are documented in
+[CALLER-INDEXED.md](CALLER-INDEXED.md), including the printed algorithm's retained
+incompleteness boundary. `local` is removed from syntax. Older declarative ARM
+behavior uses explicit fixed-region contracts with ordinary `fun` instead.
+
+Validation on the completed source:
+
+```sh
+sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-polymorphic.effekt' \
+  'effektJVM/runMain effekt.atm.Main --emit examples/atm/file-reusable.effekt /tmp/effekt-caller-file.ss'
+chez --script /tmp/effekt-caller-file.ss
+```
+
+- **434 ATM tests passed, zero failures/errors**; Scala.js compilation passed.
+  This includes all existing ARM contract/runtime classifications and 14 new
+  caller-family/ATC regressions. No existing benchmark was demoted to unsupported.
+- The reusable Fig. 1 and result-type-polymorphic file both return **42** through
+  the CLI. Independently executing the emitted Scheme also returns **42**.
+- Tests compare reference evaluation with optimized/unoptimized direct Chez,
+  check one generic helper/handler body and two computation instances, and
+  observe one operation-body check for an ATC-polymorphic function invoked at
+  two different handler depths.
+- Returned evidence kinds, fixed-region function families, nested binders,
+  recursive result families, and ATCs in higher-order argument contracts pass.
+  Wrong ATC depths, missing arguments, malformed Core call-context certificates,
+  invalid unused definitions, and removed `local` forms are rejected.
+- The unannotated symbolic-distance ATC inference tests retain their expected
+  residual evidence and rejection. No body specialization or name-based Fig. 1
+  treatment was added. `git diff --check` passes; paper rules are unchanged.
+
+Log: `/private/tmp/effekt-caller-complete.log`. Earlier validation counts and
+benchmark timing reports remain historical snapshots; timings were not rerun
+for publication. These are implementation tests, not a mechanized proof of the
+new extension.
+
+## 2026-11-12: remove callback-domain extension; curry Fig. 1
+
+Historical checkpoint: its `here` spelling is superseded by the named-caller
+entry below. This supersedes the preceding caller-domain checkpoint. Ordinary function
+arguments are resolved before the implicit caller and call-ATC binders, and are
+not opened or instantiated by application. Subtyping, equality, free-region
+analysis, and Core annotation validation use the same scope boundary. A call-ATC
+parameter declared after the value parameter list is now rejected in that
+ordinary domain; independently quantified outer ATCs remain available.
+
+Fig. 1 now calls `file[Int](7)(callback)` and `file[A](35)(callback)`.
+The ordinary helper's domain is `Int`. Its caller-indexed result is a function
+with an explicitly fixed-region contract. The definition is still checked once,
+with one generic handler body and two computation instantiations. The
+[boundary table](CALLER-INDEXED.md) separates this declarative bridge and explicit
+ATC abstraction from printed `A_Abs`/`A_App`. At this checkpoint `here` was added
+ATM annotation syntax; it has since been removed in favor of explicitly naming
+the ordinary function's existing caller binder.
+
+Validation:
+
+```sh
+sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile' \
+  'effektJVM/runMain effekt.atm.Main --check-json examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-polymorphic.effekt' \
+  'effektJVM/runMain effekt.atm.Main --emit examples/atm/file-reusable.effekt /private/tmp/effekt-curried-file.ss'
+chez --script /private/tmp/effekt-curried-file.ss
+```
+
+- **439 ATM tests passed; zero failures/errors.** Scala.js compilation passed.
+  Existing ARM contract and runtime classifications remain unchanged.
+- Curried Fig. 1 checks at **`Int / pure`**. Both file examples return **42**
+  through the CLI; separately executing the emitted Fig. 1 Scheme returns **42**.
+  Fig. 1 regression tests compare reference evaluation with direct Chez execution,
+  both optimized and unoptimized, and retain the single-body checks.
+- New regressions reject the former uncurried contract, including when unused;
+  cover inferred, annotated, expected-type, recursive, and explicit-call-ATC
+  function domains; and reject a forged caller-dependent domain at the Core
+  boundary. Ordinary domains retaining their lexical region still work at
+  different call sites. Handler-label/current-region equivalence is tested in
+  a handler body, with their distinction tested beneath a function and delimiter.
+- The earlier test accepting call ATCs in higher-order argument domains is now
+  a rejection test, matching the removed extension. Symbolic-distance ATC
+  inference still rejects; no specialization was added.
+- `git diff --check` passed. Paper rules and historical benchmark timings were
+  not changed. These are implementation regressions, not a new mechanized
+  soundness or compiler-correspondence proof.
+
+Full log: `/private/tmp/effekt-domain-complete.log`; initial focused log:
+`/private/tmp/effekt-domain-targeted.log`.
+
+## 2026-11-12: name caller-region binders; remove `here`
+
+Ordinary functions and arrow types can name the existing implicit caller with
+`fun (x: T)[R: Reg]`, `def f(x: T)[R: Reg]`, and `(T)[R: Reg] => C`.
+The name scopes over the result, body, and subsequent call-ATC kinds, never the
+ordinary argument domain. Application supplies the current region implicitly;
+this naming syntax adds no quantifier, runtime region, or explicit call argument.
+The separate pre-parameter `fun [R: Reg]` form still abstracts an explicitly
+supplied typelike argument.
+
+`here` is no longer a keyword, predefined region, or scoped-capability marker.
+Maintained examples use handler labels, `top`, or a named caller binder.
+Bare `refl` has its own internal representation; it does not depend on a hidden
+region alias. Historical validation and archived prototype sources retain their
+old spelling as historical records.
+
+Fig. 1 declares `file` with `(c: Int)[R: Reg]`, uses `R` in its returned
+fixed-region callback contract, and names the outer callback's caller `S`.
+Its curried calls and explicit Cty/ATC arguments are unchanged. The helper is
+checked once, with no specialization. The callback-domain extension remains
+removed; explicit call-ATC abstraction and the fixed-region declarative bridge
+remain separately documented extensions in [CALLER-INDEXED.md](CALLER-INDEXED.md).
+
+Validation commands:
+
+```sh
+sbt -batch 'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile' \
+  'effektJVM/runMain effekt.atm.Main --check-json examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-polymorphic.effekt' \
+  'effektJVM/runMain effekt.atm.Main --emit examples/atm/file-reusable.effekt /private/tmp/effekt-named-file.ss'
+chez --script /private/tmp/effekt-named-file.ss
+```
+
+- **445 ATM tests passed; zero failures/errors.** Scala.js compilation passed.
+  Existing ARM contract and runtime classifications remain unchanged.
+- Curried Fig. 1 checks as **`Int / pure`** and returns **42** through the CLI
+  and separately executed emitted Scheme. The result-type-polymorphic file
+  example also returns **42**. Tests compare reference evaluation with optimized
+  and unoptimized direct Chez execution.
+- Fig. 1 retains one generic helper/handler body and two computation
+  instantiations. The general ATC-polymorphic function regression still observes
+  one operation-body check for calls at two different handler depths.
+- Six added regressions cover alpha-renaming, lexical shadowing, call-ATC kind
+  scope, binder escape, malformed/mixed binders, and `here` as an ordinary
+  identifier with no predefined region meaning. Existing domain-rejection,
+  recursive-result, returned-function, and invalid-unused-definition tests pass.
+- The unannotated `multiple-capabilities.effekt` fixture now uses ordinary
+  capability abstractions. It still rejects symbolic-distance ATC inference;
+  its diagnostic no longer comes from the removed scoped-capability syntax.
+- `git diff --check` passed. Paper sources and historical benchmark timings are
+  unchanged. These are implementation checks, not a mechanized proof of the
+  remaining extensions.
+
+Full log: `/private/tmp/effekt-named-complete.log`.

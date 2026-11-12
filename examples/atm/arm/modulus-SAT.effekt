@@ -2,24 +2,24 @@
 // mu is specialized to the benchmark's f. It still calls the supplied sequence
 // through Call, multiplies its result by zero, and tracks the largest index.
 def main(): Bool = {
-  def local test(r: Int): (local (a: ((x: Int) => {v: Int | x != 10 || v == r})) =>
-    (local (b: ((x: Int) => {v: Int | x != 10 || v == r})) => {v: Bool | v == true})) = {
-    fun local (a: ((x: Int) => {v: Int | x != 10 || v == r})):
-      (local (b: ((x: Int) => {v: Int | x != 10 || v == r})) => {v: Bool | v == true}) {
-      fun local (b: ((x: Int) => {v: Int | x != 10 || v == r})): {v: Bool | v == true} {
-        def local mu(sequence: ((x: Int) => {v: Int | x != 10 || v == r})): {v: Int | v == 10} = {
+  def test(r: Int) at [top]: ((a: ((x: Int) => {v: Int | x != 10 || v == r})) =>[top]
+    ((b: ((x: Int) => {v: Int | x != 10 || v == r})) =>[top] {v: Bool | v == true})) = {
+    fun (a: ((x: Int) => {v: Int | x != 10 || v == r})) at [top]:
+      ((b: ((x: Int) => {v: Int | x != 10 || v == r})) =>[top] {v: Bool | v == true}) {
+      fun (b: ((x: Int) => {v: Int | x != 10 || v == r})) at [top]: {v: Bool | v == true} {
+        def mu(sequence: ((x: Int) => {v: Int | x != 10 || v == r})) at [top]: {v: Int | v == 10} = {
           val run = try {
             val value = calls.call(10); 0 * value
-          } with calls: (local (i: Int) => {v: Int | v == (if i >= 10 then i else 10)}) {
+          } with calls: ((i: Int) =>[top] {v: Int | v == (if i >= 10 then i else 10)}) {
             def call(n: Int): Int /
-              ((local (i: Int) => {v: Int | v == i}) =>
-               (local (i: Int) => {v: Int | v == (if i >= n then i else n)})) = {
-              fun local (i: Int): {v: Int | v == (if i >= n then i else n)} {
+              (((i: Int) =>[top] {v: Int | v == i}) =>
+               ((i: Int) =>[top] {v: Int | v == (if i >= n then i else n)})) = {
+              fun (i: Int) at [top]: {v: Int | v == (if i >= n then i else n)} {
                 val j = if (i >= n) { i } else { n };
                 val value = sequence(n); val next = resume(value); next(j)
               }
             }
-            return unused => { fun local (i: Int): {v: Int | v == i} { i } }
+            return unused => { fun (i: Int) at [top]: {v: Int | v == i} { i } }
           };
           run(0)
         }

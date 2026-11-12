@@ -110,56 +110,31 @@ or establish an operational correspondence theorem for the compiler.
 
 ## Reusable helpers: explicit polymorphism
 
-The contextual native-block specialization pass from commit `506d5024e` has
-been removed. It saved a helper's syntax/environment at its declaration and
-checked its body separately at each use. That was an additional mechanism,
-not inference of a polymorphic type by the paper's algorithm. In particular,
-an unused helper did not receive the full body check. The `BlockDefine`,
-`BlockApply`, and `BlockInvoke` syntax, checker environments, elaboration, and
-reference-interpreter paths are all gone. Native block declarations now report
-that explicit parameters are required.
+[`file-reusable.effekt`](../../examples/atm/file-reusable.effekt) now uses an
+ordinary caller-indexed `file[C: Cty]` helper, curried as
+`file[C](descriptor)(callback)`, checked once and called at two computation
+types. Its ordinary domain is `Int`; its result is a fixed-region callback
+consumer tied to that call region. Its callbacks explicitly quantify over ATCs whose depths
+depend on their callers. The helper supplies a hole ATC when it invokes its
+callback at the newly installed handler. `interface File`, `read(): Int`, and
+`close(): Unit` remain; the mock-backed program returns 42.
 
-[`file-reusable.effekt`](../../examples/atm/file-reusable.effekt) instead binds
-one ordinary polymorphic value:
+There is no stored source-body scheme, per-call rechecking, native-block
+specialization, or example-name branch. `AtmExplicitFileTests` checks the
+single Core helper/handler body, distinct computation instances, executable
+results, and rejection of invalid unused definitions and invalid calls.
+Callback operation certificates now remain symbolic in the definition.
 
-```effekt
-val file = fun [R: Reg, C: Cty] local[R](c: Int) {
-  fun local[R](body: forall cap f: {
-    def read(): Int / (C => C);
-    def close(): Unit / (C => C);
-  }. (forall E: Ev(f, 1, R).
-        (local[f] (Unit) => Int / (Int => C)))): C { ... }
-};
-```
-
-Its handler is annotated `: C`, both operation clauses supply `C => C`, and
-it calls `body{h}[step(h)]()`. The callback's initial answer is explicitly
-`Int / pure`; its final answer is `C`. Thus the identity return clause is
-checked at `Int / pure` even when `C` is abstract. The definition is checked
-once under its declared binders; calls instantiate the checked type. The two
-instantiations are `file[here, Int](7)` and
-`file[a, Int / (Int => Int)](35)`.
-
-The callbacks explicitly bind capabilities and distance-one evidence. Calls
-to outer `a` supply `[EB; Int / (Int => [])]`; calls to inner `b` supply
-`[refl; []]`. Evidence endpoints and ATC depths are checked; no symbolic
-distance is guessed. Operation distances are **1, 0, 1, 0**. `interface File`,
-`read(): Int`, and `close(): Unit` remain. Descriptors are mock read results;
-closing has no OS effect. This is a fully annotated ATM program, not a program
-accepted unchanged by the native Effekt frontend.
-
-`AtmExplicitFileTests` checks one generic helper binding and one handler body
-in Core, two different computation instantiations, reference/Chez agreement,
-and rejection of a bad definition even when unused. It also rejects wrong
-argument/result types, evidence, ATC depth, and computation instantiations.
-The [inlined companion](../../examples/atm/file-nested.effekt) remains useful
-for comparison and exercises the optional annotation-generation conveniences.
-
-The explicit `local[R]` arrows still use the declarative `T_Abs`/`T_App`
-bridge described below. This change removes contextual specialization; it does
-not make every frontend feature a literal implementation of printed `A_Abs`.
-The legacy source emitter cannot emit explicit evidence-kind abstractions;
-use direct Lifted/Chez for this example.
+[CALLER-INDEXED.md](CALLER-INDEXED.md) gives the type translation and exact
+extension boundary: ordinary caller-indexed results follow Definition 17, explicit
+call-ATC abstraction goes beyond the printed algorithm's incompleteness
+boundary, and fixed-region contracts use a declarative checking bridge.
+Caller-dependent ordinary callback domains have been removed. The implicit
+caller and call-ATC telescope scope over results, not ordinary domains.
+Post-parameter `[R: Reg]` names the existing implicit caller variable; it is
+not an additional type abstraction or a runtime region allocation. Handler
+labels and `top` name existing regions. The `here` keyword has been removed. The
+unannotated symbolic-distance inference failure is retained. The paper and its proof are unchanged.
 
 ## Audit of other additional mechanisms (2026-11-12)
 
@@ -176,17 +151,16 @@ regression check, not a proof that the implementation has no bugs.
 | `handlerResultValue` / `projectedValue`, and default operation `C => C` | Extra, partial annotation generation. Candidates still undergo full handler/clause checks; there is no retry under a weaker annotation. Retained for general surface convenience. The reusable Fig. 1 supplies these annotations explicitly. |
 | `closeLet` refinement closing | Extra annotation generation, followed by escape and subtype checks. Retained and described above; not a printed inference rule. |
 | `checkTermInMode` for ordinary handler returns | Explicit synthesis/subsumption reconciliation of the printed mode mismatch. Retained and disclosed below. Fig. 1's generic helper return has a pure expected answer. |
-| `local` / `local[R]` and `return effect` | Explicit declarative bridges, not implicit guesses. Retained with exact-region/contract checks. Fig. 1 uses `local[R]`; it does not use `return effect`. |
+| Fixed-region contracts and `return effect` | Explicit declarative bridges retained with exact-region/contract checks. `local` syntax is removed. Curried Fig. 1 uses the fixed-region bridge for its returned callback consumer, but does not use `return effect`. |
 | Named interfaces, zero arguments, expression sequencing, pairs, plain `fun`, prefixless arguments | General surface elaboration into checked forms. Retained; no example name or constant selects a typing path. |
 | Symbolic-distance ATC inference | Still rejects. Explicit evidence and ATCs must satisfy their kinds, endpoints, depth and answer contracts. No fallback assigns distance zero or discards answer layers. |
 | Scoped capability tails, answer sequences, `repeatable`/`after` bounds | Old prototype forms remain rejected by the checker. |
 | ARM benchmark specializations/state passing | Source-level adaptations, not compiler branches. Kept with the disclosures in [BENCHMARKS.md](BENCHMARKS.md); not evidence of support for the original generic APIs. |
 
-The reusable helper uses currying and direct mock clauses. Sequencing a pure
-call before a computation with abstract type `C` remains unsupported by the
-current answer-mode/`let` composition checks; no special relaxation was added
-to accommodate mocks. General block scheme inference, abstract ATC result
-projection in the backend, and the other coverage gaps below remain open.
+Pure sequencing now preserves the whole abstract computation form after a pure
+binding, as in `A_Let`; tuple parameters can therefore precede an abstract `C`
+result. No mock-specific relaxation is used. General native block scheme
+inference and abstract ATC result projection remain separate limitations.
 
 ## Omitted handler annotations: additional surface inference
 
@@ -262,41 +236,17 @@ reject the wrong answer type and use of the exited handler's capability.
 
 ## Explicit fixed-region functions
 
-`local` functions expose the supplement's declarative `T_Abs` and `T_App`
-(Figure 7): check the body at a fixed region and require that exact region at
-application. `local[c]` names that region through a capability. An omitted
-qualifier uses an expected local arrow's region in checking, or the current
-lexical region in synthesis. An explicit qualifier must agree with an expected
-arrow. The frontend records a separate
-`LocalFunction` type and `LocalLambda` Core node. Neither acquires an abstract
-call witness, and Lifted gives them zero call-evidence parameters. Operations
-inside them use evidence reconstruction and the partial `atc` when annotations
-are omitted, or check explicit evidence and ATC arguments.
-Local recursion is checked against an explicit contract. Same-region
-continuations can be viewed as local arrows with compatible contracts; they
-cannot become ordinary region-polymorphic functions.
+`(T) =>[r] C` is an explicit declarative `T_Abs`/`T_App` contract. Ordinary
+`fun` can check against it; `fun (x: T) at [r]: C { ... }` supplies the contract
+inline. `local` is no longer syntax. `FixedFunction`/`FixedLambda` retain the
+exact region and no abstract call evidence. Calls at another region and
+implicit promotion to an ordinary arrow are rejected. Compatible resumptions
+can still be stored under such a contract. The ARM ports retain this behavior.
 
-This is an explicit extension/bridge to the declarative language, **not** a
-claim that Figure 10's algorithmic grammar or `A_Abs` already infers local
-arrows. Ordinary lambdas still use `A_Abs` unchanged. Handler escape tests and
-wrong-region application tests apply to local arrows; capture sets remain
-legacy-emitter metadata, not source typing permissions.
-
-Because Definition 17's caller-indexed codomain families are still absent, an
-ordinary function cannot synthesize a returned local arrow indexed by its fresh
-abstract caller region. Relabeling it as the function's required region would
-be wrong. The checker reports this as unsupported; an explicitly stable local
-result annotation works. This restriction also covers returned continuations
-and returned evidence kinds that mention the implicit caller region.
-
-Ten formerly blocked examples now check; seven are enabled by new forms and
-three also replace the former `repeatable`/
-`after`/opaque-effect bounds with explicit value-type parameters for pure answer
-endpoints. The original closed witnesses are retained and executed, but the
-new generic interfaces do not quantify over arbitrary nested computation
-answers. See [REJECTED-EXAMPLES.md](REJECTED-EXAMPLES.md) for individual changes
-and the retained unannotated negative fixtures. Their annotated counterparts
-now execute while preserving the callback and two-capability abstractions.
+Caller-indexed returned fixed arrows and evidence kinds are now supported;
+they are opened at the actual caller, never relabeled as the required scope.
+See [CALLER-INDEXED.md](CALLER-INDEXED.md) for the ordinary function family,
+ATC extension, and migration examples.
 
 ## Unresolved fidelity and coverage gaps
 
@@ -305,8 +255,9 @@ repairs above:
 
 1. **Definition 17 is not implemented literally.** Core annotations still use
    the algorithmic `Function`, `Continuation` and `CapabilityPoly` constructors,
-   alongside the explicit fixed-region `LocalFunction` extension.
-   Function nodes retain region/distance/evidence binders, but types are not
+   alongside the explicit fixed-region `FixedFunction` extension.
+   Function nodes and types retain caller region/distance binders and explicit
+   ATC telescopes, but types are not
    expanded into a separate declarative language containing the full
    `forall r:Reg. forall d:Dist. forall e:Ev[r <=_d rho]. ...` telescope.
    Capability abstraction also remains a surface convenience that binds both

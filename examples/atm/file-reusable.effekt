@@ -1,4 +1,5 @@
-// Reusable Fig. 1 with explicit region, computation, and evidence parameters.
+// Reusable Fig. 1: a curried helper checked once, with explicit Cty/ATC parameters.
+// The returned callback consumer has an explicit fixed-region contract.
 // Mock descriptors contain their read result; closing has no OS effect.
 interface File {
   def read(): Int
@@ -6,13 +7,16 @@ interface File {
 }
 
 def main(): Int = {
-  val file = fun [R: Reg, C: Cty] local[R](c: Int) {
-    fun local[R](body: forall cap f: {
-      def read(): Int / (C => C);
-      def close(): Unit / (C => C);
-    }. (forall E: Ev(f, 1, R). (local[f] (Unit) => Int / (Int => C)))): C {
+  val file = fun [C: Cty] (c: Int)[R: Reg] {
+    fun (body:
+      forall cap f: {
+        def read(): Int / (C => C);
+        def close(): Unit / (C => C);
+      }. (forall E: Ev(f, 1, R).
+        ((Unit)[K: ATC(dist(path(f)))] => Int / (K[Int] => K[C]) at {f}))
+    ) at [R]: C {
       try {
-        body{h}[step(h)]()
+        body{h}[step(h)][[]]()
       } with h: File {
         def read(): Int / (C => C) = resume(c)
         def close(): Unit / (C => C) = resume(())
@@ -20,23 +24,29 @@ def main(): Int = {
       }: C
     }
   };
-  file[here, Int](7)(capfun (a: {
+  file[Int](7)(capfun (a: {
     def read(): Int / (Int => Int);
     def close(): Unit / (Int => Int);
   }) {
-    fun [EA: Ev(a, 1, top)] local[a](): Int / (Int => Int) {
-      file[a, Int / (Int => Int)](35)(capfun (b: {
-        def read(): Int / (Int / (Int => Int) => Int / (Int => Int));
-        def close(): Unit / (Int / (Int => Int) => Int / (Int => Int));
-      }) {
-        fun [EB: Ev(b, 1, a)] local[b](): Int / (Int => Int / (Int => Int)) {
-          val x = a.read[EB; Int / (Int => [])]()
-          val y = b.read[refl; []]()
-          a.close[EB; Int / (Int => [])]()
-          b.close[refl; []]()
-          x + y
-        }
-      })
+    fun [EA: Ev(a, 1, top)] {
+      fun ()[S: Reg, K: ATC(dist(path(a)))]: Int / (K[Int] => K[Int]) {
+        evidence PA = path(a);
+        cty A = Int / (K[Int] => K[Int]);
+        file[A](35)(capfun (b: {
+          def read(): Int / (A => A);
+          def close(): Unit / (A => A);
+        }) {
+          fun [EB: Ev(b, 1, S)] {
+            fun ()[J: ATC(dist(path(b)))]: Int / (J[Int] => J[A]) {
+              val x = a.read[path(b) + EB + PA; J[layer(Int, K[Int], K)]]()
+              val y = b.read[path(b); J]()
+              a.close[path(b) + EB + PA; J[layer(Int, K[Int], K)]]()
+              b.close[path(b); J]()
+              x + y
+            }
+          }
+        })
+      }
     }
   })
 }

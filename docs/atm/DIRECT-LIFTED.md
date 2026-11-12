@@ -4,7 +4,7 @@ Status snapshot: **2026-11-06**. The default route on `codex/atm-v0.3.0` is:
 
 ```
 Effekt-like .effekt source
-  -> Checker: algorithm subset + explicit local-function/return forms
+  -> Checker: algorithm subset + explicit fixed-region function/return forms
               residual obligations, evidence reconstruction, partial ATC
   -> Core: separate syntax with computation types, regions and explicit witnesses
   -> LiftedLowering: actual effekt.lifted.ModuleDecl
@@ -21,7 +21,7 @@ available through `--emit-effekt` and differential tests. It is not called by
 
 The direct lowering records each `A_Do` operation's instantiated signature,
 inferred ATC and computation type. It does not replace evidence reconstruction
-or the partial ATC algorithm. Explicit local functions check operations at a
+or the partial ATC algorithm. Explicit fixed-region functions check operations at a
 fixed region, avoiding a symbolic caller distance where that region is known;
 ordinary functions retain the symbolic-distance inference limitation.
 
@@ -43,8 +43,9 @@ certificates. Refinement subtyping, including
 the ATC hole obligation, remains the responsibility of `Checker`. This validator
 is an implementation invariant, not an independent complete declarative checker.
 Core also still uses the algorithmic function/continuation type constructors
-alongside the explicit `LocalFunction` extension;
-the full Definition 17 type translation is outstanding. See
+alongside the explicit `FixedFunction` extension;
+caller-indexed families are now retained, while expansion into a separate full
+declarative type language remains outstanding. See
 [FIDELITY.md](FIDELITY.md) for the precise boundary.
 
 ## Lowering map
@@ -52,7 +53,7 @@ the full Definition 17 type translation is outstanding. See
 | ATM Core | Historical Lifted |
 | --- | --- |
 | Ordinary function abstraction | Boxed `BlockLit` with an `EvidenceParam` and value parameter |
-| Explicit fixed-region local function | Boxed `BlockLit` with a value parameter and zero call-evidence parameters |
+| Explicit fixed-region function | Boxed `BlockLit` with a value parameter and zero call-evidence parameters |
 | Local function application | Plain `App`, checked at exactly the declared region |
 | Caller-region application | `App` with the reconstructed `Evidence` argument |
 | Reflexive witness | `Here`, the empty lift list |
@@ -70,7 +71,7 @@ the full Definition 17 type translation is outstanding. See
 The continuation adapter implements the distinction between region-polymorphic
 ordinary functions and the paper's region-monomorphic `A_KApp` rule. It does not
 make a continuation callable beneath an arbitrary extra delimiter.
-A continuation may be stored and returned under a compatible local arrow at
+A continuation may be stored and returned under a compatible fixed-region arrow at
 the same region. Local Core lambdas validate their body region and contract
 before lowering to a boxed block with zero call-evidence parameters.
 
@@ -129,7 +130,7 @@ support for ML is not implemented.
 The frontend is still the subset documented in the README: no general symbolic
 ATC inference and no full paper grammar. All 52 upstream ARM files have ports,
 with the explicit specializations and label discrepancy in the benchmark outline.
-The local-function and explicit-return
+The fixed-region function and explicit-return
 bridges extend the source subset as documented in [FIDELITY.md](FIDELITY.md).
 These execution and validation tests are not a formal correspondence/soundness
 proof. [BENCHMARKS.md](BENCHMARKS.md) gives the complete benchmark outline and
@@ -156,3 +157,11 @@ Datatype constructor values now lower to native Lifted data declarations and
 Chez `equal?` on opaque constructor records. Source matches also lower directly
 to Lifted `Match`, and function-valued constructor fields use boxed functions.
 Logical measures are erased. Equality of data containing functions is rejected. See [ARTIFACT-STATUS.md](ARTIFACT-STATUS.md).
+
+Caller-indexed `Function` types now retain the result family and the declared
+call-ATC telescope. Core checks opened results and call-context depth certificates;
+Lifted erases ATCs while retaining the one call-evidence argument. The reusable
+Curried Fig. 1 uses that path for its ordinary helper and ATC-polymorphic
+callbacks, plus the fixed-region declarative path for the returned callback
+consumer. Ordinary domains are not opened at calls. See
+[CALLER-INDEXED.md](CALLER-INDEXED.md) for the separate rule boundaries.

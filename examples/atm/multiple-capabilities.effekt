@@ -2,7 +2,7 @@
 // its abstract outer capability and is instantiated immediately inside it.
 def main(): Bool = {
   val both = capfun (c: { def ask(): Int / (Int => Bool); }) {
-    capfun here (d: { def bump(): Int / (Int / (Int => Bool) => Int / (Int => Bool)); }) {
+    capfun (d: { def bump(): Int / (Int / (Int => Bool) => Int / (Int => Bool)); }) {
       fun (u: Unit): Int / (Int / (Int => Int) => Int / (Int => Bool)) {
         val a = d.bump();
         val b = c.ask();

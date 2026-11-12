@@ -81,8 +81,8 @@ class AtmArmTests extends munit.FunSuite {
   }
   test("state-easy: the stronger false result contract is still rejected") {
     val original = Files.readString(Path.of("examples/atm/arm/state-easy-SAT.effekt"))
-    val bad = original.replace("def test(init: {n: Int | n >= 0}): {r: Int | r >= 0}",
-      "def test(init: {n: Int | n >= 0}): {r: Int | r >= 1}")
+    val bad = original.replace("def test(init: {n: Int | n >= 0})[R: Reg]: {r: Int | r >= 0}",
+      "def test(init: {n: Int | n >= 0})[R: Reg]: {r: Int | r >= 1}")
     assert(bad != original)
     val parsed = Parser.parse(bad).fold(e => fail(e.message), identity)
     val result = Checker.check(parsed)

@@ -6,7 +6,7 @@ data ListInt { Nil(); Cons(head: Int, tail: ListInt) }
 def main(): Bool = {
   def test(input: {xs: ListInt | xs != Nil()}): {r: (Unit, ListInt) | snd(r) == Nil()} = {
     try {
-      def rec local go(xs: ListInt): Unit /
+      def rec go(xs: ListInt) at [output]: Unit /
         ((Unit, {r: ListInt | r == Nil()}) => (Unit, {r: ListInt | r == xs})) = {
         match (xs) {
           case Nil() => { () }

@@ -24,7 +24,8 @@ object Checker {
                          residuals: List[Obligation] = Nil, evidence: List[Witness] = Nil,
                          handlerEvidence: Option[Binding] = None,
                          operationTyping: Option[OperationTyping] = None,
-                         patternBindings: List[List[(String, Type)]] = Nil)
+                         patternBindings: List[List[(String, Type)]] = Nil,
+                         callContexts: List[AnswerContext] = Nil)
   final class CheckedProgram private[Checker](val source: Program, val body: CheckedTerm, val datatypes: List[DataDeclaration]) {
     def elaborated: String = Elaboration.show(body)
   }
@@ -108,6 +109,9 @@ object Checker {
                                    effects: Map[String, String] = Map.empty,
                                    effectBounds: Map[String, EffectBound] = Map.empty,
                                    region: String = Evidence.Top,
+                                   // Lexical default for unqualified arrows inside an annotation.
+                                   // Result annotations use the fresh caller; domains use the outer region.
+                                   annotationDefaultRegion: Option[String] = None,
                                    delta: List[Binding] = Nil,
                                    types: Map[String, String] = Map.empty,
                                    aliases: Map[String, Type] = Map.empty,
@@ -132,8 +136,18 @@ object Checker {
       def withAnnotation(name: String, actual: Argument, residuals: List[Obligation] = Nil): Environment =
         copy(annotations = annotations.updated(name, actual), annotationResiduals = annotationResiduals.updated(name, residuals),
           types = types - name, aliases = aliases - name, effects = effects - name, predicateNames = predicateNames - name)
-      def withKind(name: String, identity: String, kind: Kind): Environment =
-        withAnnotation(name, Annotations.variable(identity, kind)).copy(kinds = kinds.updated(identity, kind))
+      def withKind(name: String, identity: String, kind: Kind): Environment = {
+        val next = withAnnotation(name, Annotations.variable(identity, kind)).copy(kinds = kinds.updated(identity, kind))
+        kind match {
+          // A declared evidence parameter is an assumption, not an inferred
+          // numeric distance. Keep reconstruction's functional graph invariant.
+          case Kind.Evidence(a, d, b) if a != b && !delta.exists(_.constraint.from == a) =>
+            next.copy(delta = Binding(identity, Constraint(a, b), d) :: delta)
+          case _ => next
+        }
+      }
+      def withCaller(name: Option[String], caller: String): Environment =
+        name.fold(this)(withKind(_, caller, Kind.Region))
       def withType(name: String, identity: String): Environment = copy(types = types.updated(name, identity), aliases = aliases - name, annotations = annotations - name)
       def withPredicate(name: String, identity: String, args: List[Logic.Sort]): Environment =
         copy(predicateNames = predicateNames.updated(name, identity), logic = logic.copy(predicates = logic.predicates.updated(identity, args)))
@@ -141,7 +155,6 @@ object Checker {
         copy(effects = effects.updated(name, identity), effectBounds = effectBounds.updated(identity, bound), annotations = annotations - name)
       def capability(name: String): String = names.getOrElse(name, fail(s"Unknown or out-of-scope capability $name"))
       def localRegion(name: String): String = name match {
-        case "here" => region
         case "top" | Evidence.Top => Evidence.Top
         case _ => annotations.get(name) match {
           case Some(Argument.Region(r)) => r
@@ -149,7 +162,7 @@ object Checker {
           case None => values.get(name) match {
             case Some(Type.Capability(r)) => r
             case _ => names.getOrElse(name, aliases.get(name) match {
-              case Some(Type.LocalFunction(_, _, _, Some(r), _)) => r
+              case Some(Type.FixedFunction(_, _, _, Some(r), _)) => r
               case _ => capability(name)
             })
           }
@@ -216,8 +229,8 @@ object Checker {
     private def free(tpe: Type): Set[String] = tpe match {
       case Type.Capability(name) => Set(name)
       case Type.Continuation(arg, result, region, _, _) => free(arg) ++ free(result) + region
-      case Type.Function(arg, result, _, context, _) => free(arg) ++ free(result) ++ context.toSet.filter(_ != Evidence.Top)
-      case Type.LocalFunction(arg, result, _, context, _) => free(arg) ++ free(result) ++ context.toSet.filter(_ != Evidence.Top)
+      case f: Type.Function => Annotations.regions(Computation(f))
+      case Type.FixedFunction(arg, result, _, context, _) => free(arg) ++ free(result) ++ context.toSet.filter(_ != Evidence.Top)
       case Type.CapabilityPoly(name, ops, body, cs, scope, obligations) =>
         (free(body) ++ obligations.flatMap(_.constraint.free) ++ ops.flatMap(free) - name) ++ scope.toSet.filter(_ != Evidence.Top)
       case Type.EffectPoly(_, body, bound) => free(body) ++ free(bound)
@@ -244,8 +257,8 @@ object Checker {
     private def captures(tpe: Type): Set[String] = tpe match {
       case Type.Capability(name) => Set(name)
       case Type.Pair(a, b) => captures(a) ++ captures(b)
-      case Type.Function(_, _, cs, _, _)  => cs
-      case Type.LocalFunction(_, _, cs, _, _) => cs
+      case Type.Function(_, _, cs, _, _, _)  => cs
+      case Type.FixedFunction(_, _, cs, _, _) => cs
       case Type.Continuation(_, _, _, cs, _) => cs
       case Type.CapabilityPoly(_, _, _, cs, _, obligations) => cs
       case Type.EffectPoly(_, body, _) => captures(body)
@@ -284,7 +297,7 @@ object Checker {
         Type.PredicatePoly(id, args, resolve(body, env.withPredicate(parameter, id, args)))
       case Type.Capability(name) =>
         Type.Capability(env.names.getOrElse(name, fail(s"Unknown capability type $name")))
-      case Type.LocalFunction(arg, result, cs, region, parameter) =>
+      case Type.FixedFunction(arg, result, cs, region, parameter) =>
         val target = region.map(r => if r == Evidence.Top then r else env.localRegion(r)).getOrElse(env.region)
         val scope = env.copy(region = target)
         val argument = resolve(arg, scope)
@@ -294,13 +307,24 @@ object Checker {
         // capability reachable from its exact call region. This is not an
         // additional source subtyping or region condition.
         val reachable = env.capabilities.keySet.filter(c => Evidence.known(target, c, env.delta).nonEmpty)
-        Type.LocalFunction(argument, resolve(result, inner), cs.map(env.capability) ++ reachable, Some(target), id)
-      case Type.Function(arg, result, cs, _, parameter) =>
-        val argument = resolve(arg, env)
+        Type.FixedFunction(argument, resolve(result, inner), cs.map(env.capability) ++ reachable, Some(target), id)
+      case Type.Function(arg, result, cs, _, parameter, template) =>
+        val caller = Caller(fresh("typeCaller"), fresh("typeDistance"))
+        val target = if cs.isEmpty then env.annotationDefaultRegion.getOrElse(env.region) else Evidence.minimum(cs.toList.map(env.capability), env.delta)
+        val call = Binding(fresh("typeCallEvidence"), Constraint(caller.region, target), Distance.Variable(caller.distance))
         val identity = parameter.map(fresh)
-        val inner = parameter.zip(identity).foldLeft(env) { case (e, (name, id)) => e.bindIdentity(name, argument, id) }
-        Type.Function(argument, resolve(result, inner), cs.map(env.capability),
-          Some(if cs.isEmpty then env.region else Evidence.minimum(cs.toList.map(env.capability), env.delta)), identity)
+        val argument = resolve(arg, env)
+        var inner = env.copy(region = caller.region,
+          annotationDefaultRegion = Some(env.annotationDefaultRegion.getOrElse(env.region)),
+          delta = call :: env.delta, kinds = env.kinds.updated(caller.distance, Kind.Distance))
+          .withCaller(template.map(_.region).filter(_.nonEmpty), caller.region)
+        val contexts = template.toList.flatMap(_.contexts).map { (n, k) =>
+          val kind = resolveKind(k, inner); val id = fresh(n)
+          inner = inner.withKind(n, id, kind); (id, kind)
+        }
+        inner = parameter.zip(identity).foldLeft(inner) { case (e, (name, id)) => e.bindIdentity(name, argument, id) }
+        Type.Function(argument, resolve(result, inner), cs.map(env.capability), Some(target), identity,
+          Some(caller.copy(contexts = contexts)))
       case Type.CapabilityPoly(name, operations, body, cs, scope, obligations) =>
         require(scope.isEmpty, "Scoped capability tails are a prototype extension, not part of the paper algorithm", DiagnosticKind.Unsupported)
         val identity = fresh(name)
@@ -420,6 +444,10 @@ object Checker {
         case _ => fail(s"Unknown or non-distance variable $n")
       }
       case Distance.Plus(a, b) => Distance.Plus(resolveDistance(a, env), resolveDistance(b, env))
+      case Distance.Projected(p) =>
+        val proof = resolveProof(p, env)
+        require(proof.residuals.isEmpty, "A distance projection needs an available evidence path")
+        proof.witness.distance
     }
     private def resolveKind(k: Kind, env: Environment): Kind = k match {
       case Kind.Evidence(a, d, b) => Kind.Evidence(env.localRegion(a), resolveDistance(d, env), env.localRegion(b))
@@ -441,6 +469,7 @@ object Checker {
         AnswerContext.Layer(v, resolve(i, inner), resolveContext(rest, env), id)
     }
     private def resolveProof(p: Proof, env: Environment): Reconstruction = p match {
+      case Proof.Current => Reconstruction(Witness.Refl(env.region), Nil)
       case Proof.Refl(r) => Reconstruction(Witness.Refl(env.localRegion(r)), Nil)
       case Proof.Step(h) =>
         val r = env.localRegion(h)
@@ -468,17 +497,31 @@ object Checker {
     }
 
     private def subtype(actual: Type, expected: Type, bounds: Map[String, EffectBound], logic: Logic.Context = Logic.Context()): Boolean = (actual, expected) match {
-      case (Type.LocalFunction(a, r, cs, scope, p), Type.LocalFunction(b, s, ds, target, q)) =>
+      case (Type.FixedFunction(a, r, cs, scope, p), Type.FixedFunction(b, s, ds, target, q)) =>
         subtype(Type.Function(a, r, cs, scope, p), Type.Function(b, s, ds, target, q), bounds, logic)
-      case (Type.Continuation(a, r, region, cs, p), Type.LocalFunction(b, s, ds, target, q)) =>
+      case (Type.Continuation(a, r, region, cs, p), Type.FixedFunction(b, s, ds, target, q)) =>
         subtype(Type.Function(a, r, cs, Some(region), p), Type.Function(b, s, ds, target, q), bounds, logic)
-      case (Type.Function(a, r, cs, scope, parameter), Type.Function(b, s, ds, target, expectedParameter)) =>
+      case (af @ Type.Function(a, r, cs, scope, parameter, ac), bf @ Type.Function(b, s, ds, target, expectedParameter, bc)) =>
         val id = fresh("argument")
         val v = Expr.Variable(id)
-        val context = Contracts.sort(b).fold(logic)(sort => logic.bind(id, sort).assume(Contracts.member(b, v)))
-        val actualResult = parameter.fold(r)(n => Contracts.substitute(r, n, v))
-        val expectedResult = expectedParameter.fold(s)(n => Contracts.substitute(s, n, v))
-        subtype(b, a, bounds, logic) && subtype(actualResult, expectedResult, bounds, context) && scope == target
+        val region = fresh("subtypeCaller"); val distance = Distance.Variable(fresh("subtypeDistance"))
+        val aa = af.argument; val ba = bf.argument
+        val context = Contracts.sort(ba).fold(logic)(sort => logic.bind(id, sort).assume(Contracts.member(ba, v)))
+        val ar = FunctionTypes.result(af, region, distance)
+        val br = FunctionTypes.result(bf, region, distance)
+        val actualParameters = FunctionTypes.contexts(af, region, distance)
+        val expectedParameters = FunctionTypes.contexts(bf, region, distance)
+        var alignedResult = ar
+        val compatible = actualParameters.size == expectedParameters.size && actualParameters.zip(expectedParameters).forall {
+          case ((n, k), (m, l)) =>
+            val ok = Annotations.sameKind(k, l)
+            val subst = Annotations.substitution(n, Annotations.variable(m, l))
+            alignedResult = subst.computation(alignedResult)
+            ok
+        }
+        val actualResult = parameter.fold(alignedResult)(n => Contracts.substitute(alignedResult, n, v))
+        val expectedResult = expectedParameter.fold(br)(n => Contracts.substitute(br, n, v))
+        compatible && subtype(ba, aa, bounds, logic) && subtype(actualResult, expectedResult, bounds, context) && scope == target
       case (Type.CapabilityPoly(a, ops, body, cs, scope, obligations), Type.CapabilityPoly(b, expected, result, ds, target, required)) =>
         obligations.map(_.constraint.substitute(a, b)).toSet == required.map(_.constraint).toSet &&
           operationsSubtype(expected, ops.map(open(_, a, b)), bounds, logic) &&
@@ -577,89 +620,115 @@ object Checker {
 
     private def abstraction(source: Value, parameter: String, argument: Type, result: Option[Computation],
                             body: Term, requiredRegion: Option[String], parameterId: Option[String],
-                            env: Environment): CheckedValue = {
+                            env: Environment, resultCaller: Option[Caller] = None, callerName: Option[String] = None): CheckedValue = {
       val alpha = fresh("bodyRegion")
       val id = parameterId.getOrElse(fresh(parameter))
-      val inner = env.copy(region = alpha).bindIdentity(parameter, argument, id)
-      val checked = result.fold(infer(body, inner, None))(checkTerm(body, _, inner))
+      val distanceName = fresh("callDistance")
+      val opening = FunctionTypes.opening(resultCaller, alpha, Distance.Variable(distanceName))
+      // A_Abs introduces its fresh caller after the argument type has been checked.
+      val domain = argument
+      val inner = env.copy(region = alpha, annotationDefaultRegion = None,
+        kinds = env.kinds.updated(distanceName, Kind.Distance)).withCaller(callerName, alpha).bindIdentity(parameter, domain, id)
+      val annotation = result.map(opening.computation)
+      val checked = annotation.fold(infer(body, inner, None))(checkTerm(body, _, inner))
       val captured = checked.residuals.filter(_.constraint.from == alpha)
       require(!checked.residuals.exists(o => o.constraint.to == alpha && o.constraint.from != alpha),
         "A_Abs: a residual mentions the body region in target position")
       val region = requiredRegion.getOrElse(Evidence.minimum(captured.map(_.constraint.to), env.delta))
-      val call = Binding(fresh("callEvidence"), Constraint(alpha, region), Distance.Variable(fresh("callDistance")))
+      val call = Binding(fresh("callEvidence"), Constraint(alpha, region), Distance.Variable(distanceName))
       val replacements = captured.map { obligation =>
         val path = Evidence.known(region, obligation.constraint.to, env.delta).getOrElse(
           fail(s"A_Abs: required region $region cannot discharge ${obligation.constraint}"))
         obligation.name -> Evidence.compose(Witness.Use(call), path)
       }.toMap
       val elaborated = Elaboration.substitute(checked, replacements)
-      // The existing Function type does not yet retain a caller-indexed
-      // declarative codomain family. Opening a fixed arrow at alpha as if it
-      // meant the required region would mislabel a returned closure at calls.
-      var escapesFixedRegion = false
-      Contracts.map(checked.tpe)({
-        case t @ Type.LocalFunction(_, _, _, Some(r), _) =>
-          if r == alpha then escapesFixedRegion = true
-          t
-        case t @ Type.Continuation(_, _, r, _, _) =>
-          if r == alpha then escapesFixedRegion = true
-          t
-        case t @ Type.KindPoly(_, Kind.Evidence(from, _, to), _) =>
-          if from == alpha || to == alpha then escapesFixedRegion = true
-          t
-        case t => t
-      }, identity)
-      require(!escapesFixedRegion,
-        "A_Abs: a fixed-region result depends on the abstract caller region; supply a stable local-region result annotation", DiagnosticKind.Unsupported)
-      val codomain = result.getOrElse(open(checked.tpe, alpha, region))
-      CheckedValue(source, Type.Function(argument, codomain, checked.captures, Some(region), Some(id)), checked.captures,
+      val codomain = annotation.getOrElse(elaborated.tpe)
+      CheckedValue(source, Type.Function(domain, codomain, checked.captures, Some(region), Some(id),
+        Some(Caller(alpha, distanceName))), checked.captures,
         body = Some(elaborated), abstraction = Some(FunctionAbstraction(alpha, call)), discharged = replacements.keySet)
     }
 
     /** Explicit declarative T_Abs/T_App bridge, separate from A_Abs's
      * region-polymorphic arrow. No symbolic distance is assumed to be zero.
      */
-    private def localAbstraction(source: Value, parameter: String, argument: Type,
+    private def fixedAbstraction(source: Value, parameter: String, argument: Type,
         result: Option[Computation], body: Term, region: String, id: String, env: Environment): CheckedValue = {
       val inner = env.copy(region = region).bindIdentity(parameter, argument, id)
       val checked = result.fold(infer(body, inner, None))(checkTerm(body, _, inner))
-      CheckedValue(source, Type.LocalFunction(argument, result.getOrElse(checked.tpe), checked.captures, Some(region), Some(id)),
+      CheckedValue(source, Type.FixedFunction(argument, result.getOrElse(checked.tpe), checked.captures, Some(region), Some(id)),
         checked.captures, body = Some(checked))
+    }
+
+    private def contextAbstraction(source: Value, parameter: String, argument: Type, result: Computation,
+        parameters: List[(String, Kind)], body: Term, env: Environment, callerName: Option[String]): CheckedValue = {
+      def targets(d: Distance): List[String] = d match {
+        case Distance.Projected(Proof.Path(r)) if !callerName.contains(r) => List(env.localRegion(r))
+        case Distance.Plus(a, b) => targets(a) ++ targets(b)
+        case _ => Nil
+      }
+      val required = parameters.flatMap {
+        case (_, Kind.Context(d)) => targets(d)
+        case _ => fail("Call-context parameters must have ATC kind")
+      }
+      val target = if required.isEmpty then env.region else Evidence.minimum(required, env.delta)
+      val caller = Caller(fresh("bodyRegion"), fresh("callDistance"))
+      val call = Binding(fresh("callEvidence"), Constraint(caller.region, target), Distance.Variable(caller.distance))
+      val id = fresh(parameter)
+      val arg = resolve(argument, env)
+      var inner = env.copy(region = caller.region, delta = call :: env.delta,
+        kinds = env.kinds.updated(caller.distance, Kind.Distance)).withCaller(callerName, caller.region)
+      val contexts = parameters.map { (n, k) =>
+        val kind = resolveKind(k, inner); val name = fresh(n)
+        inner = inner.withKind(n, name, kind); (name, kind)
+      }
+      inner = inner.bindIdentity(parameter, arg, id)
+      val annotation = resolve(result, inner.copy(annotationDefaultRegion = Some(env.region)))
+      val checked = checkTerm(body, annotation, inner)
+      require(!checked.residuals.exists(o => o.constraint.from == caller.region),
+        "A_Abs: declared call-context requirements do not discharge the body's region obligations")
+      require(!checked.residuals.exists(o => o.constraint.to == caller.region),
+        "A_Abs: a residual mentions the body region in target position")
+      CheckedValue(source, Type.Function(arg, annotation, checked.captures, Some(target), Some(id),
+        Some(caller.copy(contexts = contexts))), checked.captures, body = Some(checked),
+        abstraction = Some(FunctionAbstraction(caller.region, call)))
     }
 
     private def checkValue(source: Value, expected: Type, env: Environment): CheckedValue = {
       val checked = (source, expected) match {
-        case (Value.LocalLambda(parameter, argument, annotation, body, anchor), Type.LocalFunction(arg, ret, _, Some(region), binder)) =>
-          require(anchor.forall(n => env.localRegion(n) == region), "Local lambda annotation names a different call region")
+        case (lambda @ (Value.FixedLambda(_, _, _, _, _) | Value.Lambda(_, _, _, _, None) |
+            Value.InferredLambda(_, _, _, None) | Value.UnannotatedLambda(_, _, _, None)),
+            Type.FixedFunction(arg, ret, _, Some(region), binder)) =>
+          val (parameter, argument, annotation, body, anchor) = lambda match {
+            case Value.FixedLambda(p, a, r, b, at) => (p, a, r, b, at)
+            case Value.Lambda(p, a, r, b, None) => (p, Some(a), Some(r), b, None)
+            case Value.InferredLambda(p, a, b, None) => (p, Some(a), None, b, None)
+            case Value.UnannotatedLambda(p, r, b, None) => (p, None, r, b, None)
+            case _ => fail("Caller-region binders belong to ordinary functions")
+          }
+          require(anchor.forall(n => env.localRegion(n) == region), "Fixed-region lambda annotation names a different call region")
           val scope = env.copy(region = region)
           val domain = argument.fold(arg)(resolve(_, scope))
           val id = fresh(parameter)
           val required = binder.fold(ret)(n => Contracts.substitute(ret, n, Expr.Variable(id)))
           val result = annotation.fold(required)(resolve(_, scope.bindIdentity(parameter, domain, id)))
-          finishValue(localAbstraction(source, parameter, domain, Some(result), body, region, id, env))
-        case (Value.Lambda(parameter, argument, result, body), Type.Function(arg, ret, _, region, binder)) =>
-          val annotationEnv = env.copy(region = region.getOrElse(env.region))
-          val declaredArg = resolve(argument, annotationEnv)
+          val source = Value.FixedLambda(parameter, argument, annotation, body, anchor)
+          finishValue(fixedAbstraction(source, parameter, domain, Some(result), body, region, id, env))
+        case (lambda @ (Value.Lambda(_, _, _, _, _) | Value.InferredLambda(_, _, _, _) | Value.UnannotatedLambda(_, _, _, _)), f: Type.Function) =>
+          val (parameter, argument, annotation, body, callerName) = lambda match {
+            case Value.Lambda(p, a, r, b, name) => (p, Some(a), Some(r), b, name)
+            case Value.InferredLambda(p, a, b, name) => (p, Some(a), None, b, name)
+            case Value.UnannotatedLambda(p, r, b, name) => (p, None, r, b, name)
+          }
+          val caller = Caller(fresh("annotationCaller"), fresh("annotationDistance"))
+          val arg = argument.fold(f.argument)(resolve(_, env.copy(annotationDefaultRegion = f.region)))
           val id = fresh(parameter)
-          val declaredRet = resolve(result, annotationEnv.bindIdentity(parameter, declaredArg, id))
-          val required = binder.fold(ret)(n => Contracts.substitute(ret, n, Expr.Variable(id)))
-          val lambda = finishValue(abstraction(source, parameter, declaredArg, Some(declaredRet), body, region, Some(id), env))
-          require(subtype(declaredRet, required, env.effectBounds, env.bindIdentity(parameter, arg, id).logic),
-            s"A_AbsChk: annotated result ${show(declaredRet)} does not meet ${show(required)}")
-          lambda
-        case (Value.InferredLambda(parameter, argument, body), Type.Function(arg, ret, _, region, binder)) =>
-          require(TypeEquality.same(resolve(argument, env), arg), "A_AbsChk: lambda domain differs from the expected domain")
-          val id = fresh(parameter)
-          val required = binder.fold(ret)(n => Contracts.substitute(ret, n, Expr.Variable(id)))
-          finishValue(abstraction(source, parameter, arg, Some(required), body, region, Some(id), env))
-        case (Value.UnannotatedLambda(parameter, annotation, body), Type.Function(arg, ret, _, region, binder)) =>
-          val id = fresh(parameter)
-          val required = binder.fold(ret)(n => Contracts.substitute(ret, n, Expr.Variable(id)))
-          val context = env.copy(region = region.getOrElse(env.region)).bindIdentity(parameter, arg, id)
+          val opened = FunctionTypes.result(f, caller.region, Distance.Variable(caller.distance))
+          val required = f.parameter.fold(opened)(n => Contracts.substitute(opened, n, Expr.Variable(id)))
+          val context = env.copy(region = caller.region, annotationDefaultRegion = f.region).withCaller(callerName, caller.region).bindIdentity(parameter, arg, id)
           val declared = annotation.fold(required)(resolve(_, context))
           require(subtype(declared, required, env.effectBounds, context.logic),
-            "A_AbsChk: lambda result annotation does not meet the expected result")
-          finishValue(abstraction(source, parameter, arg, Some(declared), body, region, Some(id), env))
+            s"A_AbsChk: Expected ${show(required)}, found result annotation ${show(declared)}", DiagnosticKind.ContractFailure)
+          finishValue(abstraction(source, parameter, arg, Some(declared), body, f.region, Some(id), env, Some(caller), callerName))
         case _ => value(source, env)
       }
       require(subtype(checked.tpe, expected, env.effectBounds, env.logic),
@@ -685,7 +754,7 @@ object Checker {
           checked
         }
         def project(v: CheckedValue): Expr = Contracts.base(v.tpe) match {
-          case _: Type.Function | _: Type.LocalFunction | _: Type.Continuation => Expr.Unit
+          case _: Type.Function | _: Type.FixedFunction | _: Type.Continuation => Expr.Unit
           case _ => symbol(v)
         }
         val expression = Option.when(refined)(Datatypes.expression(name, fields.map(project)))
@@ -744,20 +813,24 @@ object Checker {
           require(proves(env.logic, Logic.not(Logic.eq(symbol(checked(1)), Expr.Integer(0)))), "Division requires a provably nonzero divisor")
         CheckedValue(v, if refined && expression.nonEmpty then singleton(result, expression.get) else result,
           checked.flatMap(_.captures).toSet, checked, symbolic = expression)
-      case Value.LocalLambda(parameter, argument, result, body, anchor) =>
+      case Value.FixedLambda(parameter, argument, result, body, anchor) =>
         val region = anchor.map(env.localRegion).getOrElse(env.region)
         val scope = env.copy(region = region)
-        val arg = argument.map(resolve(_, scope)).getOrElse(fail("A local lambda without a domain needs an expected local arrow"))
+        val arg = argument.map(resolve(_, scope)).getOrElse(fail("A fixed-region lambda without a domain needs an expected fixed-region arrow"))
         val id = fresh(parameter)
         val ret = result.map(resolve(_, scope.bindIdentity(parameter, arg, id)))
-        localAbstraction(v, parameter, arg, ret, body, region, id, env)
-      case Value.Lambda(parameter, argument, result, body) =>
+        fixedAbstraction(v, parameter, arg, ret, body, region, id, env)
+      case Value.ContextLambda(p, a, r, ks, b, name) => contextAbstraction(v, p, a, r, ks, b, env, name)
+      case Value.Lambda(parameter, argument, result, body, callerName) =>
+        val caller = Caller(fresh("annotationCaller"), fresh("annotationDistance"))
         val arg = resolve(argument, env)
         val id = fresh(parameter)
-        val ret = resolve(result, env.bindIdentity(parameter, arg, id))
-        abstraction(v, parameter, arg, Some(ret), body, Some(env.region), Some(id), env)
-      case Value.InferredLambda(parameter, argument, body) =>
-        abstraction(v, parameter, resolve(argument, env), None, body, None, None, env)
+        val ret = resolve(result, env.copy(region = caller.region, annotationDefaultRegion = Some(env.region)).withCaller(callerName, caller.region).bindIdentity(parameter, arg, id))
+        abstraction(v, parameter, arg, Some(ret), body, Some(env.region), Some(id), env, Some(caller), callerName)
+      case Value.InferredLambda(parameter, argument, body, callerName) =>
+        val caller = Caller(fresh("annotationCaller"), fresh("annotationDistance"))
+        abstraction(v, parameter, resolve(argument, env),
+          None, body, None, None, env, Some(caller), callerName)
       case _: Value.UnannotatedLambda =>
         fail("A lambda without a domain annotation needs an expected function type")
       case Value.CapabilityLambda(parameter, operations, body, scoped) =>
@@ -797,24 +870,7 @@ object Checker {
         CheckedValue(Value.KindLambda(id, kind, body), Type.KindPoly(id, kind, checked.tpe), checked.captures,
           List(checked), quantified = quantified)
       case Value.InstantiatePolymorphic(function, alternatives) =>
-        val checked = value(function, env)
-        def selected(p: PartialFunction[PolymorphicArgument, Value]): Value =
-          alternatives.collectFirst(p).getOrElse(fail(s"Polymorphic argument has no syntax matching ${show(checked.tpe)}"))
-        val application = checked.tpe match {
-          case Type.KindPoly(_, kind, _) => selected {
-            case PolymorphicArgument.Kind(a) if ((kind, a) match {
-              case (Kind.Region, _: Argument.Region) | (Kind.Distance, _: Argument.Distance) |
-                   (Kind.Computation, _: Argument.Computation) | (_: Kind.Context, _: Argument.Context) |
-                   (_: Kind.Evidence, _: Argument.Evidence) => true
-              case _ => false
-            }) => Value.InstantiateKind(function, a)
-          }
-          case _: Type.TypePoly => selected { case PolymorphicArgument.ValueType(t) => Value.InstantiateType(function, t) }
-          case _: Type.EffectPoly => selected { case PolymorphicArgument.AnswerEffect(e) => Value.InstantiateEffect(function, e) }
-          case _: Type.PredicatePoly => selected { case PolymorphicArgument.Predicate(ps, b) => Value.InstantiatePredicate(function, ps, b) }
-          case other => fail(s"Cannot instantiate a polymorphic argument in ${show(other)}")
-        }
-        instantiate(application, checked, env)
+        instantiateBare(value(function, env), alternatives, env)
       case Value.InstantiateKind(function, argument) =>
         instantiate(v, value(function, env), env)
       case Value.TypeLambda(parameter, body) =>
@@ -837,6 +893,47 @@ object Checker {
       case Value.InstantiateEffect(function, effect) =>
         instantiate(v, value(function, env), env)
 
+    }
+
+    private def instantiateBare(checked: CheckedValue, alternatives: List[PolymorphicArgument], env: Environment): CheckedValue = {
+        def selected(p: PartialFunction[PolymorphicArgument, Value]): Value =
+          alternatives.collectFirst(p).getOrElse(fail(s"Polymorphic argument has no syntax matching ${show(checked.tpe)}"))
+        val application = checked.tpe match {
+          case Type.KindPoly(_, kind, _) => selected {
+            case PolymorphicArgument.Kind(a) if ((kind, a) match {
+              case (Kind.Region, _: Argument.Region) | (Kind.Distance, _: Argument.Distance) |
+                   (Kind.Computation, _: Argument.Computation) | (_: Kind.Context, _: Argument.Context) |
+                   (_: Kind.Evidence, _: Argument.Evidence) => true
+              case _ => false
+            }) => Value.InstantiateKind(checked.source, a)
+          }
+          case _: Type.TypePoly => selected { case PolymorphicArgument.ValueType(t) => Value.InstantiateType(checked.source, t) }
+          case _: Type.EffectPoly => selected { case PolymorphicArgument.AnswerEffect(e) => Value.InstantiateEffect(checked.source, e) }
+          case _: Type.PredicatePoly => selected { case PolymorphicArgument.Predicate(ps, b) => Value.InstantiatePredicate(checked.source, ps, b) }
+          case other => fail(s"Cannot instantiate a polymorphic argument in ${show(other)}")
+        }
+        instantiate(application, checked, env)
+    }
+
+    private def callValue(v: Value, env: Environment): (CheckedValue, List[AnswerContext]) = v match {
+      case Value.InstantiatePolymorphic(f, alternatives) =>
+        val (checked, contexts) = callValue(f, env)
+        checked.tpe match {
+          case fn: Type.Function if fn.caller.exists(_.contexts.nonEmpty) =>
+            val k = alternatives.collectFirst { case PolymorphicArgument.Kind(Argument.Context(k)) => k }
+              .getOrElse(fail("A call-context argument must be an ATC"))
+            (checked, contexts :+ resolveContext(k, env))
+          case _ =>
+            require(contexts.isEmpty, "Unexpected call-context arguments")
+            (instantiateBare(checked, alternatives, env), Nil)
+        }
+      case Value.InstantiateKind(f, Argument.Context(k)) =>
+        val (checked, contexts) = callValue(f, env)
+        checked.tpe match {
+          case fn: Type.Function if fn.caller.exists(_.contexts.nonEmpty) => (checked, contexts :+ resolveContext(k, env))
+          case _ => (instantiate(v, checked, env), contexts)
+        }
+      case _ => (value(v, env), Nil)
     }
 
     // Both tagged and bare applications use these same instantiation rules.
@@ -908,8 +1005,8 @@ object Checker {
 
     // Normalize after kinded answer-effect instantiation.
     private def normalize(tpe: Type, bounds: Map[String, EffectBound]): Type = tpe match {
-      case Type.Function(arg, result, cs, scope, parameter) => Type.Function(normalize(arg, bounds), normalize(result, bounds), cs, scope, parameter)
-      case Type.LocalFunction(arg, result, cs, scope, parameter) => Type.LocalFunction(normalize(arg, bounds), normalize(result, bounds), cs, scope, parameter)
+      case Type.Function(arg, result, cs, scope, parameter, caller) => Type.Function(normalize(arg, bounds), normalize(result, bounds), cs, scope, parameter, caller)
+      case Type.FixedFunction(arg, result, cs, scope, parameter) => Type.FixedFunction(normalize(arg, bounds), normalize(result, bounds), cs, scope, parameter)
       case Type.Pair(a, b) => Type.Pair(normalize(a, bounds), normalize(b, bounds))
       case Type.TypePoly(n, b) => Type.TypePoly(n, normalize(b, bounds))
       case Type.KindPoly(n, k, b) => Type.KindPoly(n, k, normalize(b, bounds))
@@ -953,17 +1050,29 @@ object Checker {
       } else (a, b) match {
         case (Type.Pair(a, b), Type.Pair(c, d)) =>
           Type.Pair(guarded(a, c, guard, join, env), guarded(b, d, guard, join, env))
-        case (Type.LocalFunction(a, c, cs, r, p), Type.LocalFunction(b, d, ds, s, q)) if r == s =>
+        case (Type.FixedFunction(a, c, cs, r, p), Type.FixedFunction(b, d, ds, s, q)) if r == s =>
           val joined = guarded(Type.Function(a, c, cs, r, p), Type.Function(b, d, ds, s, q), guard, join, env).asInstanceOf[Type.Function]
-          Type.LocalFunction(joined.argument, joined.result, joined.captures, joined.region, joined.parameter)
-        case (Type.Function(a, c, cs, r, p), Type.Function(b, d, ds, s, q)) if r == s =>
-          val argument = guarded(a, b, guard, !join, env)
+          Type.FixedFunction(joined.argument, joined.result, joined.captures, joined.region, joined.parameter)
+        case (af @ Type.Function(a, c, cs, r, p, ac), bf @ Type.Function(b, d, ds, s, q, bc)) if r == s =>
+          val caller = Caller(fresh("guardedCaller"), fresh("guardedDistance"))
+          val distance = Distance.Variable(caller.distance)
+          val leftParameters = FunctionTypes.contexts(af, caller.region, distance)
+          val rightParameters = FunctionTypes.contexts(bf, caller.region, distance)
+          require(leftParameters.size == rightParameters.size && leftParameters.zip(rightParameters).forall {
+            case ((_, k), (_, l)) => Annotations.sameKind(k, l)
+          }, "Guarded function types require compatible call-context telescopes")
+          def align(c: Computation): Computation = rightParameters.zip(leftParameters).foldLeft(c) {
+            case (c, ((n, _), (m, k))) => Annotations.substitution(n, Annotations.variable(m, k)).computation(c)
+          }
+          val argument = guarded(af.argument, bf.argument, guard, !join, env)
           val id = fresh("guardedArgument")
           val v = Expr.Variable(id)
-          val left = p.fold(c)(Contracts.substitute(c, _, v))
-          val right = q.fold(d)(Contracts.substitute(d, _, v))
+          val ar = FunctionTypes.result(af, caller.region, distance)
+          val br = align(FunctionTypes.result(bf, caller.region, distance))
+          val left = p.fold(ar)(Contracts.substitute(ar, _, v))
+          val right = q.fold(br)(Contracts.substitute(br, _, v))
           Type.Function(argument, guarded(left, right, guard, join, env.bindIdentity(id, argument, id)),
-            if join then cs ++ ds else cs intersect ds, r, Some(id))
+            if join then cs ++ ds else cs intersect ds, r, Some(id), Some(caller.copy(contexts = leftParameters)))
         case (Type.TypePoly(n, b), Type.TypePoly(m, c)) =>
           Type.TypePoly(n, guarded(b, Contracts.instantiate(c, m, Type.Variable(n)), guard, join, env))
         case _ => fail(s"Guarded ${if join then "join" else "meet"} is undefined for ${show(a)} and ${show(b)}")
@@ -1026,10 +1135,10 @@ object Checker {
           case Type.Refined(n, base, predicate) =>
             Type.Refined(n, base, quantify(predicate, covariant, condition))
           case Type.Pair(a, b) => Type.Pair(ty(a, covariant, condition), ty(b, covariant, condition))
-          case Type.Function(a, c, cs, r, p) =>
-            Type.Function(ty(a, !covariant, condition), comp(c, covariant, condition), cs, r, p)
-          case Type.LocalFunction(a, c, cs, r, p) =>
-            Type.LocalFunction(ty(a, !covariant, condition), comp(c, covariant, condition), cs, r, p)
+          case Type.Function(a, c, cs, r, p, caller) =>
+            Type.Function(ty(a, !covariant, condition), comp(c, covariant, condition), cs, r, p, caller)
+          case Type.FixedFunction(a, c, cs, r, p) =>
+            Type.FixedFunction(ty(a, !covariant, condition), comp(c, covariant, condition), cs, r, p)
           case Type.TypePoly(n, b) => Type.TypePoly(n, ty(b, covariant, condition))
           case Type.KindPoly(n, k, b) => Type.KindPoly(n, k, ty(b, covariant, condition))
           case Type.PredicatePoly(n, args, b) => Type.PredicatePoly(n, args, ty(b, covariant, condition))
@@ -1155,17 +1264,21 @@ object Checker {
         require(proves(env.logic, symbol(c)), s"Refinement assertion is not valid: ${Logic.show(symbol(c))}")
         CheckedTerm(term, adapt(Computation(Type.Unit), inherited, env), c.captures, List(c), logic = env.logic)
       case Term.ExplicitReturn(_) => fail("return effect is only permitted as a handler return clause")
-      case Term.LetRec(name, parameter, argument, result, definition, body, local) =>
+      case Term.LetRec(name, parameter, argument, result, definition, body, anchor, callerName) =>
+        val local = anchor.nonEmpty
+        require(anchor.forall(r => env.localRegion(r) == env.region), "A recursive fixed-region definition must use its enclosing lexical region")
+        require(!local || callerName.isEmpty, "Caller-region binders belong to ordinary functions")
+        val caller = Option.unless(local)(Caller(fresh("recursiveCaller"), fresh("recursiveDistance")))
         val arg = resolve(argument, env)
         val id = fresh(parameter)
-        val ret = resolve(result, env.bindIdentity(parameter, arg, id))
-        val recursive = if local then Type.LocalFunction(arg, ret, env.capabilities.keySet, Some(env.region), Some(id))
-          else Type.Function(arg, ret, env.capabilities.keySet, Some(env.region), Some(id))
+        val ret = resolve(result, env.copy(region = caller.fold(env.region)(_.region), annotationDefaultRegion = Some(env.region)).withCaller(callerName, caller.fold(env.region)(_.region)).bindIdentity(parameter, arg, id))
+        val recursive = if local then Type.FixedFunction(arg, ret, env.capabilities.keySet, Some(env.region), Some(id))
+          else Type.Function(arg, ret, env.capabilities.keySet, Some(env.region), Some(id), caller)
         val scope = env.bind(name, recursive)
-        val lambda = if local then finishValue(localAbstraction(Value.LocalLambda(parameter, Some(argument), Some(result), definition),
+        val lambda = if local then finishValue(fixedAbstraction(Value.FixedLambda(parameter, Some(argument), Some(result), definition),
           parameter, arg, Some(ret), definition, env.region, id, scope))
-          else finishValue(abstraction(Value.Lambda(parameter, argument, result, definition), parameter,
-            arg, Some(ret), definition, Some(env.region), Some(id), scope))
+          else finishValue(abstraction(Value.Lambda(parameter, argument, result, definition, callerName), parameter,
+            arg, Some(ret), definition, Some(env.region), Some(id), scope, caller, callerName))
         val rest = infer(body, scope, inherited)
         CheckedTerm(term, rest.tpe, lambda.captures ++ rest.captures,
           values = List(lambda), children = List(lambda.body.get, rest), logic = rest.logic, symbolic = rest.symbolic)
@@ -1181,6 +1294,9 @@ object Checker {
         }
         val scope = env.copy(logic = first.logic).bind(name, first.tpe.value, first.symbolic)
         val second = closeLet(infer(body, scope, nextAnswer), env, scope)
+        if first.tpe.effect == Effect.Pure && second.tpe.form.nonEmpty then
+          return symbolicTerm(CheckedTerm(term, second.tpe, first.captures ++ second.captures,
+            children = List(first, second)), env)
         val effect = (first.tpe.effect, second.tpe.effect) match {
           case (Effect.Change(middle, finalAnswer), Effect.Change(initial, actual)) if refined =>
             require(answerSubtype(actual, middle, env.copy(logic = second.logic)), "Sequential refined answer types do not compose")
@@ -1190,23 +1306,33 @@ object Checker {
         symbolicTerm(CheckedTerm(term, Computation(second.tpe.value, effect, second.tpe.returned), first.captures ++ second.captures,
           children = List(first, second)), env)
       case Term.Apply(function, argument) =>
-        val f = value(function, env)
+        val (f, contexts) = callValue(function, env)
         val (param, declaredResult, parameter, reconstruction) = f.tpe match {
-          case Type.Function(param, result, _, region, parameter) =>
-            (param, result, parameter, Some(reconstruct(env.region, region.getOrElse(fail("Unresolved function region")), env)))
-          case Type.LocalFunction(param, result, _, Some(region), parameter) =>
-            require(env.region == region, "A local function must be called at exactly its declared region")
+          case fn: Type.Function =>
+            val ev = reconstruct(env.region, fn.region.getOrElse(fail("Unresolved function region")), env)
+            val parameters = FunctionTypes.contexts(fn, env.region, ev.witness.distance)
+            require(parameters.size == contexts.size, s"Function expects ${parameters.size} explicit ATC arguments, found ${contexts.size}")
+            var codomain = FunctionTypes.result(fn, env.region, ev.witness.distance)
+            parameters.zip(contexts).foreach { case ((name, kind), context) =>
+              require(Annotations.sameKind(kind, Kind.Context(Annotations.depth(context, env.kinds))), "Call-context ATC depth differs from its declared distance")
+              val subst = Annotations.substitution(name, Argument.Context(context))
+              codomain = subst.computation(codomain)
+            }
+            (fn.argument, codomain, fn.parameter, Some(ev))
+          case Type.FixedFunction(param, result, _, Some(region), parameter) =>
+            require(env.region == region, "A fixed-region function must be called at exactly its declared region")
             (param, result, parameter, None)
           case Type.Continuation(param, result, region, _, parameter) =>
             require(env.region == region, "A_KApp: continuation application requires exactly its ambient region")
             (param, result, parameter, None)
           case other => fail(s"Cannot call ${show(other)}")
         }
+        require(f.tpe.isInstanceOf[Type.Function] || contexts.isEmpty, "Only an ordinary function accepts call-context arguments")
         val arg = checkValue(argument, param, env)
         val result = parameter.filter(n => Contracts.free(declaredResult).contains(n))
           .fold(declaredResult)(n => Contracts.substitute(declaredResult, n, symbol(arg)))
         symbolicTerm(CheckedTerm(term, adapt(result, inherited, env), f.captures ++ arg.captures, List(f, arg),
-          residuals = reconstruction.toList.flatMap(_.residuals), evidence = reconstruction.toList.map(_.witness)), env)
+          residuals = reconstruction.toList.flatMap(_.residuals), evidence = reconstruction.toList.map(_.witness), callContexts = contexts), env)
       case Term.If(condition, whenTrue, whenFalse) =>
         val c = value(condition, env)
         require(Contracts.base(c.tpe) == Type.Bool, "An if condition must be Bool")
@@ -1292,9 +1418,12 @@ object Checker {
           case _ => false
         }
         v match {
-          case Value.Lambda(p, a, r, _) =>
+          case Value.Lambda(p, a, r, _, name) =>
             val argument = resolve(a, scope)
-            Contracts.erase(Type.Function(argument, resolve(r, scope.bind(p, argument)), region = Some(scope.region)))
+            val caller = Caller(fresh("projectedCaller"), fresh("projectedDistance"))
+            val inner = scope.copy(region = caller.region, annotationDefaultRegion = Some(scope.region))
+              .withCaller(name, caller.region).bind(p, argument)
+            Contracts.erase(Type.Function(argument, resolve(r, inner), region = Some(scope.region), caller = Some(caller)))
           case _ if atomic(v) => Contracts.erase(value(v, scope).tpe)
           case _ => unsupported()
         }
@@ -1324,8 +1453,8 @@ object Checker {
           val t = projectedValue(binding, env, headers)
           projectedValue(body, env.bind(name, t), headers - name)
         case Term.Apply(f, _) => result(f) match {
-          case Type.Function(_, r, _, _, _) => Contracts.erase(r.value)
-          case Type.LocalFunction(_, r, _, _, _) => Contracts.erase(r.value)
+          case Type.Function(_, r, _, _, _, _) => Contracts.erase(r.value)
+          case Type.FixedFunction(_, r, _, _, _) => Contracts.erase(r.value)
           case Type.Continuation(_, r, _, _, _) => Contracts.erase(r.value)
           case _ => unsupported()
         }
@@ -1344,11 +1473,14 @@ object Checker {
         case Term.AnnotationAlias(n, a, b) =>
           val (alias, residuals) = resolveArgument(a, env)
           projectedValue(b, env.withAnnotation(n, alias, residuals), headers)
-        case Term.LetRec(n, p, a, r, _, b, local) =>
+        case Term.LetRec(n, p, a, r, _, b, anchor, name) =>
           val argument = resolve(a, env)
-          val answer = resolve(r, env.bind(p, argument))
-          val arrow = if local then Type.LocalFunction(argument, answer, region = Some(env.region))
-            else Type.Function(argument, answer, region = Some(env.region))
+          val caller = Option.when(anchor.isEmpty)(Caller(fresh("projectedCaller"), fresh("projectedDistance")))
+          val region = caller.fold(env.region)(_.region)
+          val answer = resolve(r, env.copy(region = region, annotationDefaultRegion = Some(env.region))
+            .withCaller(name, region).bind(p, argument))
+          val arrow = if anchor.nonEmpty then Type.FixedFunction(argument, answer, region = Some(env.region))
+            else Type.Function(argument, answer, region = Some(env.region), caller = caller)
           projectedValue(b, env.bind(n, Contracts.erase(arrow)), headers - n)
         case Term.Match(_, cases) => same(cases.map { c =>
           val fields = constructors.getOrElse(c.constructor, fail(s"Unknown constructor ${c.constructor}"))._2.fields
@@ -1384,7 +1516,7 @@ object Checker {
           case Some(k) =>
             val resolved = resolveContext(k, env)
             require(Evidence.sameDistance(Annotations.depth(resolved, env.kinds), reconstruction.witness.distance),
-              "ATC depth differs from evidence distance")
+              s"ATC depth differs from evidence distance: context ${Annotations.depth(resolved, env.kinds)}, evidence ${reconstruction.witness.distance}")
             resolved
           case None =>
             val answer = inherited.getOrElse(fail(s"$cap.$operation needs an inherited final answer type or an explicit ATC"))

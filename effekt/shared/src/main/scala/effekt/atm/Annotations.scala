@@ -13,6 +13,8 @@ object Annotations {
     case Context(distance: effekt.atm.Evidence.Distance)
   }
   enum Proof {
+    // Bare refl uses the checking region without a source-level region name.
+    case Current
     case Refl(region: String)
     case Step(handler: String)
     case Variable(name: String)
@@ -95,8 +97,13 @@ object Annotations {
     def typ(t: Type): Type = after(t match {
       case Type.Pair(a, b) => Type.Pair(typ(a), typ(b))
       case Type.Refined(n, b, p) => Type.Refined(n, typ(b), expression(p))
-      case Type.Function(a, r, cs, scope, n) => Type.Function(typ(a), computation(r), cs.map(region), scope.map(region), n)
-      case Type.LocalFunction(a, r, cs, scope, n) => Type.LocalFunction(typ(a), computation(r), cs.map(region), scope.map(region), n)
+      case Type.Function(a, r, cs, scope, n, caller) =>
+        Type.Function(typ(a), computation(r), cs.map(region), scope.map(region), n,
+          caller.map(c => Caller(region(c.region), distance(Distance.Variable(c.distance)) match {
+            case Distance.Variable(n) => n
+            case _ => c.distance
+          }, c.contexts.map((n, k) => (n, kind(k))))))
+      case Type.FixedFunction(a, r, cs, scope, n) => Type.FixedFunction(typ(a), computation(r), cs.map(region), scope.map(region), n)
       case Type.Continuation(a, r, scope, cs, n) => Type.Continuation(typ(a), computation(r), region(scope), cs.map(region), n)
       case Type.TypePoly(n, b) => Type.TypePoly(n, typ(b))
       case Type.PredicatePoly(n, args, b) => Type.PredicatePoly(n, args, typ(b))
@@ -170,6 +177,7 @@ object Annotations {
       n
     }
     override def distance(d: Distance): Distance = d match {
+      case Distance.Projected(_) => throw Diagnostic("Unresolved evidence-distance projection")
       case Distance.Variable(n) if !ks.get(n).contains(Kind.Distance) => throw Diagnostic("Unbound distance variable " + n)
       case Distance.Numeral(n) if n < 0 => throw Diagnostic("Negative distance annotation")
       case _ => super.distance(d)
@@ -188,6 +196,15 @@ object Annotations {
         val savedKinds = ks; val savedRegions = rs
         ks = ks.updated(n, k); if k == Kind.Region then rs += n
         try { typ(b); t } finally { ks = savedKinds; rs = savedRegions }
+      case Type.Function(a, r, _, scope, _, caller) =>
+        scope.foreach(region)
+        typ(a)
+        val savedKinds = ks; val savedRegions = rs
+        caller.foreach { c =>
+          rs += c.region; ks = ks.updated(c.region, Kind.Region).updated(c.distance, Kind.Distance)
+          c.contexts.foreach { (n, k) => kind(k); ks = ks.updated(n, k) }
+        }
+        try { computation(r); t } finally { ks = savedKinds; rs = savedRegions }
       case Type.CapabilityPoly(n, ops, b, _, scope, obligations) =>
         val saved = rs; rs += n
         try { ops.foreach(signature); typ(b); obligations.foreach(o => { region(o.constraint.from); region(o.constraint.to) }); t }
@@ -216,8 +233,12 @@ object Annotations {
         case Type.KindPoly(n, k, b) =>
           val before = result; result = Set.empty; kind(k); typ(b)
           result = before ++ (if k == Kind.Region then result - n else result); t
-        case Type.Function(a, r, _, scope, _) => typ(a); computation(r); scope.foreach(region); t
-        case Type.LocalFunction(a, r, _, scope, _) => typ(a); computation(r); scope.foreach(region); t
+        case Type.Function(a, r, _, scope, _, caller) =>
+          scope.foreach(region); typ(a)
+          val before = result; result = Set.empty
+          caller.foreach(_.contexts.foreach((_, k) => kind(k))); computation(r)
+          result = before ++ (result -- caller.map(_.region)); t
+        case Type.FixedFunction(a, r, _, scope, _) => typ(a); computation(r); scope.foreach(region); t
         case Type.Continuation(a, r, scope, _, _) => typ(a); computation(r); region(scope); t
         case Type.CapabilityPoly(n, ops, b, _, scope, obligations) =>
           val before = result; result = Set.empty; ops.foreach(signature); typ(b)

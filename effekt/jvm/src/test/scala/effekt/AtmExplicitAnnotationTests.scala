@@ -22,7 +22,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
       assertEquals(DirectBackend.run(p, optimized).fold(fail(_), identity), expected)
   }
   private val callback = """val callback = typefun [R: Reg, D: Dist, E: Ev(R, D, outer), K: ATC(D)] {
-    fun local[R](u: Unit): Int / (K[Int] => K[Bool]) {
+    fun (u: Unit) at [R]: Int / (K[Int] => K[Bool]) {
       outer.ask[E; K]()
     }
   };"""
@@ -30,7 +30,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
     (0 until n).foldLeft(hole)((rest, _) => s"Int / (Int => $rest)")
   private def source(depth: Int): String = {
     val evidence = if depth == 0 then "refl" else (1 to depth).reverse.map(i => s"step(h$i)").mkString(" + ")
-    val call = s"callback[region here][distance $depth][evidence $evidence][atc ${layers(depth, "[]")}]()"
+    val call = s"callback[region ${if depth == 0 then "outer" else s"h$depth"}][distance $depth][evidence $evidence][atc ${layers(depth, "[]")}]()"
     val body = (1 to depth).reverse.foldLeft(call) { (body, i) =>
       val answer = layers(i, "Bool")
       s"""try { $body } with h$i: $answer {
@@ -62,7 +62,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
     rejected(Files.readString(Path.of("examples/atm/infer/polymorphic-outer-call.effekt")), "ATC inference requires a concrete")
   }
   test("explicit annotations work with lexical aliases and equivalent distance sums") {
-    val s = source(1).replace("callback[region here]", """region R = here; distance D = 0 + 1;
+    val s = source(1).replace("callback[region h1]", """region R = h1; distance D = 0 + 1;
       evidence E = step(h1); atc K = Int / (Int => []);
       callback[region R]""")
       .replace("[distance 1][evidence step(h1)][atc Int / (Int => [])]", "[distance D][evidence E][atc K]")
@@ -71,18 +71,18 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
   test("abstract contexts and evidence compose with additive depths") {
     val nested = """val callback = typefun [R: Reg, S: Reg, D: Dist, N: Dist,
       E: Ev(R, D, S), F: Ev(S, N, outer), K: ATC(D), J: ATC(N)] {
-      fun local[R](u: Unit): Int / (K[J[Int]] => K[J[Bool]]) {
+      fun (u: Unit) at [R]: Int / (K[J[Int]] => K[J[Bool]]) {
         outer.ask[E + F; K[J]]()
       }
     };"""
-    val oldCall = "callback[region here][distance 2][evidence step(h2) + step(h1)][atc Int / (Int => Int / (Int => []))]()"
-    val newCall = """callback[region here][region h1][distance 1][distance 1]
+    val oldCall = "callback[region h2][distance 2][evidence step(h2) + step(h1)][atc Int / (Int => Int / (Int => []))]()"
+    val newCall = """callback[region h2][region h1][distance 1][distance 1]
       [evidence step(h2)][evidence step(h1)][atc Int / (Int => [])][atc Int / (Int => [])]()"""
     run(source(2).replace(callback, nested).replace(oldCall, newCall), "true")
   }
   test("declared kind telescopes alpha-rename dependencies during subsumption") {
     val annotation = """val callback: forall S: Reg. (forall N: Dist.
-      (forall F: Ev(S, N, outer). (forall J: ATC(N). (local[S] (Unit) => Int / (J[Int] => J[Bool]))))) ="""
+      (forall F: Ev(S, N, outer). (forall J: ATC(N). ((Unit) =>[S] Int / (J[Int] => J[Bool]))))) ="""
     run(source(1).replace("val callback =", annotation), "true")
   }
   test("inspection reports symbolic annotated certificates without inventing a numeric depth") {
@@ -95,7 +95,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
   test("a concrete explicit ATC can supply a missing inherited answer") {
     run("""def main(): Bool = {
       try {
-        def local call(u: Unit) = { h.ask[refl; []]() }
+        def call(u: Unit) at [h] = { h.ask[refl; []]() }
         call()
       } with h: Bool {
         def ask(u: Unit): Int / (Int => Bool) = { val n = resume(42); n == 42 }
@@ -106,21 +106,21 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
   test("computation kind abstraction forwards an abstract computation") {
     run("""def main(): Int = {
       val forward = typefun [C: Cty] {
-        fun local(f: (local (Unit) => cty C)): cty C { f() }
+        fun (f: ((Unit) =>[top] cty C)) at [top]: cty C { f() }
       };
       cty Answer = Int;
-      def local answer(u: Unit): Int = { 42 }
+      def answer(u: Unit) at [top]: Int = { 42 }
       forward[cty cty Answer](answer)
     }""", "42")
   }
   test("computation instantiation retains an impure answer contract") {
     run("""def main(): Bool = {
       val forward = typefun [R: Reg, C: Cty] {
-        fun local[R](f: (local[R] (Unit) => cty C)): cty C { f() }
+        fun (f: ((Unit) =>[R] cty C)) at [R]: cty C { f() }
       };
       try {
-        def local answer(u: Unit): Int / (Int => Bool) = { h.ask() }
-        forward[region here][cty Int / (Int => Bool)](answer)
+        def answer(u: Unit) at [h]: Int / (Int => Bool) = { h.ask() }
+        forward[region h][cty Int / (Int => Bool)](answer)
       } with h: Bool {
         def ask(u: Unit): Int / (Int => Bool) = { val n = resume(42); n == 42 }
         return x => { x }
@@ -130,7 +130,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
   test("abstract ATC result projections report the remaining lowering restriction") {
     val p = checked("""def main(): Unit = {
       val forward = typefun [K: ATC(1)] {
-        fun local(f: (local (Unit) => K[Int])): K[Int] { f() }
+        fun (f: ((Unit) =>[top] K[Int])) at [top]: K[Int] { f() }
       };
       ()
     }""")
@@ -160,7 +160,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
     rejected("def main(): Unit = { typefun [K: ATC(D), D: Dist] { () }; () }", "Unknown or non-distance")
   }
   test("shadowing a region with a distance does not reuse the old region") {
-    rejected("def main(): Unit = { typefun [R: Reg] { typefun [R: Dist] { fun local[R](u: Unit): Unit { () } } }; () }", "not a region")
+    rejected("def main(): Unit = { typefun [R: Reg] { typefun [R: Dist] { fun (u: Unit) at [R]: Unit { () } } }; () }", "not a region")
   }
   test("an ATC layer binder is visible in its initial answer") {
     run("""def main(): Unit = {
@@ -176,18 +176,18 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
   }
   test("kind abstraction does not hide an escaping handler region") {
     rejected("""def main(): Unit = {
-      try { typefun [K: ATC(0)] { fun local[h](u: Unit): Int { 42 } } }
+      try { typefun [K: ATC(0)] { fun (u: Unit) at [h]: Int { 42 } } }
       with h: Unit {
         def unused(u: Unit): Unit / (Unit => Unit) = { resume() }
         return x => { () }
       }
     }""", "local handler region")
   }
-  test("implicit functions cannot relabel a returned evidence kind's abstract caller") {
-    rejected("""def main(): Unit = {
-      def make(u: Unit) = { typefun [E: Ev(here, 0, top)] { () } }
+  test("implicit functions retain a returned evidence kind indexed by the caller") {
+    run("""def main(): Unit = {
+      def make(u: Unit)[R: Reg] = { typefun [E: Ev(R, 0, top)] { () } }
       ()
-    }""", "abstract caller region")
+    }""", "unit")
   }
   test("a context application preserves the operation's answer contract") {
     rejected(source(1).replace("K[Int] => K[Bool]", "K[Bool] => K[Bool]"), "Expected")
@@ -197,7 +197,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
     import Evidence.{Distance as D, AnswerContext as K}
     def scheme(r: String, d: String, k: String) = Type.KindPoly(r, Kind.Region,
       Type.KindPoly(d, Kind.Distance, Type.KindPoly(k, Kind.Context(D.Plus(D.Variable(d), D.Numeral(1))),
-        Type.LocalFunction(Type.Unit, K.Variable(k).plug(Computation(Type.Int)), region = Some(r)))))
+        Type.FixedFunction(Type.Unit, K.Variable(k).plug(Computation(Type.Int)), region = Some(r)))))
     assert(TypeEquality.same(scheme("R", "D", "K"), scheme("S", "N", "J")))
     assert(Evidence.sameDistance(D.Plus(D.Variable("D"), D.Numeral(1)), D.Plus(D.Numeral(1), D.Variable("D"))))
     assert(!Evidence.sameDistance(D.Variable("D"), D.Plus(D.Variable("D"), D.Numeral(1))))
@@ -206,7 +206,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
     val root = Core.elaborate(checked(source(1))).body
     def v(x: Core.Value): Core.Value = x.copy(node = x.node match {
       case Core.ValueNode.KindLambda(n, k, b) => Core.ValueNode.KindLambda(n, k, v(b))
-      case Core.ValueNode.LocalLambda(n, r, b) => Core.ValueNode.LocalLambda(n, r, t(b))
+      case Core.ValueNode.FixedLambda(n, r, b) => Core.ValueNode.FixedLambda(n, r, t(b))
       case other => other
     })
     def t(x: Core.Term): Core.Term = x.copy(node = x.node match {
@@ -257,7 +257,7 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
 
   test("single annotation names require an in-scope evidence or ATC kind") {
     rejected(positionalCall("[Missing]"), "Unknown operation annotation Missing")
-    for alias <- List("distance X = 0;", "region X = here;", "cty X = Int;",
+    for alias <- List("distance X = 0;", "region X = h;", "cty X = Int;",
       "atc X = []; distance X = 0;") do
       rejected(positionalCall("[X]", alias), "must have evidence or ATC kind")
     rejected(positionalCall("[E; K]", "atc E = []; evidence K = refl;"), "non-evidence variable E")
@@ -265,10 +265,10 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
 
   test("single annotations accept evidence and context kind parameters") {
     run(positionalCall("", """val call = typefun [C: Ev(h, 0, h)] {
-      fun local[h](u: Unit): Int / (Int => Bool) { h.ask[C]() }
+      fun (u: Unit) at [h]: Int / (Int => Bool) { h.ask[C]() }
     };""").replace("h.ask()", "call[evidence refl]()"), "true")
     run(positionalCall("", """val call = typefun [e: ATC(0)] {
-      fun local[h](u: Unit): Int / (e[Int] => e[Bool]) { h.ask[e]() }
+      fun (u: Unit) at [h]: Int / (e[Int] => e[Bool]) { h.ask[e]() }
     };""").replace("h.ask()", "call[atc []]()"), "true")
   }
 
@@ -278,10 +278,10 @@ class AtmExplicitAnnotationTests extends munit.FunSuite {
       1 -> "[layer(Int, Int, [])]",
       2 -> "[step(h2) + step(h1)]",
       2 -> "[Int / (Int => Int / (Int => []))]") do {
-      val oldCall = s"callback[region here][distance $depth][evidence ${if depth == 1 then "step(h1)" else "step(h2) + step(h1)"}][atc ${layers(depth, "[]")}]()"
+      val oldCall = s"callback[region ${if depth == 0 then "outer" else s"h$depth"}][distance $depth][evidence ${if depth == 1 then "step(h1)" else "step(h2) + step(h1)"}][atc ${layers(depth, "[]")}]()"
       run(source(depth).replace(callback, "").replace(oldCall, s"outer.ask$annotation()"), "true")
     }
-    val oldCall = "callback[region here][distance 2][evidence step(h2) + step(h1)][atc Int / (Int => Int / (Int => []))]()"
+    val oldCall = "callback[region h2][distance 2][evidence step(h2) + step(h1)][atc Int / (Int => Int / (Int => []))]()"
     run(source(2).replace(callback, "").replace(oldCall,
       "atc K = Int / (Int => []); atc J = Int / (Int => []); outer.ask[K[J]]()"), "true")
   }

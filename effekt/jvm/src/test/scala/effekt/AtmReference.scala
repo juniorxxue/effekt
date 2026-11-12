@@ -42,10 +42,12 @@ object AtmReference {
     case Syntax.Value.Constructor(n, args) => Value.Data(n, args.map(value(_, env)))
     case Syntax.Value.Capability(name) => Value.Capability(env.capabilities(name))
     case Syntax.Value.Variable(name) => env.values.getOrElse(name, Value.Capability(env.capabilities(name)))
-    case Syntax.Value.LocalLambda(parameter, _, _, body, _) => Value.Function(arg => term(body, env.bind(parameter, arg)))
-    case Syntax.Value.Lambda(parameter, _, _, body) => Value.Function(arg => term(body, env.bind(parameter, arg)))
-    case Syntax.Value.InferredLambda(parameter, _, body) => Value.Function(arg => term(body, env.bind(parameter, arg)))
-    case Syntax.Value.UnannotatedLambda(parameter, _, body) => Value.Function(arg => term(body, env.bind(parameter, arg)))
+    case Syntax.Value.FixedLambda(parameter, _, _, body, _) => Value.Function(arg => term(body, env.bind(parameter, arg)))
+    case Syntax.Value.Lambda(parameter, _, _, body, _) => Value.Function(arg => term(body, env.bind(parameter, arg)))
+    case Syntax.Value.ContextLambda(parameter, _, _, contexts, body, _) =>
+      contexts.foldRight[Value](Value.Function(arg => term(body, env.bind(parameter, arg))))((_, v) => Value.EffectAbstraction(v))
+    case Syntax.Value.InferredLambda(parameter, _, body, _) => Value.Function(arg => term(body, env.bind(parameter, arg)))
+    case Syntax.Value.UnannotatedLambda(parameter, _, body, _) => Value.Function(arg => term(body, env.bind(parameter, arg)))
     case Syntax.Value.CapabilityLambda(parameter, _, body, _) => Value.CapabilityAbstraction {
       case Value.Capability(identity) => value(body, env.withCapability(parameter, identity))
       case other => throw new IllegalStateException(s"Cannot instantiate with $other")
@@ -109,7 +111,7 @@ object AtmReference {
       if value(v, env) != Value.Boolean(true) then throw new IllegalStateException("Assertion failed")
       Computation.Returned(Value.Unit)
     case Syntax.Term.ExplicitReturn(body) => term(body, env)
-    case Syntax.Term.LetRec(name, parameter, _, _, definition, body, _) =>
+    case Syntax.Term.LetRec(name, parameter, _, _, definition, body, _, _) =>
       lazy val function: Value = Value.Function(arg => term(definition, env.bind(name, function).bind(parameter, arg)))
       term(body, env.bind(name, function))
     case Syntax.Term.Let(name, first, rest) => bind(term(first, env))(v => term(rest, env.bind(name, v)))

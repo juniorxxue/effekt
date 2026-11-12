@@ -64,7 +64,7 @@ object Parser {
     private def expect(text: String): Unit =
       if !accept(text) then fail(s"Expected '$text', found '$current'")
     private val keywords = Set("def", "main", "val", "return", "if", "else", "try", "with", "resume",
-      "fun", "capfun", "effectfun", "forall", "cap", "effect", "here", "at", "pure", "any",
+      "fun", "capfun", "effectfun", "forall", "cap", "effect", "at", "pure", "any",
       "repeatable", "true", "false", "token", "zero", "add", "not",
       "interface", "data", "measure", "match", "case", "type", "pred", "typefun", "predfun", "assert", "rec", "then", "fst", "snd")
     private def identifier(): String = {
@@ -161,12 +161,13 @@ object Parser {
     private case class Definition(name: String, wrap: Term => Term, dependencies: Set[String])
     private def definition(): Definition = {
       val recursive = accept("rec")
-      val local = accept("local"); val region = if local then localRegion() else None
-      if recursive && region.nonEmpty then fail("A recursive local definition uses its enclosing lexical region")
       val name = identifier()
       val types = typeParameters()
       val params = parameters(required = true)
-      if current == "{" then fail("Native block inference is unsupported; use explicit capability, region, computation, and evidence parameters")
+      val region = fixedRegion()
+      val (caller, contexts) = callParameters()
+      if region.nonEmpty && caller.nonEmpty then fail("Caller-region binders belong to ordinary functions")
+      if current == "{" then fail("Native block inference is unsupported; use explicit polymorphic callback contracts")
       val param = params.binder; val arg = params.argument
       val res = if accept(":") then Some(params.result(computation())) else None
       expect("=")
@@ -174,12 +175,16 @@ object Parser {
       accept(";")
       val free = Surface.free(body) - param
       if recursive || free(name) then {
-        if types.nonEmpty then fail("Recursive polymorphic definitions are not supported yet")
+        if types.nonEmpty || contexts.nonEmpty then fail("Recursive polymorphic definitions are not supported yet")
         val result = res.getOrElse(fail("A recursive definition requires a result annotation"))
-        Definition(name, rest => Term.LetRec(name, param, arg, result, body, rest, local), free - name)
+        Definition(name, rest => Term.LetRec(name, param, arg, result, body, rest, region, caller), free - name)
       } else {
-        val function = if local then Value.LocalLambda(param, Some(arg), res, body, region)
-          else res.fold[Value](Value.InferredLambda(param, arg, body))(Value.Lambda(param, arg, _, body))
+        val function = if region.nonEmpty then {
+          if contexts.nonEmpty || caller.nonEmpty then fail("Call parameters belong to ordinary functions")
+          Value.FixedLambda(param, Some(arg), res, body, region)
+        } else if contexts.nonEmpty then Value.ContextLambda(param, arg,
+          res.getOrElse(fail("A context-polymorphic definition needs a result annotation")), contexts, body, caller)
+          else res.fold[Value](Value.InferredLambda(param, arg, body, caller))(Value.Lambda(param, arg, _, body, caller))
         val value = types.foldRight(function)(Value.TypeLambda.apply)
         Definition(name, rest => Term.Let(name, Term.Return(value), rest), free)
       }
@@ -361,10 +366,12 @@ object Parser {
       }
       left
     }
-    private def regionName(): String = if current == "here" || current == "top" then take() else identifier()
+    private def regionName(): String = if current == "top" then take() else identifier()
     private def distance(): Distance = {
       def atom(): Distance = if accept("(") then { val d = distance(); expect(")"); d }
-        else if current.matches("[0-9]+") then {
+        else if current == "dist" && tokens.lift(position + 1).exists(_.text == "(") then {
+          take(); expect("("); val e = proof(); expect(")"); Distance.Projected(e)
+        } else if current.matches("[0-9]+") then {
           val n = BigInt(take()); if !n.isValidInt then fail("Distance literal is too large")
           Distance.Numeral(n.toInt)
         } else Distance.Variable(identifier())
@@ -375,7 +382,7 @@ object Parser {
     private def proof(): Proof = {
       def atom(): Proof = current match {
         case "refl" | "zero" | "0" =>
-          take(); Proof.Refl(if accept("(") then { val r = regionName(); expect(")"); r } else "here")
+          take(); if accept("(") then { val r = regionName(); expect(")"); Proof.Refl(r) } else Proof.Current
         case "step" => take(); expect("("); val r = regionName(); expect(")"); Proof.Step(r)
         case "path" => take(); expect("("); val r = regionName(); expect(")"); Proof.Path(r)
         case "(" => take(); val e = proof(); expect(")"); e
@@ -410,6 +417,28 @@ object Parser {
         expect("("); val from = regionName(); expect(","); val d = distance(); expect(",")
         val to = regionName(); expect(")"); Kind.Evidence(from, d, to)
       case other => fail(s"Unknown annotation kind $other; use Reg, Dist, Cty, ATC(d), or Ev(from, d, to)")
+    }
+    private def callParameters(): (Option[String], List[(String, Kind)]) = {
+      var caller: Option[String] = None
+      val parameters = scala.collection.mutable.ListBuffer.empty[(String, Kind)]
+      if accept("[") then {
+        def parameter(): Unit = {
+          val name = identifier(); expect(":"); val k = kind()
+          k match {
+            case Kind.Region =>
+              if caller.nonEmpty || parameters.nonEmpty then fail("A single caller-region binder must precede call ATCs")
+              if name == "top" then fail("top cannot be rebound as a caller region")
+              caller = Some(name)
+            case _: Kind.Context => parameters += ((name, k))
+            case _ => fail("Call parameters must be an optional Reg binder followed by ATC(distance) binders")
+          }
+        }
+        parameter(); while accept(",") do parameter()
+        expect("]")
+      }
+      val names = caller.toList ++ parameters.map(_._1)
+      if names.distinct.size != names.size then fail("Duplicate call parameter")
+      (caller, parameters.toList)
     }
     private def annotation(tag: String): Argument = tag match {
       case "region" => Argument.Region(regionName())
@@ -486,20 +515,13 @@ object Parser {
       if result.isEmpty then position = start
       result
     }
-    private def localRegion(): Option[String] =
-      if accept("[") then { val name = regionName(); expect("]"); Some(name) } else None
+    private def fixedRegion(): Option[String] =
+      if accept("at") then { expect("["); val r = regionName(); expect("]"); Some(r) } else None
     private def tpe(allowArrow: Boolean = true): Type = {
       val base = current match {
         case "{" =>
           take(); val parameter = identifier(); expect(":"); val base = tpe(); expect("|")
           val formula = predicate(); expect("}"); Type.Refined(parameter, base, formula)
-        case "local" =>
-          take(); val region = localRegion(); expect("(")
-          val parameter = if tokens.lift(position + 1).exists(_.text == ":") then {
-            val name = identifier(); expect(":"); Some(name)
-          } else None
-          val arg = tpe(); expect(")"); expect("=>")
-          Type.LocalFunction(arg, computation(), region = region, parameter = parameter)
         case "Int" => take(); Type.Int
         case "Bool" => take(); Type.Bool
         case "Unit" => take(); Type.Unit
@@ -513,17 +535,25 @@ object Parser {
           if current != ")" then { arguments += tpe(); while accept(",") do arguments += tpe() }
           val argument = Surface.tuple(arguments.toList)
           expect(")")
-          if allowArrow && accept("=>") then Type.Function(argument, computation(), parameter = parameter)
+          val (caller, contexts) = if allowArrow then callParameters() else (None, Nil)
+          if allowArrow && accept("=>") then {
+            if accept("[") then {
+              if contexts.nonEmpty || caller.nonEmpty then fail("Call parameters belong to ordinary functions")
+              val r = regionName(); expect("]")
+              Type.FixedFunction(argument, computation(), region = Some(r), parameter = parameter)
+            } else Type.Function(argument, computation(), parameter = parameter,
+              caller = Option.when(caller.nonEmpty || contexts.nonEmpty)(Caller(caller.getOrElse(""), "", contexts)))
+          }
+          else if contexts.nonEmpty || caller.nonEmpty then fail("Call parameters require a function arrow")
           else if parameter.nonEmpty then fail("A dependent parameter must be followed by a function arrow")
           else argument
         case "forall" =>
           take()
           if accept("cap") then {
-            val scoped = accept("here")
             val name = identifier(); expect(":")
             val ops = signatures(); expect("."); expect("(")
             val body = tpe(); expect(")")
-            Type.CapabilityPoly(name, ops, body, context = if scoped then Some("here") else None)
+            Type.CapabilityPoly(name, ops, body)
           } else if accept("type") then {
             val name = identifier(); expect("."); expect("("); val body = tpe(); expect(")")
             Type.TypePoly(name, body)
@@ -548,7 +578,7 @@ object Parser {
         val cs = captures()
         base match {
           case f: Type.Function => f.copy(captures = cs)
-          case f: Type.LocalFunction => f.copy(captures = cs)
+          case f: Type.FixedFunction => f.copy(captures = cs)
           case p: Type.CapabilityPoly if p.context.nonEmpty => p.copy(captures = cs)
           case _ => fail("Capture annotations require a function or a scoped capability abstraction")
         }
@@ -556,7 +586,7 @@ object Parser {
     }
     private def computation(allowArrow: Boolean = true): Computation = {
       if accept("cty") then return Annotations.abstractComputation(ComputationForm.Variable(identifier()))
-      if current != "local" && current.matches("[a-zA-Z_][a-zA-Z0-9_]*") && tokens.lift(position + 1).exists(_.text == "[") then {
+      if current.matches("[a-zA-Z_][a-zA-Z0-9_]*") && tokens.lift(position + 1).exists(_.text == "[") then {
         val c = AnswerContext.Variable(identifier()); expect("["); val arg = computation(); expect("]")
         return c.plug(arg)
       }
@@ -642,16 +672,22 @@ object Parser {
     }
 
     private def function(): Value = {
-      val local = accept("local"); val region = if local then localRegion() else None
       val params = parameters()
+      val region = fixedRegion()
       val argument = if params.fields.forall(_._2.nonEmpty) then Some(params.argument)
         else if params.size == 1 then None else fail("Multiple lambda parameters need type annotations")
+      val (caller, contexts) = callParameters()
       val result = if accept(":") then Some(params.result(computation())) else None
       val body = params.bind(block())
-      if local then Value.LocalLambda(params.binder, argument, result, body, region) else (argument, result) match {
-        case (Some(a), Some(r)) => Value.Lambda(params.binder, a, r, body)
-        case (Some(a), None) => Value.InferredLambda(params.binder, a, body)
-        case (None, r) => Value.UnannotatedLambda(params.binder, r, body)
+      if caller.nonEmpty && region.nonEmpty then fail("Caller-region binders belong to ordinary functions")
+      if contexts.nonEmpty then {
+        if region.nonEmpty then fail("Call-context parameters belong to ordinary functions")
+        Value.ContextLambda(params.binder, argument.getOrElse(fail("A context-polymorphic function needs a domain")),
+          result.getOrElse(fail("A context-polymorphic function needs a result annotation")), contexts, body, caller)
+      } else if region.nonEmpty then Value.FixedLambda(params.binder, argument, result, body, region) else (argument, result) match {
+        case (Some(a), Some(r)) => Value.Lambda(params.binder, a, r, body, caller)
+        case (Some(a), None) => Value.InferredLambda(params.binder, a, body, caller)
+        case (None, r) => Value.UnannotatedLambda(params.binder, r, body, caller)
       }
     }
     private def atom(): Value = current match {
@@ -675,9 +711,9 @@ object Parser {
       case "token" => take(); expect("("); val name = identifier(); expect(")"); Value.Token(name)
       case "fun" => take(); if current == "[" then polymorphicFunction() else function()
       case "capfun" =>
-        take(); val scoped = accept("here"); expect("("); val name = identifier(); expect(":")
+        take(); expect("("); val name = identifier(); expect(":")
         val ops = signatures(); expect(")"); expect("{"); val body = pureValue(); expect("}")
-        Value.CapabilityLambda(name, ops, body, scoped)
+        Value.CapabilityLambda(name, ops, body)
       case "typefun" => take(); polymorphicFunction()
       case "predfun" =>
         take(); expect("["); val name = identifier(); val args = predicateSorts(); expect("]"); expect("{")

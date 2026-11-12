@@ -4,7 +4,7 @@ def main(): Bool = {
   val both = capfun (c: { def ask(): Int / (Int => Bool); }) {
     capfun (d: { def bump(): Int / (Int / (Int => Bool) => Int / (Int => Bool)); }) {
       fun [E: Ev(d, 1, c)] {
-        fun local[d](u: Unit): Int / (Int / (Int => Int) => Int / (Int => Bool)) {
+        fun (u: Unit) at [d]: Int / (Int / (Int => Int) => Int / (Int => Bool)) {
           val a = d.bump[refl; []]();
           val b = c.ask[E; Int / (Int => [])]();
           (a + b)

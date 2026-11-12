@@ -3,12 +3,12 @@
 // upstream UNSAT source has no such arguments. Counter and assertion are retained.
 // StateRegion names the call region of a lexical local-arrow alias.
 def main(): Int = {
-  def test(init: {n: Int | n >= 0}): {r: Int | r != init} = {
-    type StateRegion = (local (Unit) => Unit);
+  def test(init: {n: Int | n >= 0})[R: Reg]: {r: Int | r != init} = {
+    type StateRegion = ((Unit) =>[R] Unit);
     val run = try {
-      def rec local counter(c: {n: Int | n >= 0}): (v: Int) /
-        ((local[StateRegion] (s: {n: Int | n >= 0}) => {r: Int | r == v}) =>
-         (local[StateRegion] (s: {n: Int | n >= 0}) => {r: Int | r == c + s})) = {
+      def rec counter(c: {n: Int | n >= 0}) at [state]: (v: Int) /
+        (((s: {n: Int | n >= 0}) =>[StateRegion] {r: Int | r == v}) =>
+         ((s: {n: Int | n >= 0}) =>[StateRegion] {r: Int | r == c + s})) = {
         val i = state.lookup(c);
         if (i == 0) { c } else {
           state.update((c, i - 1));
@@ -16,23 +16,23 @@ def main(): Int = {
         }
       }
       counter(0)
-    } with state: (local[StateRegion] (s: {n: Int | n >= 0}) => {r: Int | r == s}) {
+    } with state: ((s: {n: Int | n >= 0}) =>[StateRegion] {r: Int | r == s}) {
       def lookup(ctx: Int): (i: {n: Int | n >= 0}) /
-        ((local[StateRegion] (s: {n: Int | n >= 0 && n == i}) => {r: Int | r == ctx + i}) =>
-         (local[StateRegion] (s: {n: Int | n >= 0}) => {r: Int | r == ctx + s})) = {
-        fun local (s: {n: Int | n >= 0}): {r: Int | r == ctx + s} {
+        (((s: {n: Int | n >= 0 && n == i}) =>[StateRegion] {r: Int | r == ctx + i}) =>
+         ((s: {n: Int | n >= 0}) =>[StateRegion] {r: Int | r == ctx + s})) = {
+        fun (s: {n: Int | n >= 0}) at [R]: {r: Int | r == ctx + s} {
           val next = resume(s); next(s)
         }
       }
       def update(args: (Int, {n: Int | n >= 0})): Unit /
-        ((local[StateRegion] (s: {n: Int | n >= 0 && n == snd(args)}) => {r: Int | r == fst(args) + 1 + snd(args)}) =>
-         (local[StateRegion] (s: {n: Int | n >= 0}) => {r: Int | r == fst(args) + 1 + snd(args)})) = {
-        fun local (s: {n: Int | n >= 0}): {r: Int | r == fst(args) + 1 + snd(args)} {
+        (((s: {n: Int | n >= 0 && n == snd(args)}) =>[StateRegion] {r: Int | r == fst(args) + 1 + snd(args)}) =>
+         ((s: {n: Int | n >= 0}) =>[StateRegion] {r: Int | r == fst(args) + 1 + snd(args)})) = {
+        fun (s: {n: Int | n >= 0}) at [R]: {r: Int | r == fst(args) + 1 + snd(args)} {
           val next = resume(); next(snd(args))
         }
       }
       return v => {
-        fun local (s: {n: Int | n >= 0}): {r: Int | r == v} { v }
+        fun (s: {n: Int | n >= 0}) at [R]: {r: Int | r == v} { v }
       }
     };
     run(init)

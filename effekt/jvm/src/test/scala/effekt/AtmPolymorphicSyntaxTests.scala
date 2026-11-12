@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path}
 
 class AtmPolymorphicSyntaxTests extends munit.FunSuite {
   private def source = Files.readString(Path.of("examples/atm/annotations/polymorphic-outer-call.effekt"))
-  private val call = "callback[here, 1, step(inner), Int / (Int => [])]()"
+  private val call = "callback[Int / (Int => [])]()"
   private def checked(s: String): Checker.CheckedProgram =
     Parser.parse(s).flatMap(Checker.check).fold(e => fail(e.message), identity)
   private def run(s: String, expected: String): Checker.CheckedProgram = {
@@ -24,20 +24,18 @@ class AtmPolymorphicSyntaxTests extends munit.FunSuite {
     }
   }
 
-  test("bare arguments and fun binders preserve the tagged program's Core") {
+  test("bare call ATCs preserve the tagged program's Core") {
     val plain = run(source, "true")
-    val legacy = run(source.replace("fun [", "typefun [").replace(call,
-      "callback[region here][distance 1][evidence step(inner)][atc Int / (Int => [])]()"), "true")
+    val legacy = run(source.replace(call, "callback[atc Int / (Int => [])]()"), "true")
     assertEquals(Core.show(Core.elaborate(plain)), Core.show(Core.elaborate(legacy)))
   }
   test("bare arguments can be chained across lines") {
-    run(source.replace(call, "callback[here]\n[1]\n[step(inner)]\n[Int / (Int => [])]()"), "true")
+    run(source.replace(call, "callback\n[Int / (Int => [])]()"), "true")
   }
   test("the checked function type selects kinds through aliases") {
-    run(source.replace(call, """region Scope = here; distance Count = 0 + 1;
-      evidence Witness = step(inner); atc Context = Int / (Int => []);
+    run(source.replace(call, """atc Context = Int / (Int => []);
       val invoke = callback;
-      invoke[Scope, Count, Witness, Context]()"""), "true")
+      invoke[Context]()"""), "true")
   }
   test("plain fun supports type parameters and following value parameters") {
     run("""def main(): Int = {
@@ -48,9 +46,9 @@ class AtmPolymorphicSyntaxTests extends munit.FunSuite {
   test("legacy prefix words can themselves name bare arguments") {
     run("""def main(): Int = {
       val use = fun [R: Reg, D: Dist, E: Ev(R, D, R), K: ATC(D), C: Cty] {
-        fun local[R](x: Int): Int { x }
+        fun (x: Int) at [R]: Int { x }
       };
-      region region = here; distance distance = 0;
+      region region = top; distance distance = 0;
       evidence evidence = refl; atc atc = []; cty cty = Int;
       use[region][distance + 0][evidence][atc[[]]][cty](42)
     }""", "42")
@@ -68,37 +66,37 @@ class AtmPolymorphicSyntaxTests extends munit.FunSuite {
   test("mixed value types and dependent kinds instantiate left to right") {
     run("""def main(): Int = {
       val id = fun [A, R: Reg, D: Dist, E: Ev(R, D, R), K: ATC(D)] {
-        fun local[R](x: A): A { x }
+        fun (x: A) at [R]: A { x }
       };
-      id[Int, here, 0, refl, []](42)
+      id[Int, top, 0, refl, []](42)
     }""", "42")
   }
   test("zero is interpreted by the expected distance or evidence kind") {
     run("""def main(): Int = {
       val id = fun [R: Reg, D: Dist, E: Ev(R, D, R)] {
-        fun local[R](x: Int): Int { x }
+        fun (x: Int) at [R]: Int { x }
       };
-      id[here, 0, 0](42)
+      id[top, 0, 0](42)
     }""", "42")
   }
   test("computation arguments use their scoped kind without a cty prefix") {
     run("""def main(): Int = {
       val forward = fun [R: Reg, C: Cty] {
-        fun local[R](f: (local[R] (Unit) => C)): C { f() }
+        fun (f: ((Unit) =>[R] C)) at [R]: C { f() }
       };
       cty Answer = Int;
-      def local answer(): Int = { 42 }
-      forward[here, Answer](answer)
+      def answer() at [top]: Int = { 42 }
+      forward[top, Answer](answer)
     }""", "42")
   }
   test("concrete computation arguments preserve their answer effects") {
     run("""def main(): Bool = {
       val forward = fun [R: Reg, C: Cty] {
-        fun local[R](f: (local[R] (Unit) => C)): C { f() }
+        fun (f: ((Unit) =>[R] C)) at [R]: C { f() }
       };
       try {
-        def local answer(): Int / (Int => Bool) = { h.ask() }
-        forward[here, Int / (Int => Bool)](answer)
+        def answer() at [h]: Int / (Int => Bool) = { h.ask() }
+        forward[h, Int / (Int => Bool)](answer)
       } with h: Bool {
         def ask(): Int / (Int => Bool) = { val n = resume(42); n == 42 }
         return x => { x }
@@ -113,10 +111,10 @@ class AtmPolymorphicSyntaxTests extends munit.FunSuite {
     }""", "42")
   }
   test("bare evidence still checks its endpoints and depth") {
-    reject(source.replace(call, "callback[here, 1, refl, Int / (Int => [])]()"), "Annotation kind mismatch")
+    reject(source.replace("outer.ask[path(outer); K]", "outer.ask[refl; K]"), "incorrect region endpoints")
   }
   test("bare contexts still check their depth") {
-    reject(source.replace(call, "callback[here, 1, step(inner), []]()"), "Annotation kind mismatch")
+    reject(source.replace("callback[Int / (Int => [])]", "callback[[]]"), "Call-context ATC depth")
   }
   test("kind shadowing cannot turn a distance into a region") {
     reject("""def main(): Unit = {
@@ -128,7 +126,7 @@ class AtmPolymorphicSyntaxTests extends munit.FunSuite {
   test("region arguments cannot be used as value types") {
     reject("""def main(): Int = {
       val id = fun [A](x: A): A { x };
-      region R = here;
+      region R = top;
       id[R](42)
     }""", "not a value type")
   }

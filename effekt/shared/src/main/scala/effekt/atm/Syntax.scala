@@ -5,6 +5,10 @@ package effekt.atm
  * either be reconstructed or supplied through checked explicit annotations.
  */
 object Syntax {
+  // Binders of the implicit A_Abs call telescope. They scope over the
+  // contextual parameters and result, never over the value-argument domain.
+  case class Caller(region: String, distance: String,
+                    contexts: List[(String, Annotations.Kind)] = Nil)
   enum Type {
     case Int, Bool, Unit
     case Token(name: String)
@@ -18,10 +22,10 @@ object Syntax {
     // Captures are legacy emitter metadata. Only the region participates in
     // paper typing, subtyping, equality and free-region checks.
     case Function(argument: Type, result: Computation, captures: Set[String] = Set.empty,
-                  region: Option[String] = None, parameter: Option[String] = None)
+                  region: Option[String] = None, parameter: Option[String] = None, caller: Option[Caller] = None)
     // A declarative arrow: callable at exactly its region, without a fresh
-    // region/distance/evidence abstraction. The source uses local or local[h].
-    case LocalFunction(argument: Type, result: Computation, captures: Set[String] = Set.empty,
+    // region/distance/evidence abstraction. The source contract is (T) =>[r] C.
+    case FixedFunction(argument: Type, result: Computation, captures: Set[String] = Set.empty,
                        region: Option[String] = None, parameter: Option[String] = None)
     // Internal continuation arrow; it may be viewed as an exact-region local
     // arrow, but never as an ordinary region-polymorphic Function.
@@ -71,10 +75,12 @@ object Syntax {
     case Constructor(name: String, arguments: List[Value])
     case Capability(name: String)
     case Variable(name: String)
-    case Lambda(parameter: String, argument: Type, result: Computation, body: Term)
-    case LocalLambda(parameter: String, argument: Option[Type], result: Option[Computation], body: Term, region: Option[String] = None)
-    case InferredLambda(parameter: String, argument: Type, body: Term)
-    case UnannotatedLambda(parameter: String, result: Option[Computation], body: Term)
+    case Lambda(parameter: String, argument: Type, result: Computation, body: Term, caller: Option[String] = None)
+    case ContextLambda(parameter: String, argument: Type, result: Computation,
+                       contexts: List[(String, Annotations.Kind)], body: Term, caller: Option[String] = None)
+    case FixedLambda(parameter: String, argument: Option[Type], result: Option[Computation], body: Term, region: Option[String] = None)
+    case InferredLambda(parameter: String, argument: Type, body: Term, caller: Option[String] = None)
+    case UnannotatedLambda(parameter: String, result: Option[Computation], body: Term, caller: Option[String] = None)
     case CapabilityLambda(parameter: String, operations: List[Signature], body: Value, scoped: scala.Boolean = false)
     case Instantiate(function: Value, capability: Value)
     case EffectLambda(parameter: String, body: Value, bound: EffectBound = EffectBound.Any)
@@ -96,7 +102,7 @@ object Syntax {
     case Apply(function: Value, argument: Value)
     case Ascribe(body: Term, expected: Computation)
     case Assert(condition: Value)
-    case LetRec(name: String, parameter: String, argument: Type, result: Computation, definition: Term, body: Term, local: Boolean = false)
+    case LetRec(name: String, parameter: String, argument: Type, result: Computation, definition: Term, body: Term, region: Option[String] = None, caller: Option[String] = None)
     // Only permitted as a handler return clause, selected by return effect.
     case ExplicitReturn(body: Term)
     case If(condition: Value, whenTrue: Term, whenFalse: Term)
@@ -159,11 +165,13 @@ object Syntax {
     case Type.TypePoly(name, body) => s"forall type ${displayName(name)}. ${show(body)}"
     case Type.PredicatePoly(name, args, body) => s"forall pred ${displayName(name)}(${args.mkString(", ")}). ${show(body)}"
     case Type.Capability(name) => s"cap(${displayName(name)})"
-    case Type.Function(arg, result, captures, region, parameter) =>
-      s"(${parameter.fold("")(p => displayName(p) + ": ")}${show(arg)} -> ${show(result)}) at ${captures.toList.sorted.map(displayName).mkString("{", ",", "}")}" +
+    case Type.Function(arg, result, captures, region, parameter, caller) =>
+      val telescope = caller.fold("")(c => s"forall caller ${displayName(c.region)}, ${displayName(c.distance)}" +
+        c.contexts.map((n, k) => s", ${displayName(n)}: $k").mkString + ". ")
+      telescope + s"(${parameter.fold("")(p => displayName(p) + ": ")}${show(arg)} -> ${show(result)}) at ${captures.toList.sorted.map(displayName).mkString("{", ",", "}")}" +
         region.fold("")(r => s" @${displayName(r)}")
-    case Type.LocalFunction(arg, result, _, region, parameter) =>
-      s"local[${region.map(displayName).getOrElse("here")}] (${parameter.fold("")(p => displayName(p) + ": ")}${show(arg)} => ${show(result)})"
+    case Type.FixedFunction(arg, result, _, region, parameter) =>
+      s"(${parameter.fold("")(p => displayName(p) + ": ")}${show(arg)}) =>[${region.map(displayName).getOrElse("<unresolved>")}] ${show(result)}"
     case Type.Continuation(arg, result, region, _, parameter) =>
       s"(${parameter.fold("")(p => displayName(p) + ": ")}${show(arg)} ~> ${show(result)}) @${displayName(region)}"
     case Type.CapabilityPoly(parameter, _, body, _, _, obligations) =>

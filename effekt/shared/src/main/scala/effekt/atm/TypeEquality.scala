@@ -35,15 +35,24 @@ object TypeEquality {
       args == params && value(a, b, left.copy(predicates = x :: left.predicates), right.copy(predicates = y :: right.predicates))
     case (Type.Capability(x), Type.Capability(y)) => key(x, left.capabilities) == key(y, right.capabilities)
     case (Type.Continuation(a, c, r, cs, p), Type.Continuation(b, d, s, ds, q)) =>
-      r == s && value(a, b, left, right) && computation(c, d,
+      key(r, left.capabilities) == key(s, right.capabilities) && value(a, b, left, right) && computation(c, d,
         left.copy(terms = bind(p, left.terms)), right.copy(terms = bind(q, right.terms)))
-    case (Type.LocalFunction(a, c, _, r, p), Type.LocalFunction(b, d, _, s, q)) =>
+    case (Type.FixedFunction(a, c, _, r, p), Type.FixedFunction(b, d, _, s, q)) =>
       value(a, b, left, right) && computation(c, d,
         left.copy(terms = bind(p, left.terms)), right.copy(terms = bind(q, right.terms))) &&
         r.map(key(_, left.capabilities)) == s.map(key(_, right.capabilities))
-    case (Type.Function(arg, result, cs, scope, parameter), Type.Function(arg2, result2, cs2, scope2, parameter2)) =>
-      value(arg, arg2, left, right) && computation(result, result2,
-        left.copy(terms = bind(parameter, left.terms)), right.copy(terms = bind(parameter2, right.terms))) &&
+    case (Type.Function(arg, result, cs, scope, parameter, caller), Type.Function(arg2, result2, cs2, scope2, parameter2, caller2)) =>
+      val l = left.copy(terms = bind(parameter, left.terms), capabilities = bind(caller.map(_.region), left.capabilities),
+        annotations = bind(caller.map(_.distance), left.annotations))
+      val r = right.copy(terms = bind(parameter2, right.terms), capabilities = bind(caller2.map(_.region), right.capabilities),
+        annotations = bind(caller2.map(_.distance), right.annotations))
+      val ps = caller.toList.flatMap(_.contexts); val qs = caller2.toList.flatMap(_.contexts)
+      def telescope(ps: List[(String, Annotations.Kind)], qs: List[(String, Annotations.Kind)], l: Binders, r: Binders): Boolean = (ps, qs) match {
+        case (Nil, Nil) => computation(result, result2, l, r)
+        case ((n, k) :: ps, (m, j) :: qs) => kind(k, j, l, r) && telescope(ps, qs, bindKind(n, k, l), bindKind(m, j, r))
+        case _ => false
+      }
+      value(arg, arg2, left, right) && telescope(ps, qs, l, r) &&
         scope.map(key(_, left.capabilities)) == scope2.map(key(_, right.capabilities))
     case (Type.CapabilityPoly(x, ops, body, cs, scope, obligations), Type.CapabilityPoly(y, ops2, body2, ds, target, obligations2)) =>
       obligations.map(o => (key(o.constraint.from, x :: left.capabilities), key(o.constraint.to, x :: left.capabilities))).toSet ==

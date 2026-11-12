@@ -3,22 +3,22 @@
 data Tree { Leaf(value: Int); Node(left: Tree, right: Tree) }
 data Iterator {
   Result(tree: {t: Tree | allEqual(t,1)});
-  Susp(value: {x: Int | x == 0}, next: (local (y: {i: Int | i == value + 1}) => Iterator))
+  Susp(value: {x: Int | x == 0}, next: ((y: {i: Int | i == value + 1}) =>[top] Iterator))
 }
 measure allEqual(t: Tree, n: Int): Bool {
   case Leaf(x) => x == n;
   case Node(l,r) => allEqual(l,n) && allEqual(r,n);
 }
 def main(): Bool = {
-  def rec local increment(it: Iterator): {t: Tree | allEqual(t,1)} = {
+  def rec increment(it: Iterator) at [top]: {t: Tree | allEqual(t,1)} = {
     match (it) {
       case Result(t) => { t }
       case Susp(x,k) => { val next = k(x+1); increment(next) }
     }
   }
-  def local test(t: {tree: Tree | allEqual(tree,0)}): {tree: Tree | allEqual(tree,2)} = {
+  def test(t: {tree: Tree | allEqual(tree,0)}) at [top]: {tree: Tree | allEqual(tree,2)} = {
     val iterator = try {
-      def rec local depthWalk(tree: {t: Tree | allEqual(t,0)}): {t: Tree | allEqual(t,1)} / (Iterator => Iterator) = {
+      def rec depthWalk(tree: {t: Tree | allEqual(t,0)}) at [yields]: {t: Tree | allEqual(t,1)} / (Iterator => Iterator) = {
         match (tree) {
           case Leaf(a) => { val b = yields.emit(a); Leaf(b) }
           case Node(l,r) => { val left = depthWalk(l); val right = depthWalk(r); Node(left,right) }
@@ -27,7 +27,7 @@ def main(): Bool = {
       depthWalk(t)
     } with yields: Iterator {
       def emit(x: {i: Int | i == 0}): {y: Int | y == x + 1} / (Iterator => Iterator) = {
-        Susp(x,fun local (y: {i: Int | i == x + 1}): Iterator { resume(y) })
+        Susp(x,fun (y: {i: Int | i == x + 1}) at [top]: Iterator { resume(y) })
       }
       return result => { Result(result) }
     };

@@ -27,17 +27,29 @@ frontend, rather than with the latest upstream language.
 | Names ending in `?`, `!`, `$` | Accepted. Primitive spellings `add`, `not`, `fst`, `snd` also work as operation member names. |
 
 The [reusable Fig. 1 example](../../examples/atm/file-reusable.effekt) uses
-explicit region/computation parameters, capability/evidence abstractions,
-handler/operation contracts, and ATCs. It is checked once as a polymorphic
+caller-indexed result families, a curried helper returning an explicit
+fixed-region callback consumer, computation parameters, capability/evidence
+abstractions, handler/operation contracts, and ATCs. It is checked once as a polymorphic
 value and reused at two computation types. The old contextual specialization
 pass has been removed. The [inlined companion](../../examples/atm/file-nested.effekt)
 remains a comparison fixture. The explicit source requires the ATM frontend.
+
+Name an ordinary function's implicit caller after its value parameters:
+`fun (x: T)[R: Reg] { ... }`, `def f(x: T)[R: Reg]: C = ...`, or
+`(T)[R: Reg] => C` in a type. This is ATM surface notation for the existing
+`A_Abs` binder, not native Effekt syntax. Its name scopes over the result/body
+and subsequent call-ATC kinds, not the ordinary domain. Calls still supply the
+region implicitly. Handler labels and `top` refer to existing regions.
+`here` is removed as a keyword and predefined region name. The
+[rule-boundary table](CALLER-INDEXED.md) separates this naming convention from
+explicit ATC abstraction and the declarative fixed-region bridge. The
+callback-domain extension remains removed.
 
 ## Remaining gaps and their reasons
 
 | Native feature | Remaining work |
 | --- | --- |
-| Native block parameters, block literals/invocation, and capture inference | Unsupported. The former contextual specialization checked a helper separately at each use; it was removed. Explicit capability, region, computation and evidence parameters plus ATCs support reusable helpers checked once. General block scheme inference remains work. |
+| Native block parameters, block literals/invocation, and capture inference | Unsupported. The former contextual specialization checked a helper separately at each use; it was removed. Caller-indexed functions with explicit capability, computation, evidence and call-ATC parameters support reusable helpers checked once. General block scheme inference remains work. |
 | Chained `with` clauses | Native Effekt binds the capabilities under **one shared handler region** (`Typer.scala`, `core/Transformer.scala`). Rewriting these as several nested ATM handlers would add delimiters and change evidence distances. Correct capability-group elaboration is still needed. |
 | `effect Ask(): Int`, unnamed handlers and single-operation handler shorthand | Declaration and handler desugaring remain missing. These are not inherent ATM restrictions. |
 | `do read()` and inferred capability arguments | Native operation/name resolution and implicit capability passing are not integrated; use explicit receivers. This also affects reusable helpers with native effect annotations. |
@@ -69,8 +81,8 @@ retain a distinction between multiple arguments and an explicitly packed pair.
 - Explicit `return x => ...` can transform a handler result, and `return effect`
   exposes the separately documented declarative bridge.
 - Refinements, measures, explicit regions/distances/evidence/ATCs, and exact-region
-  `local` arrows remain ATM additions. `fun [R: Reg, D: Dist, ...]` introduces
-  kinded parameters; bare applications such as `f[here, 1, ...]` select argument
+  `(T) =>[r] C` contracts remain ATM additions; the `local` keyword is removed. `fun [R: Reg, D: Dist, ...]` introduces
+  kinded parameters; bare applications such as `f[h, 1, ...]` select argument
   kinds from the function's type. Grouped and multiline chained arguments work.
   The old `typefun` and tagged argument spellings remain compatible.
 - Default `C => C` operation answers and partial handler-result synthesis remain
@@ -95,7 +107,7 @@ and [`Checker.scala`](../../effekt/shared/src/main/scala/effekt/atm/Checker.scal
 generics, recursion, wildcard fields, and rejected type/escape errors. Accepted
 cases run through the reference interpreter and optimized/unoptimized Chez.
 `AtmExplicitFileTests` checks one generic helper/handler body in Core, two
-computation instantiations, explicit evidence/ATC distances 1, 0, 1, 0,
+computation instantiations, symbolic callback evidence/ATCs,
 and rejection of invalid unused helper definitions and invalid annotations.
 Accepted cases run through the independent source interpreter and optimized/
 unoptimized direct Chez. The explicit reusable example returns **42**; its
@@ -113,3 +125,8 @@ inlined companion.
 
 These are compiler and execution checks, not a mechanized correspondence or
 soundness theorem. [FIDELITY.md](FIDELITY.md) records the algorithm boundary.
+
+Caller-indexed result families implement Definition 17. Explicit call-ATC
+abstraction and fixed-region checking are separate extensions to the printed
+algorithm, documented in [CALLER-INDEXED.md](CALLER-INDEXED.md). These are ATM
+annotation forms, not native Effekt syntax or implicit ATC inference.

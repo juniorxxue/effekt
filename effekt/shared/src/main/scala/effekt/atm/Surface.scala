@@ -51,10 +51,11 @@ object Surface {
   def free(v: Value): Set[String] = v match {
     case Value.Variable(n) => Set(n)
     case Value.Capability(n) => Set(n)
-    case Value.Lambda(n, _, _, b) => free(b) - n
-    case Value.InferredLambda(n, _, b) => free(b) - n
-    case Value.UnannotatedLambda(n, _, b) => free(b) - n
-    case Value.LocalLambda(n, _, _, b, _) => free(b) - n
+    case Value.Lambda(n, _, _, b, _) => free(b) - n
+    case Value.ContextLambda(n, _, _, _, b, _) => free(b) - n
+    case Value.InferredLambda(n, _, b, _) => free(b) - n
+    case Value.UnannotatedLambda(n, _, b, _) => free(b) - n
+    case Value.FixedLambda(n, _, _, b, _) => free(b) - n
     case Value.CapabilityLambda(n, _, b, _) => free(b) - n
     case Value.Instantiate(f, a) => free(f) ++ free(a)
     case Value.InstantiateType(f, _) => free(f)
@@ -73,7 +74,7 @@ object Surface {
   def free(t: Term): Set[String] = t match {
     case Term.Return(v) => free(v)
     case Term.Let(n, a, b) => free(a) ++ (free(b) - n)
-    case Term.LetRec(n, p, _, _, d, b, _) => (free(d) -- Set(n, p)) ++ (free(b) - n)
+    case Term.LetRec(n, p, _, _, d, b, _, _) => (free(d) -- Set(n, p)) ++ (free(b) - n)
     case Term.Apply(f, a) => free(f) ++ free(a)
     case Term.Perform(c, _, a) => free(a) + c
     case Term.AnnotatedPerform(c, _, a, _, _) => free(a) + c

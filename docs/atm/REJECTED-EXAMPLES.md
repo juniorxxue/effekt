@@ -37,8 +37,8 @@ entries remain limitations, never counted as successful negative tests.
 
 | Example | Change | Checked runtime witness |
 | --- | --- | --- |
-| [`capability-argument`](../../examples/atm/capability-argument.effekt) | A fixed-region `def local` invokes the enclosing handler | `false` |
-| [`capability-polymorphic`](../../examples/atm/capability-polymorphic.effekt) | The capability abstraction returns a `fun local[c]`, callable at that capability's region | `true` |
+| [`capability-argument`](../../examples/atm/capability-argument.effekt) | A fixed-region `def f(...) at [h]` invokes the enclosing handler | `false` |
+| [`capability-polymorphic`](../../examples/atm/capability-polymorphic.effekt) | The capability abstraction returns a `fun (...) at [c]`, callable at that capability's region | `true` |
 | [`effectful-callback`](../../examples/atm/effectful-callback.effekt) | Local callback parameter and local higher-order helper | `false` |
 | [`polymorphic-callback`](../../examples/atm/polymorphic-callback.effekt) | Capability-polymorphic helper with a callback at the instantiated capability's region | `false` |
 | [`stored-resumption`](../../examples/atm/stored-resumption.effekt) | Expose the actual continuation as a compatible local arrow, return it, and call it at its ambient region | `42` |
@@ -50,9 +50,9 @@ entries remain limitations, never counted as successful negative tests.
 
 The originals are preserved byte-for-byte in
 [`history/rejected-before-local/`](history/rejected-before-local/).
-`AtmLocalFunctionTests` executes each original closed program in the independent
+`AtmFixedFunctionTests` executes each original closed program in the independent
 source interpreter and compares its witness with the repaired version.
-`AtmLocalFunctionTests` and `AtmArmTests` also check the repaired programs through
+`AtmFixedFunctionTests` and `AtmArmTests` also check the repaired programs through
 direct Lifted/Chez and legacy Effekt/JavaScript, each with and without its
 optimization pass. These are execution comparisons, not a general equivalence
 proof for the changed generic interfaces.
@@ -67,19 +67,14 @@ see [BENCHMARKS.md](BENCHMARKS.md) for every family and adaptation.
 
 ## What the added support means
 
-`local (T) => C` denotes one fixed call region. In synthesis, `fun local`/`def local`
-default to the lexical region; in checking, an expected local arrow supplies
-the region. `local[c]` explicitly selects an in-scope capability's region and
-must agree with an expected arrow. The
-checker implements the declarative `T_Abs`/`T_App` premises: check the body at
-that region and enforce the same region at application. Core retains the region;
-the runtime function has no abstract call-evidence parameter. Operations in the
-body still reconstruct evidence and use the existing partial `atc` algorithm.
+`(T) =>[r] C` denotes one fixed call region. Ordinary `fun` checks against
+that explicit contract; `fun (x: T) at [r]: C { ... }` supplies it inline.
+The `local` keyword is removed; this declarative behavior remains explicit.
 
 This is an explicit frontend extension exposing declarative functions. It is
 not a claim that algorithmic `A_Abs` infers them. Ordinary functions still use
 fresh caller regions, residual obligations and reconstructed call evidence.
-Local functions cannot be silently promoted to ordinary functions, invoked
+Fixed-region functions cannot be silently promoted to ordinary functions, invoked
 beneath an extra delimiter or exported with a local handler region in their
 type. Returned continuations keep their exact ambient call region.
 
@@ -102,21 +97,18 @@ their closed examples and effectful executions have been retained.
 
 | Original example | Why its old syntax is rejected | Explicit repair |
 | --- | --- | --- |
-| [`callback-under-handler`](../../examples/atm/callback-under-handler.effekt) | The closure is defined outside a later caller-owned delimiter and called beneath it. Its ordinary-function body reaches symbolic-distance ATC inference. A local arrow cannot be called at both regions. | The [annotated outer call](../../examples/atm/annotations/polymorphic-outer-call.effekt) abstracts over `R`, `D`, `Ev(R,D,h)`, and `ATC(D)`, then instantiates them at the call site. |
-| [`multiple-capabilities`](../../examples/atm/multiple-capabilities.effekt) | The old `capfun here` assumes an unknown relative handler tail. Current capability bounds do not establish a concrete relative distance between the two abstract handlers for ATC inference. | The [annotated two-capability helper](../../examples/atm/annotations/multiple-capabilities.effekt) keeps both capabilities abstract and takes checked relative evidence `Ev(d,1,c)`. |
+| [`callback-under-handler`](../../examples/atm/callback-under-handler.effekt) | The closure is defined outside a later caller-owned delimiter and called beneath it. Its ordinary-function body reaches symbolic-distance ATC inference. A local arrow cannot be called at both regions. | The [annotated outer call](../../examples/atm/annotations/polymorphic-outer-call.effekt) declares an ATC under the implicit caller/evidence telescope, then instantiates them at the call site. |
+| [`multiple-capabilities`](../../examples/atm/multiple-capabilities.effekt) | The fixture now uses ordinary capability abstractions after removal of the scoped-capability spelling. The unannotated callback still requires ATC inference at a symbolic distance; its rejection is no longer selected by a prototype-syntax guard. | The [annotated two-capability helper](../../examples/atm/annotations/multiple-capabilities.effekt) keeps both capabilities abstract and takes checked relative evidence `Ev(d,1,c)`. |
 
 These programs remain in place. Their comments describe the intended prototype
 behavior, not a guarantee from the current checker. Symbolic-distance ATC
 inference is partial in the supplied paper as well; its rejection is not fixed
 by treating the unknown distance as zero.
 
-There is one additional restriction on the new forms: ordinary functions cannot
-synthesize local-function results indexed by their fresh abstract caller region,
-because Core does not yet retain Definition 17's caller-indexed codomain family.
-The checker rejects that case explicitly. A stable local result annotation is
-supported and tested. Implicit caller-indexed codomain translation, polymorphic
-operation signatures, and region-polymorphic datatypes are still missing. Closed
-pure function fields at the top region are now implemented.
+Caller-indexed returned function and evidence types are now supported. Explicit
+call-ATC abstraction makes the annotated outer-call example caller-polymorphic;
+its ATC is supplied at each use. General native block inference and polymorphic
+operation signatures remain open. See [CALLER-INDEXED.md](CALLER-INDEXED.md).
 
 The inference suite additionally contains
 [`infer/polymorphic-outer-call`](../../examples/atm/infer/polymorphic-outer-call.effekt).
@@ -143,5 +135,5 @@ See [PAPER-COVERAGE.md](PAPER-COVERAGE.md) and [ARM.md](ARM.md).
 See [VALIDATION.md](VALIDATION.md) for the complete suite results. Regressions
 cover exact-region invocation, local escape, resumption storage, answer-effect
 composition, invalid handler returns, local-region alpha-renaming in capability
-contracts, and a malformed Core local lambda. These tests and SMT checks are
+contracts, and a malformed Core fixed-region lambda. These tests and SMT checks are
 not a mechanized soundness or compiler-preservation proof.

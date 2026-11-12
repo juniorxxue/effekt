@@ -1,10 +1,10 @@
 // The callback contract includes its answer transition, not only captures.
 def main(): Bool = {
   try {
-    def local apply(f: (local (Unit) => Int / (Int => Bool))): Int / (Int => Bool) = {
+    def apply(f: ((Unit) =>[h] Int / (Int => Bool))) at [h]: Int / (Int => Bool) = {
       f()
     }
-    apply(fun local (u: Unit): Int / (Int => Bool) {
+    apply(fun (u: Unit) at [h]: Int / (Int => Bool) {
       h.ask()
     })
   } with h: Bool {

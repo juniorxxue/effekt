@@ -25,7 +25,7 @@ object AtmBenchmark {
     case Core.ValueNode.Constructor(_, vs) => sum(vs.map(value))
     case Core.ValueNode.Primitive(_, vs) => sum(vs.map(value))
     case Core.ValueNode.Lambda(_, _, body) => term(body)
-    case Core.ValueNode.LocalLambda(_, _, body) => term(body)
+    case Core.ValueNode.FixedLambda(_, _, body) => term(body)
     case Core.ValueNode.CapabilityLambda(_, _, _, body) => value(body)
     case Core.ValueNode.Instantiate(f, c, es) => value(f) + value(c) + Certificates(evidence = es.size)
     case Core.ValueNode.KindLambda(_, _, body) => value(body)
@@ -42,7 +42,7 @@ object AtmBenchmark {
     case Core.Node.Assert => Certificates()
     case Core.Node.Let(_, a, b) => term(a) + term(b)
     case Core.Node.LetRec(_, f, b) => value(f) + term(b)
-    case Core.Node.Apply(f, a, es) => value(f) + value(a) + Certificates(evidence = es.size)
+    case Core.Node.Apply(f, a, es, _) => value(f) + value(a) + Certificates(evidence = es.size)
     case Core.Node.If(c, a, b) => value(c) + term(a) + term(b)
     case Core.Node.Match(v, cases) => value(v) + sum(cases.map(c => term(c.body)))
     case Core.Node.Perform(_, _, arg, ev, typing) =>

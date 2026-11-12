@@ -49,7 +49,7 @@ class AtmTests extends munit.FunSuite {
   for name <- List("repeatable-effect", "composed-effects") do
     test(s"$name: prototype-only composition bounds are rejected") { reject(original(name), "prototype extensions") }
   test("scoped capability tails are not substituted for region constraints") {
-    reject(source("multiple-capabilities"), "prototype extension")
+    reject(source("multiple-capabilities"), "concrete evidence distance")
   }
   test("opaque effects do not have a final-answer projection") {
     reject(original("effect-polymorphic"), "final-answer projection is undefined")

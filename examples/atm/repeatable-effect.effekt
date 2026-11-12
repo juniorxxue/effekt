@@ -3,7 +3,7 @@
 def main(): Int = {
   val twice = capfun (c: { def ask(): Int / (Int => Int); }) {
     typefun [Answer] {
-      fun local[c] (f: (local[c] (Unit) => Int / (Answer => Answer))):
+      fun (f: ((Unit) =>[c] Int / (Answer => Answer))) at [c]:
           Int / (Answer => Answer) {
         val a = f();
         val b = f();
@@ -13,8 +13,8 @@ def main(): Int = {
   };
   try {
     val localTwice = twice{cap(h)};
-    val pureResult = localTwice[type Int](fun local (u: Unit): Int { 1 });
-    val effectResult = localTwice[type Int](fun local (u: Unit): Int / (Int => Int) { h.ask() });
+    val pureResult = localTwice[type Int](fun (u: Unit) at [h]: Int { 1 });
+    val effectResult = localTwice[type Int](fun (u: Unit) at [h]: Int / (Int => Int) { h.ask() });
     pureResult + effectResult
   } with h: Int {
     def ask(x: Unit): Int / (Int => Int) = {

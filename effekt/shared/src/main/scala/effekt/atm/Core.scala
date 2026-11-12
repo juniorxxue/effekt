@@ -19,7 +19,7 @@ object Core {
     case Capability(region: String)
     case Primitive(name: String, arguments: List[Value])
     case Lambda(parameter: String, abstraction: FunctionAbstraction, body: Term)
-    case LocalLambda(parameter: String, region: String, body: Term)
+    case FixedLambda(parameter: String, region: String, body: Term)
     case CapabilityLambda(region: String, operations: List[Signature], requirements: List[Binding], body: Value)
     case Instantiate(function: Value, capability: Value, evidence: List[Witness])
     case KindLambda(parameter: String, kind: Annotations.Kind, body: Value)
@@ -37,7 +37,7 @@ object Core {
     case Assert
     case Let(name: String, binding: Term, body: Term)
     case LetRec(name: String, function: Value, body: Term)
-    case Apply(function: Value, argument: Value, evidence: List[Witness])
+    case Apply(function: Value, argument: Value, evidence: List[Witness], contexts: List[AnswerContext] = Nil)
     case If(condition: Value, thn: Term, els: Term)
     case Match(scrutinee: Value, cases: List[MatchCase])
     case Perform(receiver: String, operation: String, argument: Value, evidence: Witness, typing: Checker.OperationTyping)
@@ -60,12 +60,13 @@ object Core {
         case S.Variable(n) => ValueNode.Variable(n)
         case S.Capability(r) => ValueNode.Capability(r)
         case S.Primitive(n, _) => ValueNode.Primitive(n, v.children.map(value(_, region)))
-        case S.LocalLambda(p, _, _, _, _) =>
-          val target = v.tpe.asInstanceOf[Type.LocalFunction].region.get
-          ValueNode.LocalLambda(p, target, term(v.body.get, target))
-        case S.Lambda(p, _, _, _) => lambda(v, p, region)
-        case S.InferredLambda(p, _, _) => lambda(v, p, region)
-        case S.UnannotatedLambda(p, _, _) => lambda(v, p, region)
+        case S.FixedLambda(p, _, _, _, _) =>
+          val target = v.tpe.asInstanceOf[Type.FixedFunction].region.get
+          ValueNode.FixedLambda(p, target, term(v.body.get, target))
+        case S.Lambda(p, _, _, _, _) => lambda(v, p, region)
+        case S.ContextLambda(p, _, _, _, _, _) => lambda(v, p, region)
+        case S.InferredLambda(p, _, _, _) => lambda(v, p, region)
+        case S.UnannotatedLambda(p, _, _, _) => lambda(v, p, region)
         case S.CapabilityLambda(r, ops, _, _) => ValueNode.CapabilityLambda(r, ops, v.quantified, value(v.children.head, region))
         case S.Instantiate(_, _) => ValueNode.Instantiate(value(v.children.head, region), value(v.children(1), region), v.evidence)
         case S.KindLambda(p, k, _) => ValueNode.KindLambda(p, k, value(v.children.head, region))
@@ -93,8 +94,8 @@ object Core {
         case _: S.Return => Node.Return(value(t.values.head, region))
         case _: S.Assert => Node.Assert
         case S.Let(n, _, _) => Node.Let(n, term(t.children.head, region), term(t.children(1), region))
-        case S.LetRec(n, _, _, _, _, _, _) => Node.LetRec(n, value(t.values.head, region), term(t.children(1), region))
-        case _: S.Apply => Node.Apply(value(t.values.head, region), value(t.values(1), region), t.evidence)
+        case S.LetRec(n, _, _, _, _, _, _, _) => Node.LetRec(n, value(t.values.head, region), term(t.children(1), region))
+        case _: S.Apply => Node.Apply(value(t.values.head, region), value(t.values(1), region), t.evidence, t.callContexts)
         case _: S.If => Node.If(value(t.values.head, region), term(t.children.head, region), term(t.children(1), region))
         case S.Match(_, cases) => Node.Match(value(t.values.head, region),
           cases.zip(t.patternBindings.zip(t.children)).map { case (c, (fields, body)) =>
@@ -134,9 +135,9 @@ object Core {
       }
     }
     def value(v: Value, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]], ks: Map[String, Annotations.Kind]): Unit = v.node match {
-      case ValueNode.LocalLambda(parameter, target, body) =>
+      case ValueNode.FixedLambda(parameter, target, body) =>
         val tpe = v.tpe match {
-          case t: Type.LocalFunction => t
+          case t: Type.FixedFunction => t
           case _ => throw Diagnostic("Core: local lambda has a non-local arrow")
         }
         require(tpe.region.contains(target) && (target == Top || rs(target)), "local lambda has an unbound or mismatched region")
@@ -145,14 +146,27 @@ object Core {
       case ValueNode.Lambda(parameter, a, body) =>
         require(a.call.constraint.from == a.region, "malformed function evidence binder")
         v.tpe match {
-          case Type.Function(_, _, _, Some(target), _) => require(a.call.constraint.to == target, "function scope differs from evidence binder")
+          case Type.Function(_, _, _, Some(target), _, _) => require(a.call.constraint.to == target, "function scope differs from evidence binder")
           case _ => throw Diagnostic("Core: lambda has no function scope")
         }
         require((a.call.constraint.free - a.region).subsetOf(rs), "unbound function region")
-        val argument = v.tpe.asInstanceOf[Type.Function].argument
+        val function = v.tpe.asInstanceOf[Type.Function]
+        val argument = function.argument
+        // The implicit caller and call-ATC telescope does not bind the domain.
+        Annotations.validateArgument(Annotations.Argument.Computation(Computation(argument)), ks, rs)
+        require(TypeEquality.same(body.tpe, FunctionTypes.result(function, a.region, a.call.distance)),
+          "function body does not implement its caller-indexed result")
         require(!rs(a.region) && !bs.contains(a.call.name), "function binders are not fresh")
         require(a.call.distance.isInstanceOf[Distance.Variable], "function distance must be abstract")
-        term(body, bs.updated(a.call.name, a.call), rs + a.region, a.region, vs.updated(parameter, argument), cs, ks.updated(a.call.distance.asInstanceOf[Distance.Variable].name, Annotations.Kind.Distance))
+        val callKinds = ks.updated(a.call.distance.asInstanceOf[Distance.Variable].name, Annotations.Kind.Distance)
+        val contexts = FunctionTypes.contexts(function, a.region, a.call.distance)
+        var bodyKinds = callKinds
+        contexts.foreach { (n, k) =>
+          Annotations.validateKind(k, bodyKinds, rs + a.region)
+          require(!bodyKinds.contains(n), "call-context binder is not fresh")
+          bodyKinds = bodyKinds.updated(n, k)
+        }
+        term(body, bs.updated(a.call.name, a.call), rs + a.region, a.region, vs.updated(parameter, argument), cs, bodyKinds)
       case ValueNode.CapabilityLambda(r, operations, requirements, body) =>
         v.tpe match {
           case Type.CapabilityPoly(parameter, declared, result, _, _, obligations) =>
@@ -263,13 +277,23 @@ object Core {
             require(TypeEquality.same(Contracts.erase(c.body.tpe.value), Contracts.erase(t.tpe.value)), "match branch result mismatch")
             term(c.body, bs, rs, region, vs ++ c.bindings, cs, ks)
           }
-        case Node.Apply(f, a, evs) =>
+        case Node.Apply(f, a, evs, contexts) =>
           value(f, bs, rs, region, vs, cs, ks); value(a, bs, rs, region, vs, cs, ks); evs.foreach(proof(_, bs, rs))
           f.tpe match {
-            case Type.Function(_, _, _, Some(target), _) =>
-              require(evs.size == 1 && evs.head.constraint == Constraint(region, target), "incorrect function call evidence")
-            case Type.Continuation(_, _, target, _, _) => require(evs.isEmpty && region == target, "continuation used outside its region")
-            case Type.LocalFunction(_, _, _, Some(target), _) => require(evs.isEmpty && region == target, "local function used outside its region")
+            case f: Type.Function =>
+              require(evs.size == 1 && f.region.contains(evs.head.constraint.to) && evs.head.constraint.from == region, "incorrect function call evidence")
+              val parameters = FunctionTypes.contexts(f, region, evs.head.distance)
+              require(parameters.size == contexts.size, "incorrect number of call-context arguments")
+              var result = FunctionTypes.result(f, region, evs.head.distance)
+              parameters.zip(contexts).foreach { case ((name, kind), context) =>
+                Annotations.validateArgument(Annotations.Argument.Context(context), ks, rs)
+                require(Annotations.sameKind(kind, Annotations.Kind.Context(Annotations.depth(context, ks))), "incorrect call-context depth")
+                result = Annotations.substitution(name, Annotations.Argument.Context(context)).computation(result)
+              }
+              require(TypeEquality.same(Contracts.erase(t.tpe.value), Contracts.erase(result.value)),
+                "function application has an incorrect caller-indexed result")
+            case Type.Continuation(_, _, target, _, _) => require(evs.isEmpty && contexts.isEmpty && region == target, "continuation used outside its region")
+            case Type.FixedFunction(_, _, _, Some(target), _) => require(evs.isEmpty && contexts.isEmpty && region == target, "local function used outside its region")
             case _ => throw Diagnostic("Core: invalid function application")
           }
         case Node.Perform(receiver, operation, a, ev, typing) =>
@@ -329,7 +353,7 @@ object Core {
         case ValueNode.Token(x) => s"token($x)"
         case ValueNode.Constructor(n, _) => n
         case ValueNode.Primitive(op, _) => op
-        case ValueNode.LocalLambda(p, r, _) => s"lambda local[$r] $p"
+        case ValueNode.FixedLambda(p, r, _) => s"lambda $p at [$r]"
         case ValueNode.KindLambda(p, k, _) => s"KindLambda [$p: $k]"
         case ValueNode.InstantiateKind(_, a) => s"InstantiateKind [$a]"
         case ValueNode.TypeLambda(p, _) => s"TypeLambda [$p]"
@@ -338,7 +362,7 @@ object Core {
       }
       line(n, s"$label: ${Syntax.show(v.tpe)}")
       v.node match {
-        case ValueNode.LocalLambda(_, _, body) => term(body, n + 1)
+        case ValueNode.FixedLambda(_, _, body) => term(body, n + 1)
         case ValueNode.Lambda(p, a, body) => line(n + 1, s"Λ ${a.region}, ${a.call}; parameter $p"); term(body, n + 1)
         case ValueNode.CapabilityLambda(r, _, bs, body) => line(n + 1, s"Λ $r, residual parameters ${bs.mkString(", ")}"); value(body, n + 1)
         case ValueNode.Instantiate(f, c, es) => line(n + 1, s"evidence arguments $es"); value(f, n + 1); value(c, n + 1)
@@ -359,7 +383,7 @@ object Core {
         case Node.Return(v) => value(v, n + 1)
         case Node.Let(name, a, b) => line(n + 1, s"bind $name"); term(a, n + 1); term(b, n + 1)
         case Node.LetRec(name, f, b) => line(n + 1, s"bind rec $name"); value(f, n + 1); term(b, n + 1)
-        case Node.Apply(f, a, es) => line(n + 1, s"evidence arguments $es"); value(f, n + 1); value(a, n + 1)
+        case Node.Apply(f, a, es, contexts) => line(n + 1, s"evidence arguments $es"); value(f, n + 1); value(a, n + 1)
         case Node.If(c, a, b) => value(c, n + 1); term(a, n + 1); term(b, n + 1)
         case Node.Match(v, cases) =>
           value(v, n + 1)

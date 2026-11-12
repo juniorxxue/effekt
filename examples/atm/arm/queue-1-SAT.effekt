@@ -20,17 +20,17 @@ def main(): Bool = {
       }
     }
   }
-  def test(init: {xs: ListInt | xs == Nil()}): {r: OptionInt | r == None()} = {
-    type StateRegion = (local (Unit) => Unit);
+  def test(init: {xs: ListInt | xs == Nil()})[R: Reg]: {r: OptionInt | r == None()} = {
+    type StateRegion = ((Unit) =>[R] Unit);
     val run = try {
       queue.enqueue(42);
       queue.get(1);
       queue.get(2)
-    } with queue: (local (xs: ListInt) => {r: OptionInt | r == secondOf(append(xs,Cons(42,Nil())))}) {
+    } with queue: ((xs: ListInt) =>[R] {r: OptionInt | r == secondOf(append(xs,Cons(42,Nil())))}) {
       def get(ctx: {i: Int | i == 1 || i == 2}): (v: OptionInt) /
-        ((local (xs: ListInt) => {r: OptionInt | r == (if ctx == 1 then headOf(xs) else v)}) =>
-         (local (xs: ListInt) => {r: OptionInt | r == (if ctx == 1 then secondOf(xs) else headOf(xs))})) = {
-        fun local (xs: ListInt): {r: OptionInt | r == (if ctx == 1 then secondOf(xs) else headOf(xs))} {
+        (((xs: ListInt) =>[R] {r: OptionInt | r == (if ctx == 1 then headOf(xs) else v)}) =>
+         ((xs: ListInt) =>[R] {r: OptionInt | r == (if ctx == 1 then secondOf(xs) else headOf(xs))})) = {
+        fun (xs: ListInt) at [R]: {r: OptionInt | r == (if ctx == 1 then secondOf(xs) else headOf(xs))} {
           match (xs) {
             case Nil() => { val next = resume(None()); next(Nil()) }
             case Cons(h,t) => { val next = resume(Some(h)); next(t) }
@@ -38,13 +38,13 @@ def main(): Bool = {
         }
       }
       def enqueue(value: Int): Unit /
-        ((local (xs: ListInt) => {r: OptionInt | r == secondOf(xs)}) =>
-         (local (xs: ListInt) => {r: OptionInt | r == secondOf(append(xs,Cons(value,Nil())))})) = {
-        fun local (xs: ListInt): {r: OptionInt | r == secondOf(append(xs,Cons(value,Nil())))} {
+        (((xs: ListInt) =>[R] {r: OptionInt | r == secondOf(xs)}) =>
+         ((xs: ListInt) =>[R] {r: OptionInt | r == secondOf(append(xs,Cons(value,Nil())))})) = {
+        fun (xs: ListInt) at [R]: {r: OptionInt | r == secondOf(append(xs,Cons(value,Nil())))} {
           val next = resume(); val push = appendList(xs); val updated = push(Cons(value,Nil())); next(updated)
         }
       }
-      return v => { fun local (xs: ListInt): {r: OptionInt | r == v} { v } }
+      return v => { fun (xs: ListInt) at [R]: {r: OptionInt | r == v} { v } }
     };
     run(init)
   }

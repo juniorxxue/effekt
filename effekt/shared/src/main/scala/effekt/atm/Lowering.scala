@@ -66,7 +66,7 @@ object Lowering {
         case _: Type.Data => "println(\"<data>\")"
         case _: Type.Capability => "println(\"<capability>\")"
         case _: Type.Variable | _: Type.Refined => throw Diagnostic("A closed program has an unprintable result type")
-        case _: Type.KindPoly | _: Type.LocalFunction | _: Type.Continuation | _: Type.Function | _: Type.CapabilityPoly | _: Type.EffectPoly | _: Type.TypePoly | _: Type.PredicatePoly => "println(\"<function>\")"
+        case _: Type.KindPoly | _: Type.FixedFunction | _: Type.Continuation | _: Type.Function | _: Type.CapabilityPoly | _: Type.EffectPoly | _: Type.TypePoly | _: Type.PredicatePoly => "println(\"<function>\")"
       }
       s"// Generated from a statically checked ATM source program.\n$integerPrelude\n${declarations.mkString("\n\n")}\n\n" +
         s"def main() = {\n  val atmResult = $body;\n  $printed\n}\n"
@@ -91,10 +91,10 @@ object Lowering {
         val target = s"AtmToken$name"
         if tokens.add(name) then declarations += s"type $target { AtmMake$name() }"
         target
-      case Type.LocalFunction(argument, result, captures, _, _) => target(Type.Function(argument, result, captures), env)
+      case Type.FixedFunction(argument, result, captures, _, _) => target(Type.Function(argument, result, captures), env)
       case Type.Continuation(argument, result, _, captures, _) =>
         target(Type.Function(argument, result, captures), env)
-      case Type.Function(argument, result, captures, _, _)  =>
+      case Type.Function(argument, result, captures, _, _, _)  =>
         val cs = (captures.toList.sorted.map(env.caps) :+ "io").distinct.mkString(", ")
         s"(${target(argument, env)}) => (${target(result.value, env)}) at {$cs}"
       case Type.CapabilityPoly(name, operations, body, captures, _, obligations) =>
@@ -106,8 +106,8 @@ object Lowering {
     }
 
     private def typeCaptures(tpe: Type): Set[String] = tpe match {
-      case Type.Function(_, _, cs, _, _) => cs
-      case Type.LocalFunction(_, _, cs, _, _) => cs
+      case Type.Function(_, _, cs, _, _, _) => cs
+      case Type.FixedFunction(_, _, cs, _, _) => cs
       case Type.Continuation(_, _, _, cs, _) => cs
       case Type.CapabilityPoly(_, _, _, cs, _, obligations) => cs
       case Type.EffectPoly(_, b, _) => typeCaptures(b)
@@ -171,10 +171,11 @@ object Lowering {
           case _ => throw Diagnostic(s"Unknown primitive $name during lowering")
         }
         s"{ ${bindings.mkString(" ")} $result }"
-      case Value.Lambda(parameter, _, _, _) => lambda(v, parameter, env)
-      case Value.LocalLambda(parameter, _, _, _, _) => lambda(v, parameter, env)
-      case Value.InferredLambda(parameter, _, _) => lambda(v, parameter, env)
-      case Value.UnannotatedLambda(parameter, _, _) => lambda(v, parameter, env)
+      case Value.Lambda(parameter, _, _, _, _) => lambda(v, parameter, env)
+      case Value.ContextLambda(parameter, _, _, _, _, _) => lambda(v, parameter, env)
+      case Value.FixedLambda(parameter, _, _, _, _) => lambda(v, parameter, env)
+      case Value.InferredLambda(parameter, _, _, _) => lambda(v, parameter, env)
+      case Value.UnannotatedLambda(parameter, _, _, _) => lambda(v, parameter, env)
       case Value.CapabilityLambda(name, operations, _, _) =>
         val cap = fresh("CapParameter")
         val function = fresh("Function")
@@ -205,8 +206,8 @@ object Lowering {
         val x = fresh("Arg")
         val function = fresh("Function")
         val argument = v.tpe match {
-          case Type.Function(a, _, _, _, _) => a
-          case Type.LocalFunction(a, _, _, _, _) => a
+          case Type.Function(a, _, _, _, _, _) => a
+          case Type.FixedFunction(a, _, _, _, _) => a
           case _ => throw Diagnostic("Invalid lambda type")
         }
         s"{ val $function: ${target(v.tpe, env)} = box { ($x: ${target(argument, env)}) => " +
@@ -220,11 +221,11 @@ object Lowering {
     private def coerce(code: String, from: Type, to: Type, env: Env): String = {
       if TypeEquality.same(from, to) || TypeEquality.same(Contracts.erase(from), Contracts.erase(to)) then code
       else (from, to) match {
-        case (Type.LocalFunction(a, r, cs, region, p), Type.LocalFunction(b, s, ds, target, q)) =>
+        case (Type.FixedFunction(a, r, cs, region, p), Type.FixedFunction(b, s, ds, target, q)) =>
           coerce(code, Type.Function(a, r, cs, region, p), Type.Function(b, s, ds, target, q), env)
-        case (Type.Continuation(a, r, region, cs, p), Type.LocalFunction(b, s, ds, target, q)) =>
+        case (Type.Continuation(a, r, region, cs, p), Type.FixedFunction(b, s, ds, target, q)) =>
           coerce(code, Type.Function(a, r, cs, Some(region), p), Type.Function(b, s, ds, target, q), env)
-        case (Type.Function(a, r, _, _, _) , Type.Function(b, s, cs, _, _) ) =>
+        case (Type.Function(a, r, _, _, _, _) , Type.Function(b, s, cs, _, _, _) ) =>
           val original = fresh("Original")
           val arg = fresh("AdapterArg")
           val converted = fresh("ConvertedArg")
@@ -280,13 +281,13 @@ object Lowering {
       case Term.Ascribe(_, _) => term(t.children.head, env)
       case _: Term.InferredHandle => throw Diagnostic("Unresolved handler result annotation")
       case _: Term.ExplicitReturn => throw Diagnostic("Unresolved explicit return clause")
-      case Term.LetRec(name, parameter, _, _, _, _, _) =>
+      case Term.LetRec(name, parameter, _, _, _, _, _, _) =>
         val function = fresh("Recursive")
         val argument = fresh("Arg")
         val boxed = fresh("RecursiveValue")
         val (arg, result) = t.values.head.tpe match {
-          case Type.Function(a, r, _, _, _) => (a, r)
-          case Type.LocalFunction(a, r, _, _, _) => (a, r)
+          case Type.Function(a, r, _, _, _, _) => (a, r)
+          case Type.FixedFunction(a, r, _, _, _) => (a, r)
           case _ => throw Diagnostic("Invalid recursive function type")
         }
         val scope = env.bind(name, s"box $function").copy(recursive = env.recursive.updated(name, function))
@@ -300,8 +301,8 @@ object Lowering {
         val f = fresh("Call")
         val arg = fresh("CallArg")
         val parameter = t.values.head.tpe match {
-          case Type.Function(p, _, _, _, _) => p
-          case Type.LocalFunction(p, _, _, _, _) => p
+          case Type.Function(p, _, _, _, _, _) => p
+          case Type.FixedFunction(p, _, _, _, _) => p
           case Type.Continuation(p, _, _, _, _) => p
           case _ => throw Diagnostic("Invalid elaborated application")
         }

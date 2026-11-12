@@ -1,7 +1,7 @@
 // One abstraction is checked outside either handler, then instantiated twice.
 def main(): Bool = {
   val invoke = capfun (c: { def ask(): Int / (Int => Bool); }) {
-    fun local[c] (u: Unit): Int / (Int => Bool) {
+    fun (u: Unit) at [c]: Int / (Int => Bool) {
       c.ask()
     }
   };

@@ -24,10 +24,10 @@ object Datatypes {
         require(Contracts.sort(pair).nonEmpty, "Store function fields directly, not inside pairs")
         pair
       case Type.Refined(n, b, p) => Type.Refined(n, field(b), p)
-      case Type.Function(a, r, cs, region, n) if cs.isEmpty && region.forall(_ == Evidence.Top) && r.effect == Effect.Pure =>
-        Type.Function(field(a), r.copy(value = field(r.value)), cs, Some(Evidence.Top), n)
-      case Type.LocalFunction(a, r, cs, region, n) if cs.isEmpty && region.forall(_ == Evidence.Top) && r.effect == Effect.Pure =>
-        Type.LocalFunction(field(a), r.copy(value = field(r.value)), cs, Some(Evidence.Top), n)
+      case Type.Function(a, r, cs, region, n, caller) if cs.isEmpty && region.forall(r => Set(Evidence.Top, "top")(r)) && r.effect == Effect.Pure =>
+        Type.Function(field(a), r.copy(value = field(r.value)), cs, Some(Evidence.Top), n, caller)
+      case Type.FixedFunction(a, r, cs, region, n) if cs.isEmpty && region.forall(r => Set(Evidence.Top, "top")(r)) && r.effect == Effect.Pure =>
+        Type.FixedFunction(field(a), r.copy(value = field(r.value)), cs, Some(Evidence.Top), n)
       case Type.Token(n) if declared(n) => Type.Data(n)
       case Type.Data(n) if declared(n) => t
       case _ => throw Diagnostic("Datatype fields require data or a closed pure top-region function type; found " + show(t))
@@ -63,13 +63,13 @@ object Datatypes {
   // equality is admitted for types containing functions, even transitively.
   def logicalSort(t: Type): Logic.Sort = Contracts.base(t) match {
     case Type.Pair(a, b) => Logic.Sort.Pair(logicalSort(a), logicalSort(b))
-    case _: Type.Function | _: Type.LocalFunction => Logic.Sort.Unit
+    case _: Type.Function | _: Type.FixedFunction => Logic.Sort.Unit
     case other => Contracts.sort(other).get
   }
   def equalitySupported(t: Type, ds: List[DataDeclaration], seen: Set[String] = Set.empty): Boolean = Contracts.base(t) match {
     case Type.Data(n) if !seen(n) => ds.find(_.name == n).get.constructors.forall(_.fields.forall(f => equalitySupported(f._2, ds, seen + n)))
     case Type.Pair(a,b) => equalitySupported(a, ds, seen) && equalitySupported(b, ds, seen)
-    case _: Type.Function | _: Type.LocalFunction | _: Type.Continuation => false
+    case _: Type.Function | _: Type.FixedFunction | _: Type.Continuation => false
     case _ => true
   }
   def expression(name: String, args: List[Logic.Expr]): Logic.Expr = Logic.Expr.App("constructor:" + name, args)

@@ -9,7 +9,7 @@ backends are available. See [MIGRATION-v0.3.0.md](MIGRATION-v0.3.0.md) for the p
 
 The ATM checker implements a subset of the region/evidence algorithm
 from Section 6.1 of the supplied paper and supplemental Section 3 (Figures 9--15).
-Explicit `local` functions and `return effect` expose additional declarative
+Explicit fixed-region contracts and `return effect` expose additional declarative
 rules through checked surface forms. They are documented separately from the
 printed inference rules. The former ordered-handler-stack checker is not used
 as a fallback.
@@ -95,7 +95,7 @@ See [VALIDATION.md](VALIDATION.md) for the distinct runs.
   handler clause's ambient region and emits a plain call. A continuation can be
   aliased and called there, but cannot be coerced into an ordinary function,
   returned through an ordinary arrow, or called beneath a different region. It
-  can be exposed as an explicit same-region `local` arrow, stored and called there.
+  can be exposed as an explicit same-region fixed arrow, stored and called there.
 - Capability quantification binds a region and a capability value. Its internal
   scheme records residual constraints mentioning that region; instantiation
   reconstructs their evidence. Type and predicate quantification remain explicit.
@@ -118,7 +118,7 @@ The old stack-lifting, scoped-tail and repeatable/after-constraint design is
 archived in [history/prototype-design.md](history/prototype-design.md). Its old
 tests are preserved in [history/AtmPrototypeTests.scala.txt](history/AtmPrototypeTests.scala.txt)
 for comparison, not counted as current passing tests. Ten blocked examples have
-now been repaired with explicit local forms or answer-type annotations. Their
+now been repaired with explicit fixed-region contracts or answer-type annotations. Their
 original sources are retained in `history/rejected-before-local/`.
 [REJECTED-EXAMPLES.md](REJECTED-EXAMPLES.md) separates the unsupported
 examples from the six intentional negative tests.
@@ -169,7 +169,7 @@ transition, including nested computation endpoints, as in
 Function-valued endpoints remain explicitly grouped:
 `Int / (((Int) => Int) => Bool)`. Effect sequences use `(E; F)`; the separator
 distinguishes them from answer transitions. Square brackets also delimit typelike instantiation, explicit operation annotations,
-and local-region selectors.
+and fixed-region contracts.
 The old bracketed answer transitions are accepted for archived regression inputs.
 A dependent computation result can
 be written `(answer: Int) / ({r: Int | r == answer} => Int)`; `answer` scopes only
@@ -239,12 +239,18 @@ statements. Local functions can also have empty argument lists. The ATM shortcut
 a Unit resumption.
 
 The [reusable Fig. 1 example](../../examples/atm/file-reusable.effekt) uses
-one explicitly polymorphic `file` value with region/computation parameters
-`[R: Reg, C: Cty]`. Its callbacks declare their capabilities and evidence;
-operation calls supply ATCs. The helper is checked once and instantiated at
+one caller-indexed `file` value with computation parameter `[C: Cty]`, called
+as `file[C](descriptor)(callback)`. It declares `(c: Int)[R: Reg]` to name its
+implicit caller. Its ordinary domain is `Int`; it returns
+a function with an explicit fixed-region contract. Its callbacks declare
+capabilities, evidence, and call ATCs with symbolic depths;
+operation calls supply those ATCs. The helper is checked once and instantiated at
 both nested call sites, with no contextual specialization. `interface File`,
 `read(): Int`, and `close(): Unit` remain. The mock-backed program checks at
 `Int / pure` and returns 42 through direct Lifted/Chez.
+The [rule-boundary document](CALLER-INDEXED.md) separates the paper's result
+families from explicit ATC abstraction, fixed-region checking, and surface
+annotation notation. Caller-dependent ordinary domains are not supported.
 The former paper copies `file_simple_atm.effekt` and
 `file_simple_reusable.effekt` are consolidated here.
 
@@ -262,8 +268,8 @@ chez --script /tmp/file-reusable.ss
 ```
 
 Native block inference is unsupported. The former per-call specialization
-pass was removed; the explicit version uses ordinary quantified values and
-the documented exact-region `local[R]` bridge. The
+pass was removed; the explicit version uses ordinary caller-indexed functions
+and the [explicit ATC abstraction and fixed-region bridge](CALLER-INDEXED.md). The
 [inlined companion](../../examples/atm/file-nested.effekt) remains for comparison.
 See [FIDELITY.md](FIDELITY.md#reusable-helpers-explicit-polymorphism) for the
 explicit contract and the audit of remaining extensions beyond the printed
@@ -320,24 +326,27 @@ conditions; the intermediate final answer remains under the let binder until
 composition. This is surface annotation elaboration, not a new evidence or ATC
 rule. Supplied annotations are checked as well.
 
-## Explicit local functions
+## Caller-indexed functions and fixed-region contracts
 
-`def local f(x: Int): Int = { x }`, `fun local (x: Int): Int { x }`, and
-`local (Int) => Int` select one fixed call region. In synthesis it defaults to
-the lexical region; in checking an expected local arrow supplies it.
-`fun local[c] ...` and `local[c] (Int) => Int` explicitly select the region of an
-in-scope capability `c`, which must agree with an expected arrow.
-`def rec local` supports annotated local recursion at the enclosing lexical
-region; a region qualifier is not supported on recursive definitions.
-An expected local arrow also supplies omitted lambda domain/result annotations.
+Ordinary `fun` retains the caller-dependent result family and is checked once.
+Name its implicit caller with `fun (x: T)[R: Reg] { ... }`,
+`def f(x: T)[R: Reg]: C = ...`, or `(T)[R: Reg] => C` in a type. `R` scopes
+over results, bodies, and later call-ATC kinds, not the ordinary argument domain.
+Application still supplies the caller implicitly. The removed name `here` has
+no predefined meaning; handler labels and `top` continue to name their regions.
+An explicit call-context telescope, `fun ()[K: ATC(dist(path(h)))]: C { ... }`,
+quantifies over an ATC inside the implicit caller/evidence binders. Applications
+supply their contexts explicitly, such as `callback[[]]()`. This extends the
+printed algorithm; see [CALLER-INDEXED.md](CALLER-INDEXED.md).
 
-These forms expose the declarative `T_Abs`/`T_App` rules, rather than passing
-through the region-polymorphic algorithmic `A_Abs`. The body is checked at that
-exact region, and calls must occur there. Core retains the region and Lifted
-uses a plain function call without a call-evidence parameter. A local function
-cannot be implicitly promoted to an ordinary arrow or escape its handler.
-A continuation can be stored under a compatible local arrow at its ambient
-region. No symbolic evidence distance is assumed to be zero.
+The `local` keyword is removed. An explicit `(T) =>[r] C` contract retains the
+declarative exact-region behavior for stored resumptions and other ARM examples.
+A plain `fun` checks against such a contract; `fun (x: T) at [r]: C { ... }`
+or `def f(x: T) at [r]: C = ...` supplies it inline. Fixed-region calls must
+occur at exactly `r`, and cannot be promoted to ordinary arrows. Annotated
+fixed-region recursion remains at the enclosing lexical region. Curried Fig. 1
+uses a fixed-region function as the ordinary helper's result; its ordinary
+argument domain remains caller-independent.
 
 `return effect x => { ... }` explicitly enables effects in a handler's return
 clause using its known result contract. The clause executes outside the exited
@@ -374,7 +383,7 @@ evidence supply a declarative alternative without assigning that distance zero. 
 The older supplement's page 37 identifies ATC abstraction as future work;
 the explicit annotation forms now provide it. The old `replaceAnswer` function-call extension has been removed.
 
-`capfun here`, scoped capability tails, answer-effect sequences, and
+The removed scoped-capability spelling, scoped capability tails, answer-effect sequences, and
 `repeatable`/`after` bounds belong to the former prototype and are rejected.
 An opaque answer effect cannot be used where the paper's final-answer projection
 is undefined. Unrestricted effect quantification can still occur in types, but
@@ -403,7 +412,7 @@ explicitly. The retained legacy emitter uses finite answer sums and JavaScript
 | `A_AbsChk`, `A_AbsSyn` | `Checker.abstraction`, `checkValue`; `Elaboration.substitute` |
 | `A_App*` | `Checker.inferTerm` ordinary application |
 | `A_KApp*` | Same branch, separate `Type.Continuation`, exact region test |
-| Declarative `T_Abs`/`T_App` bridge | Explicit `local` forms, `Checker.localAbstraction`, `Type.LocalFunction`; exact region, no call witness |
+| Declarative `T_Abs`/`T_App` bridge | Explicit fixed-region contracts, `Checker.fixedAbstraction`, `Type.FixedFunction`; exact region, no call witness |
 | `A_TAbs`, `A_TApp*` (supported kinds) | Value/type/predicate/capability abstractions and instantiations; capability scheme residual bounds |
 | `A_Return*`, `A_Let*`, `A_SubC` | `inferTerm`, inherited-answer mode, `checkTerm`, `ascribe` |
 | `A_If*`, guarded join/meet | `Checker.guarded` |
@@ -487,7 +496,7 @@ pairs, and declared data), including mutually recursive declarations with finite
 inhabitants. Refinements may mention constructor applications; SMT checks their
 sorts, disjointness and injectivity. `==`/`!=` compare such values structurally.
 Exhaustive flat pattern matching, structurally recursive logical measures, and
-dependent/refined constructor fields are supported. Closed pure ordinary/local
+dependent/refined constructor fields are supported. Closed pure ordinary/fixed-region
 function fields use the top region. Functions are projected to unit for logical
 data measures; runtime equality on data containing functions is rejected.
 Datatype type parameters, effectful function fields and general region-polymorphic

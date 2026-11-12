@@ -3,14 +3,14 @@
 def main(): Bool = {
   val apply = capfun (c: { def ask(): Int / (Int => Bool); }) {
     typefun [Initial] { typefun [Final] {
-      fun local[c] (f: (local[c] (Unit) => Int / (Initial => Final))):
+      fun (f: ((Unit) =>[c] Int / (Initial => Final))) at [c]:
           Int / (Initial => Final) { f() }
     } }
   };
   try {
     val localApply = apply{cap(h)};
-    val p = localApply[type Bool][type Bool](fun local (u: Unit): Int { 0 });
-    val n = localApply[type Int][type Bool](fun local (u: Unit): Int / (Int => Bool) { h.ask() });
+    val p = localApply[type Bool][type Bool](fun (u: Unit) at [h]: Int { 0 });
+    val n = localApply[type Int][type Bool](fun (u: Unit) at [h]: Int / (Int => Bool) { h.ask() });
     p + n
   } with h: Bool {
     def ask(x: Unit): Int / (Int => Bool) = {

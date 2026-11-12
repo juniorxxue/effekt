@@ -16,7 +16,7 @@ def main(): Bool = {
   def ambFind(e: Int): ((input: ListInt) => {r: Result | r == search(input,e)}) = {
     fun (input: ListInt): {r: Result | r == search(input,e)} {
       try {
-        def rec local selectFrom(xs: ListInt): (o: OptionInt) /
+        def rec selectFrom(xs: ListInt) at [choice]: (o: OptionInt) /
           ({r: Result | r == accept(o,e)} => {r: Result | r == search(xs,e)}) = {
           match (xs) {
             case Nil() => { None() }

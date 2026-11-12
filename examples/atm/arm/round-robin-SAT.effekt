@@ -5,23 +5,23 @@
 // Child handlers are reified separately; dequeue and FIFO scheduling are explicit.
 data Thread {
   Done();
-  Increment(next: (local (Unit) => Thread));
-  Yielded(next: (local (Unit) => Thread));
-  Spawned(child: (local (Unit) => Thread), next: (local (Unit) => Thread))
+  Increment(next: ((Unit) =>[top] Thread));
+  Yielded(next: ((Unit) =>[top] Thread));
+  Spawned(child: ((Unit) =>[top] Thread), next: ((Unit) =>[top] Thread))
 }
-data Queue { Empty(); Enqueued(task: (local (Unit) => Thread), tail: Queue) }
+data Queue { Empty(); Enqueued(task: ((Unit) =>[top] Thread), tail: Queue) }
 def main(): Bool = {
-  type TaskRegion = (local (Unit) => Unit);
-  def rec local appendQueue(q: Queue): (local (rest: Queue) => Queue) = {
-    fun local (rest: Queue): Queue {
+  type TaskRegion = ((Unit) =>[top] Unit);
+  def rec appendQueue(q: Queue) at [top]: ((rest: Queue) =>[top] Queue) = {
+    fun (rest: Queue) at [top]: Queue {
       match (q) {
         case Empty() => { rest }
         case Enqueued(task,t) => { val appendRest = appendQueue(t); val tail = appendRest(rest); Enqueued(task,tail) }
       }
     }
   }
-  def rec local schedule(work: (Thread,Queue)): (local (count: Int) => {r: Int | r >= count}) = {
-    fun local (count: Int): {r: Int | r >= count} {
+  def rec schedule(work: (Thread,Queue)) at [top]: ((count: Int) =>[top] {r: Int | r >= count}) = {
+    fun (count: Int) at [top]: {r: Int | r >= count} {
       match (fst(work)) {
         case Done() => {
           match (snd(work)) {
@@ -41,26 +41,26 @@ def main(): Bool = {
       }
     }
   }
-  def local child(u: Unit): Thread = {
+  def child(u: Unit) at [top]: Thread = {
     try {
       runtime.increment(); runtime.yield(); runtime.increment(); runtime.yield()
     } with runtime: Thread {
       def increment(u: Unit): Unit / (Thread => Thread) = {
-        Increment(fun local (u: Unit): Thread { resume() })
+        Increment(fun (u: Unit) at [top]: Thread { resume() })
       }
       def yield(u: Unit): Unit / (Thread => Thread) = {
-        Yielded(fun local (u: Unit): Thread { resume() })
+        Yielded(fun (u: Unit) at [top]: Thread { resume() })
       }
       return u => { Done() }
     }
   }
-  def local test(init: Int): {r: Int | r >= init} = {
+  def test(init: Int) at [top]: {r: Int | r >= init} = {
     val parent = try {
-      runtime.spawn(fun local[TaskRegion] (u: Unit): Thread { child() });
-      runtime.spawn(fun local[TaskRegion] (u: Unit): Thread { child() })
+      runtime.spawn(fun (u: Unit) at [TaskRegion]: Thread { child() });
+      runtime.spawn(fun (u: Unit) at [TaskRegion]: Thread { child() })
     } with runtime: Thread {
-      def spawn(thread: (local (Unit) => Thread)): Unit / (Thread => Thread) = {
-        Spawned(thread,fun local (u: Unit): Thread { resume() })
+      def spawn(thread: ((Unit) =>[top] Thread)): Unit / (Thread => Thread) = {
+        Spawned(thread,fun (u: Unit) at [top]: Thread { resume() })
       }
       return u => { Done() }
     };

@@ -4,7 +4,7 @@ import effekt.atm.{Checker, Core, Evidence, Parser, Syntax}
 import effekt.atm.Syntax.*
 import java.nio.file.{Files, Path}
 
-class AtmLocalFunctionTests extends munit.FunSuite {
+class AtmFixedFunctionTests extends munit.FunSuite {
   private def read(name: String) = Files.readString(Path.of("examples/atm", name + ".effekt"))
   private def checked(s: String) = Parser.parse(s).flatMap(Checker.check).fold(e => fail(e.message), identity)
   private def rejected(s: String, reason: String): Unit = {
@@ -29,24 +29,24 @@ class AtmLocalFunctionTests extends munit.FunSuite {
   }
   test("local function arguments can be inferred from a local expected arrow") {
     val p = checked("""def main(): Int = {
-      def local apply(f: (local (Int) => Int)): Int = { f(42) }
-      apply(fun local (x) { x })
+      def apply(f: ((Int) =>[top] Int)) at [top]: Int = { f(42) }
+      apply(fun (x) { x })
     }""")
     assertEquals(AtmBackend.run(p, true).fold(fail(_), identity), "42")
   }
   test("capability subsumption renames local regions inside operation answers") {
     checked("""def main(): Unit = {
       val f: forall cap c: {
-        def tick(Unit): Unit / ((local[c] (Int) => Int) => (local[c] (Int) => Int));
+        def tick(Unit): Unit / (((Int) =>[c] Int) => ((Int) =>[c] Int));
       }. (Unit) = capfun (d: {
-        def tick(Unit): Unit / ((local[d] (Int) => Int) => (local[d] (Int) => Int));
+        def tick(Unit): Unit / (((Int) =>[d] Int) => ((Int) =>[d] Int));
       }) { () };
       ()
     }""")
   }
   test("a local function cannot be invoked below a new delimiter") {
     rejected("""def main(): Int = {
-      def local f(x: Int): Int = { x }
+      def f(x: Int) at [top]: Int = { x }
       try { f(42) } with h: Int {
         def tick(u: Unit): Unit / (Int => Int) = { resume() }
         return x => { x }
@@ -55,14 +55,14 @@ class AtmLocalFunctionTests extends munit.FunSuite {
   }
   test("a local closure cannot be silently promoted to a region-polymorphic arrow") {
     rejected("""def main(): Int = {
-      val f: ((Int) => Int) = fun local (x: Int): Int { x };
+      val f: ((Int) => Int) = fun (x: Int) at [top]: Int { x };
       f(42)
     }""", "Expected")
   }
   test("a handler-local function cannot escape its handler") {
-    rejected("""def main(): (local (Unit) => Int) = {
-      try { fun local (u: Unit): Int / (Int => Int) { h.ask() } }
-      with h: (local (Unit) => Int) {
+    rejected("""def main(): ((Unit) =>[top] Int) = {
+      try { fun (u: Unit) at [h]: Int / (Int => Int) { h.ask() } }
+      with h: ((Unit) =>[top] Int) {
         def ask(u: Unit): Int / (Int => Int) = { resume(42) }
         return f => { f }
       }
@@ -87,16 +87,17 @@ class AtmLocalFunctionTests extends munit.FunSuite {
   test("explicit return clauses cannot invoke the capability they have exited") {
     rejected(read("return-effects").replace("outer.ask()", "inner.tick()"), "Unknown or out-of-scope")
   }
-  test("fresh caller regions cannot be mislabeled as a stable returned local arrow") {
-    rejected("""def main(): Int = {
-      def make(u: Unit) = { fun local (x: Int): Int { x } }
+  test("returned fixed-region arrows are indexed by the actual caller") {
+    val p = checked("""def main(): Int = {
+      def make(u: Unit)[R: Reg] = { fun (x: Int) at [R]: Int { x } }
       val f = make();
       f(42)
-    }""", "abstract caller region")
+    }""")
+    assertEquals(effekt.atm.DirectBackend.run(p).fold(fail(_), identity), "42")
   }
   test("an explicitly stable returned local arrow remains usable") {
     val p = checked("""def main(): Int = {
-      def make(u: Unit): (local (Int) => Int) = { fun local (x: Int): Int { x } }
+      def make(u: Unit)[R: Reg]: ((Int) =>[R] Int) = { fun (x: Int) at [R]: Int { x } }
       val f = make();
       f(42)
     }""")
@@ -105,8 +106,8 @@ class AtmLocalFunctionTests extends munit.FunSuite {
   test("Core independently rejects a local lambda with a different body region") {
     val int = Computation(Type.Int)
     val body = Core.Term(Core.Node.Return(Core.Value(Core.ValueNode.Integer(42), Type.Int)), int, "unbound")
-    val lambda = Core.Value(Core.ValueNode.LocalLambda("x", Evidence.Top, body),
-      Type.LocalFunction(Type.Int, int, region = Some(Evidence.Top)))
+    val lambda = Core.Value(Core.ValueNode.FixedLambda("x", Evidence.Top, body),
+      Type.FixedFunction(Type.Int, int, region = Some(Evidence.Top)))
     val root = Core.Term(Core.Node.Return(lambda), Computation(lambda.tpe), Evidence.Top)
     val error = intercept[Diagnostic](Core.validate(root))
     assert(error.message.contains("different region"))

@@ -1,12 +1,10 @@
 def main(): Bool = {
   try {
-    val callback = fun [R: Reg, D: Dist, E: Ev(R, D, outer), K: ATC(D)] {
-      fun local[R](): Int / (K[Int] => K[Bool]) {
-        outer.ask[E; K]()
-      }
+    val callback = fun ()[K: ATC(dist(path(outer)))]: Int / (K[Int] => K[Bool]) {
+      outer.ask[path(outer); K]()
     };
     try {
-      callback[here, 1, step(inner), Int / (Int => [])]()
+      callback[Int / (Int => [])]()
     } with inner: Int / (Int => Bool) {
       def unused(): Unit /
         (Int / (Int => Bool) => Int / (Int => Bool)) = {

@@ -26,8 +26,8 @@ object Contracts {
     map(t)(identity, Logic.instantiate(_, name, parameters, body))
   def erase(t: Type): Type = map(t)({
     case Type.Refined(_, b, _) => b
-    case Type.Function(a, r, cs, scope, _) => Type.Function(a, r, cs, scope)
-    case Type.LocalFunction(a, r, cs, scope, _) => Type.LocalFunction(a, r, cs, scope)
+    case Type.Function(a, r, cs, scope, _, caller) => Type.Function(a, r, cs, scope, caller = caller)
+    case Type.FixedFunction(a, r, cs, scope, _) => Type.FixedFunction(a, r, cs, scope)
     case Type.Continuation(a, r, region, cs, _) => Type.Continuation(a, r, region, cs)
     case other => other
   })
@@ -58,8 +58,8 @@ object Contracts {
   def free(t: Type): Set[String] = t match {
     case Type.Pair(a, b) => free(a) ++ free(b)
     case Type.Refined(n, b, p) => free(b) ++ (Logic.variables(p) - n)
-    case Type.Function(a, r, _, _, name) => free(a) ++ (free(r) -- name)
-    case Type.LocalFunction(a, r, _, _, name) => free(a) ++ (free(r) -- name)
+    case Type.Function(a, r, _, _, name, _) => free(a) ++ (free(r) -- name)
+    case Type.FixedFunction(a, r, _, _, name) => free(a) ++ (free(r) -- name)
     case Type.Continuation(a, r, _, _, name) => free(a) ++ (free(r) -- name)
     case Type.AbstractResult(f) => free(Annotations.abstractComputation(f))
     case Type.KindPoly(_, _, b) => free(b)
@@ -98,7 +98,7 @@ object Contracts {
     def inspect(t: Type): Type = {
       t match {
         case _: Type.Refined | _: Type.PredicatePoly => found = true
-        case Type.Function(_, _, _, _, Some(_)) | Type.LocalFunction(_, _, _, _, Some(_)) => found = true
+        case Type.Function(_, _, _, _, Some(_), _) | Type.FixedFunction(_, _, _, _, Some(_)) => found = true
         case _ => ()
       }
       t
@@ -111,10 +111,11 @@ object Contracts {
       case _ => ()
     }
     def value(v: Value): Unit = v match {
-      case Value.Lambda(_, a, r, b) => ty(a); comp(r); term(b)
-      case Value.LocalLambda(_, a, r, b, _) => a.foreach(ty); r.foreach(comp); term(b)
-      case Value.InferredLambda(_, a, b) => ty(a); term(b)
-      case Value.UnannotatedLambda(_, r, b) => r.foreach(comp); term(b)
+      case Value.Lambda(_, a, r, b, _) => ty(a); comp(r); term(b)
+      case Value.ContextLambda(_, a, r, _, b, _) => ty(a); comp(r); term(b)
+      case Value.FixedLambda(_, a, r, b, _) => a.foreach(ty); r.foreach(comp); term(b)
+      case Value.InferredLambda(_, a, b, _) => ty(a); term(b)
+      case Value.UnannotatedLambda(_, r, b, _) => r.foreach(comp); term(b)
       case Value.CapabilityLambda(_, ops, b, _) => ops.foreach(signature); value(b)
       case Value.Instantiate(f, c) => value(f); value(c)
       case Value.EffectLambda(_, b, bound) =>
@@ -163,7 +164,7 @@ object Contracts {
       case Term.Assert(v) => found = true; value(v)
       case Term.Ascribe(b, c) => comp(c); term(b)
       case Term.ExplicitReturn(b) => term(b)
-      case Term.LetRec(_, _, a, r, d, b, _) => ty(a); comp(r); term(d); term(b)
+      case Term.LetRec(_, _, a, r, d, b, _, _) => ty(a); comp(r); term(d); term(b)
       case Term.Let(_, a, b) => term(a); term(b)
       case Term.Apply(f, a) => value(f); value(a)
       case Term.If(c, a, b) => value(c); term(a); term(b)

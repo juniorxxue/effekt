@@ -5,22 +5,22 @@ measure content(s: Deferred): Int {
   case Value(v) => v; case Thunk(c,f) => c;
 }
 def main(): Bool = {
-  def local test(r: Int): (local (thunk: ((Unit) => {v: Int | v == r})) => {v: Int | v == r + 1}) = {
-    fun local (thunk: ((Unit) => {v: Int | v == r})): {v: Int | v == r + 1} {
+  def test(r: Int) at [top]: ((thunk: ((Unit) => {v: Int | v == r})) =>[top] {v: Int | v == r + 1}) = {
+    fun (thunk: ((Unit) => {v: Int | v == r})) at [top]: {v: Int | v == r + 1} {
       val run = try {
         val result = lazyValue.force(); result
-      } with lazyValue: (local (s: {d: Deferred | content(d) == r}) => {v: Int | v == r}) {
+      } with lazyValue: ((s: {d: Deferred | content(d) == r}) =>[top] {v: Int | v == r}) {
         def force(u: Unit): {v: Int | v == r} /
-          ((local (s: Deferred) => {v: Int | v == r}) =>
-           (local (s: {d: Deferred | content(d) == r}) => {v: Int | v == r})) = {
-          fun local (s: {d: Deferred | content(d) == r}): {v: Int | v == r} {
+          (((s: Deferred) =>[top] {v: Int | v == r}) =>
+           ((s: {d: Deferred | content(d) == r}) =>[top] {v: Int | v == r})) = {
+          fun (s: {d: Deferred | content(d) == r}) at [top]: {v: Int | v == r} {
             match (s) {
               case Value(v) => { val next = resume(v); next(Value(v)) }
               case Thunk(c,f) => { val v = f(); val next = resume(v); next(Value(v)) }
             }
           }
         }
-        return y => { fun local (s: Deferred): {v: Int | v == y} { y } }
+        return y => { fun (s: Deferred) at [top]: {v: Int | v == y} { y } }
       };
       run(Thunk(r,thunk))
     }

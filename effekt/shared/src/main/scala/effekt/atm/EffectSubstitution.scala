@@ -26,8 +26,8 @@ object EffectSubstitution {
   }
 
   def free(tpe: Type): Set[String] = tpe match {
-    case Type.Function(arg, result, _, _, _) => free(arg) ++ free(result)
-    case Type.LocalFunction(arg, result, _, _, _) => free(arg) ++ free(result)
+    case Type.Function(arg, result, _, _, _, _) => free(arg) ++ free(result)
+    case Type.FixedFunction(arg, result, _, _, _) => free(arg) ++ free(result)
     case Type.Continuation(arg, result, _, _, _) => free(arg) ++ free(result)
     case Type.Pair(a, b) => free(a) ++ free(b)
     case Type.TypePoly(_, body) => free(body)

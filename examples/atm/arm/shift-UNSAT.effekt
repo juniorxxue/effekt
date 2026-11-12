@@ -4,17 +4,17 @@
 // omitted. This is not a port of the general recursive shift/reset library.
 // The original Shift operation and all three actual continuation calls remain.
 def main(): Bool = {
-  type CallRegion = (local (Unit) => Unit);
-  def local test(n: Int): {v: Int | v == 4*n+3} = {
+  type CallRegion = ((Unit) =>[top] Unit);
+  def test(n: Int) at [top]: {v: Int | v == 4*n+3} = {
     try {
-      val s = control.shift(fun local[CallRegion] (k: (local (x: Int) => {v: Int | v == 2*x+1})): {v: Int | v == 8*n+7} {
+      val s = control.shift(fun (k: ((x: Int) =>[top] {v: Int | v == 2*x+1})) at [CallRegion]: {v: Int | v == 8*n+7} {
         val first = k(n); val second = k(first); k(second)
       });
       s * 2 + 1
     } with control: {v: Int | v == 8*n+7} {
-      def shift(f: (local (k: (local (x: Int) => {v: Int | v == 2*x+1})) => {v: Int | v == 8*n+7})): (s: Int) /
+      def shift(f: ((k: ((x: Int) =>[top] {v: Int | v == 2*x+1})) =>[top] {v: Int | v == 8*n+7})): (s: Int) /
         ({v: Int | v == 2*s+1} => {v: Int | v == 8*n+7}) = {
-        f(fun local (x: Int): {v: Int | v == 2*x+1} { resume(x) })
+        f(fun (x: Int) at [top]: {v: Int | v == 2*x+1} { resume(x) })
       }
       return v => { v }
     }

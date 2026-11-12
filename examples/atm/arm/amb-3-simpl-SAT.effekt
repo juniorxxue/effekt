@@ -10,7 +10,7 @@ def main(): Bool = {
     fun (e: Int): {r: Bool | r == true} {
       val input = Cons(first,Cons(e,Nil()));
       try {
-        def rec local selectFrom(xs: ListInt): (v: Bool) / ({r: Bool | r == v} => {r: Bool | r == contains(xs,e)}) = {
+        def rec selectFrom(xs: ListInt) at [choice]: (v: Bool) / ({r: Bool | r == v} => {r: Bool | r == contains(xs,e)}) = {
           match (xs) {
             case Nil() => { false }
             case Cons(h,t) => {

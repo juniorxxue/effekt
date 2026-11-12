@@ -10,16 +10,16 @@ measure firstResult(xs: ListInt, selected: ListInt): Result {
   case Cons(h,t) => Success(Cons(h,selected));
 }
 def main(): Bool = {
-  def test(x: Int): {r: Bool | r == false} = {
+  def test(x: Int)[R: Reg]: {r: Bool | r == false} = {
     val run = try {
       val a = choices.select(Cons(x,Cons(-x,Nil())));
       a * a == x * x
-    } with choices: (local (selected: ListInt) => {r: Result | r == Success(Cons(x,selected))}) {
+    } with choices: ((selected: ListInt) =>[R] {r: Result | r == Success(Cons(x,selected))}) {
       def select(options: {xs: ListInt | roots(xs,x)}): {i: Int | i * i == x * x} /
-        ((local (selected: ListInt) => {r: Result | r == Success(selected)}) =>
-         (local (selected: ListInt) => {r: Result | r == firstResult(options,selected)})) = {
-        fun local (selected: ListInt): {r: Result | r == firstResult(options,selected)} {
-          def rec local tryChoice(xs: {ys: ListInt | roots(ys,x)}): {r: Result | r == firstResult(xs,selected)} = {
+        (((selected: ListInt) =>[R] {r: Result | r == Success(selected)}) =>
+         ((selected: ListInt) =>[R] {r: Result | r == firstResult(options,selected)})) = {
+        fun (selected: ListInt) at [R]: {r: Result | r == firstResult(options,selected)} {
+          def rec tryChoice(xs: {ys: ListInt | roots(ys,x)}) at [R]: {r: Result | r == firstResult(xs,selected)} = {
             match (xs) {
               case Nil() => { Failure() }
               case Cons(y,ys) => {
@@ -35,7 +35,7 @@ def main(): Bool = {
         }
       }
       return outcome => {
-        fun local (selected: ListInt): {r: Result | r == (if outcome then Success(selected) else Failure())} {
+        fun (selected: ListInt) at [R]: {r: Result | r == (if outcome then Success(selected) else Failure())} {
           if (outcome) { Success(selected) } else { Failure() }
         }
       }

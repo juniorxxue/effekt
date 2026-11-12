@@ -9,27 +9,27 @@ measure readOutcome(xs: ListInt, n: Int): Result {
 }
 def main(): Bool = {
   def test(n: {m: Int | m == 0}): ((input: {xs: ListInt | true}) => {r: Result | r == Ok()}) = {
-    fun (input: {xs: ListInt | true}): {r: Result | r == Ok()} {
-      type StateRegion = (local (Unit) => Unit);
+    fun (input: {xs: ListInt | true})[R: Reg]: {r: Result | r == Ok()} {
+      type StateRegion = ((Unit) =>[R] Unit);
       val run = try {
-        def rec local go(m: Int): (v: Result) /
-          ((local[StateRegion] (xs: ListInt) => {r: Result | r == v}) =>
-           (local[StateRegion] (xs: ListInt) => {r: Result | r == readOutcome(xs, m)})) = {
+        def rec go(m: Int) at [inputHandler]: (v: Result) /
+          (((xs: ListInt) =>[StateRegion] {r: Result | r == v}) =>
+           ((xs: ListInt) =>[StateRegion] {r: Result | r == readOutcome(xs, m)})) = {
           if (m <= 0) { Ok() } else { inputHandler.read(m); go(m - 1) }
         }
         go(n)
-      } with inputHandler: (local (xs: ListInt) => {r: Result | r == readOutcome(xs, n)}) {
+      } with inputHandler: ((xs: ListInt) =>[R] {r: Result | r == readOutcome(xs, n)}) {
         def read(remaining: {m: Int | m > 0}): Int /
-          ((local (xs: ListInt) => {r: Result | r == readOutcome(xs, remaining - 1)}) =>
-           (local (xs: ListInt) => {r: Result | r == readOutcome(xs, remaining)})) = {
-          fun local (xs: ListInt): {r: Result | r == readOutcome(xs, remaining)} {
+          (((xs: ListInt) =>[R] {r: Result | r == readOutcome(xs, remaining - 1)}) =>
+           ((xs: ListInt) =>[R] {r: Result | r == readOutcome(xs, remaining)})) = {
+          fun (xs: ListInt) at [R]: {r: Result | r == readOutcome(xs, remaining)} {
             match (xs) {
               case Nil() => { Err() }
               case Cons(h, t) => { val next = resume(h); next(t) }
             }
           }
         }
-        return v => { fun local (xs: ListInt): {r: Result | r == v} { v } }
+        return v => { fun (xs: ListInt) at [R]: {r: Result | r == v} { v } }
       };
       run(input)
     }

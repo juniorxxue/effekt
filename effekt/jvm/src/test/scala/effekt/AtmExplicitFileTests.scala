@@ -22,7 +22,7 @@ class AtmExplicitFileTests extends munit.FunSuite {
   }
   private def terms(t: Core.Term): List[Core.Term] = {
     def value(v: Core.Value): List[Core.Term] = v.node match {
-      case Core.ValueNode.LocalLambda(_, _, b) => terms(b)
+      case Core.ValueNode.FixedLambda(_, _, b) => terms(b)
       case Core.ValueNode.Lambda(_, _, b) => terms(b)
       case Core.ValueNode.CapabilityLambda(_, _, _, b) => value(b)
       case Core.ValueNode.KindLambda(_, _, b) => value(b)
@@ -36,7 +36,7 @@ class AtmExplicitFileTests extends munit.FunSuite {
     t :: (t.node match {
       case Core.Node.Return(v) => value(v)
       case Core.Node.Let(_, a, b) => terms(a) ++ terms(b)
-      case Core.Node.Apply(f, a, _) => value(f) ++ value(a)
+      case Core.Node.Apply(f, a, _, _) => value(f) ++ value(a)
       case Core.Node.Handle(_, _, b, _, r, ops) => terms(b) ++ terms(r) ++ ops.flatMap(o => terms(o.body))
       case Core.Node.If(c, a, b) => value(c) ++ terms(a) ++ terms(b)
       case Core.Node.Ascribe(b) => terms(b)
@@ -44,7 +44,7 @@ class AtmExplicitFileTests extends munit.FunSuite {
     })
   }
   // Keep the entire definition but replace all uses with a pure result.
-  private def unused(s: String): String = s.take(s.indexOf("  file[here, Int](7)")) + "  0\n}\n"
+  private def unused(s: String): String = s.take(s.indexOf("  file[Int](7)(")) + "  0\n}\n"
 
   test("explicit reusable Fig. 1 has one polymorphic helper body and two instantiations") {
     val p = run(source, "42")
@@ -52,26 +52,34 @@ class AtmExplicitFileTests extends munit.FunSuite {
     val helpers = all.collect { case Core.Term(Core.Node.Let("file", binding, _), _, _) => binding }
     assertEquals(helpers.size, 1)
     assert(helpers.head.tpe.value match {
-      case Type.KindPoly(_, Annotations.Kind.Region, Type.KindPoly(_, Annotations.Kind.Computation, _: Type.LocalFunction)) => true
+      case Type.KindPoly(_, Annotations.Kind.Computation, f: Type.Function) =>
+        f.argument == Type.Int && f.result.value.isInstanceOf[Type.FixedFunction]
       case _ => false
     })
     assertEquals(all.count(_.node.isInstanceOf[Core.Node.Handle]), 1)
     assert(!terms(helpers.head).exists(_.node.isInstanceOf[Core.Node.Perform]))
     val instantiations = all.collect {
       case Core.Term(Core.Node.Apply(Core.Value(Core.ValueNode.InstantiateKind(
-        Core.Value(Core.ValueNode.InstantiateKind(Core.Value(Core.ValueNode.Variable("file"), _), _), _),
-        Annotations.Argument.Computation(c)), _), _, _), _, _) => c
+        Core.Value(Core.ValueNode.Variable("file"), _), Annotations.Argument.Computation(c)), _), _, _, _), _, _) => c
     }
     assertEquals(instantiations.size, 2)
     assertEquals(instantiations.count(_.effect == Effect.Pure), 1)
     assertEquals(instantiations.count(_.effect.isInstanceOf[Effect.Change]), 1)
     val ops = all.collect { case Core.Term(Core.Node.Perform(_, _, _, e, t), _, _) => (e.distance.concrete, t.context) }
-    assertEquals(ops.map(_._1), List(Some(1), Some(0), Some(1), Some(0)))
-    assertEquals(ops.count(_._2 == Evidence.AnswerContext.Hole), 2)
+    assertEquals(ops.map(_._1), List(None, None, None, None))
+    assertEquals(ops.count(_._2.isInstanceOf[Evidence.AnswerContext.Variable]), 2)
+  }
+  test("the former uncurried caller-dependent callback domain is rejected") {
+    val uncurried = unused(source)
+      .replace("(c: Int)[R: Reg] {\n    fun (body:", "(c: Int, body:")
+      .replace(") at [R]: C {", ")[R: Reg]: C {")
+      .replace("\n    }\n  };", "\n  };")
+    Parser.parse(uncurried).fold(e => fail(e.message), identity)
+    reject(uncurried, "Unknown or out-of-scope capability R")
   }
   test("descriptor values remain runtime arguments") {
     run(source.replace("x + y", "x * 100 + y"), "735")
-    run(source.replace("(7)", "(11)").replace("(35)", "(31)"), "42")
+    run(source.replace("(7)(", "(11)(").replace("(35)(", "(31)("), "42")
   }
   test("helper and interface names have no special meaning") {
     run(source.replace("file", "usingResource").replace("body", "action").replace("File", "Resource"), "42")
@@ -84,28 +92,28 @@ class AtmExplicitFileTests extends munit.FunSuite {
   }
   test("a helper is checked before its uses") {
     // Both the definition and the use are wrong: the definition must fail first.
-    reject(source.replace("resume(c)", "missingValue").replace("(7)", "(true)"), "Unknown value missingValue")
+    reject(source.replace("resume(c)", "missingValue").replace("(7)(", "(true)("), "Unknown value missingValue")
   }
   test("callback result annotations are checked") {
     reject(source.replace("x + y", "true"), "Expected Int")
   }
   test("helper argument annotations are checked") {
-    reject(source.replace("(7)", "(true)"), "Expected Int")
+    reject(source.replace("(7)(", "(true)("), "Expected Int")
   }
   test("callback capabilities cannot escape in an Int result") {
     reject(source.replace("x + y", "b"), "Expected Int")
   }
   test("explicit evidence cannot erase a handler edge") {
-    reject(source.replace("body{h}[step(h)]()", "body{h}[refl]()"), "Annotation kind mismatch")
+    reject(source.replace("body{h}[step(h)][[]]()", "body{h}[refl][[]]()"), "Annotation kind mismatch")
   }
   test("an outer operation requires its one-layer explicit ATC") {
-    reject(source.replace("[EB; Int / (Int => [])]", "[EB; []]"), "ATC depth differs")
+    reject(source.replace("[path(b) + EB + PA; J[layer(Int, K[Int], K)]]", "[path(b) + EB + PA; J]"), "ATC depth differs")
   }
   test("an operation cannot use evidence with reversed endpoints") {
-    reject(source.replace("Ev(b, 1, a)", "Ev(a, 1, b)"), "incorrect region endpoints")
+    reject(source.replace("Ev(b, 1, S)", "Ev(S, 1, b)"), "Ill-composed region evidence")
   }
   test("an incorrect computation instantiation is rejected") {
-    val s = source.replace("file[a, Int / (Int => Int)]", "file[a, Bool]")
+    val s = source.replace("file[A]", "file[Bool]")
     assert(Parser.parse(s).flatMap(Checker.check).isLeft)
   }
   test("symbolic-distance ATC inference still requires an annotation") {

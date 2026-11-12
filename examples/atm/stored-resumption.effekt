@@ -3,8 +3,8 @@
 def main(): Int = {
   val saved = try {
     h.suspend()
-  } with h: (local (Int) => Int) {
-    def suspend(arg: Unit): Int / (Int => (local (Int) => Int)) = {
+  } with h: ((Int) =>[top] Int) {
+    def suspend(arg: Unit): Int / (Int => ((Int) =>[top] Int)) = {
       resume
     }
     return x => {

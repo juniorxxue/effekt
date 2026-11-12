@@ -27,7 +27,7 @@ class AtmCapabilityNamesTests extends munit.FunSuite {
   }
 
   test("a handler name is a value argument and cap(h) remains a type annotation") {
-    run(program("""def local invoke(c: cap(h)): Int / (Int => Int) = { c.ask() }
+    run(program("""def invoke(c: cap(h)) at [h]: Int / (Int => Int) = { c.ask() }
       invoke(h)"""), "42")
   }
 
@@ -52,7 +52,7 @@ class AtmCapabilityNamesTests extends munit.FunSuite {
   }
 
   test("a function parameter shadows a capability in value position") {
-    run(program("def local echo(h: Int): Int = { h } echo(7)"), "7")
+    run(program("def echo(h: Int) at [h]: Int = { h } echo(7)"), "7")
   }
 
   test("an inner handler shadows an outer value in value and receiver positions") {
