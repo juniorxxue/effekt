@@ -1,6 +1,6 @@
 package effekt
 
-import effekt.atm.{Annotations, Checker, Core, DirectBackend, Evidence, Parser, Syntax}
+import effekt.atm.{Annotations, Checker, Core, DirectBackend, Evidence, Parser, Syntax, TypeEquality}
 import Syntax.*
 import java.nio.file.{Files, Path}
 
@@ -47,6 +47,9 @@ class AtmExplicitFileTests extends munit.FunSuite {
   private def unused(s: String): String = s.take(s.indexOf("  file[Int](7)(")) + "  0\n}\n"
 
   test("explicit reusable Fig. 1 has one polymorphic helper body and two instantiations") {
+    assert(source.contains("(f: File) =>"))
+    assert(source.contains("fun (a: File)"))
+    assert(source.contains("fun (b: File)"))
     val p = run(source, "42")
     val all = terms(Core.elaborate(p).body)
     val helpers = all.collect { case Core.Term(Core.Node.Let("file", binding, _), _, _) => binding }
@@ -56,6 +59,18 @@ class AtmExplicitFileTests extends munit.FunSuite {
         f.argument == Type.Int && f.result.value.isInstanceOf[Type.FixedFunction]
       case _ => false
     })
+    helpers.head.tpe.value match {
+      case Type.KindPoly(answer, Annotations.Kind.Computation, f: Type.Function) =>
+        val consumer = f.result.value.asInstanceOf[Type.FixedFunction]
+        val capability = consumer.argument.asInstanceOf[Type.CapabilityPoly]
+        assertEquals(capability.operations.map(_.name), List("close", "read"))
+        val expected = Annotations.abstractComputation(ComputationForm.Variable(answer))
+        capability.operations.foreach { op =>
+          assert(TypeEquality.same(op.initialAnswer, expected))
+          assert(TypeEquality.same(op.finalAnswer, expected))
+        }
+      case _ => fail("Expected a computation-polymorphic helper")
+    }
     assertEquals(all.count(_.node.isInstanceOf[Core.Node.Handle]), 1)
     assert(!terms(helpers.head).exists(_.node.isInstanceOf[Core.Node.Perform]))
     val instantiations = all.collect {

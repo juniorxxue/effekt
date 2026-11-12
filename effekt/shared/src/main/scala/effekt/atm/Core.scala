@@ -126,6 +126,14 @@ object Core {
   def validate(root: Term, datatypes: List[DataDeclaration] = Nil): Unit = {
     val constructors = Datatypes.constructors(Datatypes.validate(datatypes))
     def require(ok: Boolean, message: String): Unit = if !ok then throw Diagnostic("Core: " + message)
+    def resolved(c: Computation): Unit = {
+      new Annotations.Mapper {
+        override def after(t: Type): Type = t match {
+          case Type.Interface(n, _) => throw Diagnostic("Core: unresolved interface capability type " + n)
+          case _ => t
+        }
+      }.computation(c)
+    }
     def proof(w: Witness, bs: Map[String, Binding], rs: Set[String]): Unit = {
       require(w.constraint.free.subsetOf(rs), "unbound evidence region")
       w match {
@@ -134,7 +142,11 @@ object Core {
         case Witness.Compose(a, b) => proof(a, bs, rs); proof(b, bs, rs)
       }
     }
-    def value(v: Value, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]], ks: Map[String, Annotations.Kind]): Unit = v.node match {
+    def value(v: Value, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]], ks: Map[String, Annotations.Kind]): Unit = {
+      resolved(Computation(v.tpe))
+      valueNode(v, bs, rs, region, vs, cs, ks)
+    }
+    def valueNode(v: Value, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]], ks: Map[String, Annotations.Kind]): Unit = v.node match {
       case ValueNode.FixedLambda(parameter, target, body) =>
         val tpe = v.tpe match {
           case t: Type.FixedFunction => t
@@ -249,6 +261,7 @@ object Core {
       case ValueNode.Token(n) => require(v.tpe == Type.Token(n), "mistyped token")
     }
     def term(t: Term, bs: Map[String, Binding], rs: Set[String], region: String, vs: Map[String, Type], cs: Map[String, List[Signature]], ks: Map[String, Annotations.Kind]): Unit = {
+      resolved(t.tpe)
       require(t.region == region, "term moved to a different region")
       t.node match {
         case Node.Return(v) => value(v, bs, rs, region, vs, cs, ks)

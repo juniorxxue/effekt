@@ -866,3 +866,43 @@ chez --script /private/tmp/effekt-named-file.ss
   remaining extensions.
 
 Full log: `/private/tmp/effekt-named-complete.log`.
+
+## 2026-11-12: named interface types for capability parameters
+
+Capability parameters now accept `(f: File) => T` and `fun (f: File)`.
+The checker expands the interface's declaration-scoped value signatures and
+uses the expected capability type's full ATM contracts. In a consumer parameter
+annotation without an expected contract, its enclosing result annotation `C`
+supplies `C => C` defaults. Computation parameters and effectful computations
+are preserved; ambiguous standalone uses are rejected instead of being
+specialized at later call sites.
+
+Both reusable file examples use named parameters and inherited handler
+signatures. Fig. 1 retains one checked helper/handler body, two computation
+instantiations, and the existing caller-region/evidence/ATC annotations. Its
+Core regression also checks that both File operations carry the abstract
+computation parameter as their initial and final answer.
+
+Validation:
+
+```sh
+sbt -batch 'effektJVM/testOnly effekt.AtmNamedCapabilityTests' \
+  'effektJVM/testOnly effekt.Atm*Tests' 'effektJS/compile'
+sbt -batch \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-reusable.effekt' \
+  'effektJVM/runMain effekt.atm.Main --run examples/atm/file-polymorphic.effekt'
+```
+
+- **485 ATM tests passed; zero failures/errors.** Scala.js compilation passed.
+- **24 new regressions** cover contextual and explicit answer contracts,
+  parameterized interfaces, recursive consumers, declaration scope and name
+  shadowing, dependent signatures, incompatible contracts, ambiguous contexts,
+  capability forwarding/escape, and rejection of unresolved names in Core.
+  Accepted cases compare reference evaluation with optimized/unoptimized Chez.
+- Both file examples return **42** through the CLI. Existing evidence-distance,
+  ATC-depth, caller-domain, and invalid-unused-helper regressions pass.
+- `git diff --check` passed. Validation used an isolated copy of the shared
+  working tree, preserving the existing caller-region and unified-fun changes.
+
+Logs: `/private/tmp/effekt-named-capabilities-final.log` and
+`/private/tmp/effekt-named-capabilities-full.log` (CLI runs).

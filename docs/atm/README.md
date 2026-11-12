@@ -219,6 +219,15 @@ ATM answer contract. Interface names do not introduce nominal capability types
 into the paper calculus. See [syntax differences](SYNTAX-DIFFERENCES.md) for
 the remaining native interface features.
 
+Capability parameters can use `f: File`, including `(f: File) => T` callback
+types and `fun (f: File) { value }` lambdas. The checker expands the declared
+operations internally. An expected capability type supplies their exact answer
+contracts; otherwise an enclosing consumer result annotation `C` supplies the
+default `C => C` answers. This also works for effectful computations and `Cty`
+parameters. Ambiguous standalone named abstractions require an answer context
+or a structural annotation. See [capability parameters](ANNOTATIONS.md#binders-and-applications)
+for a complete example and the scoping rules.
+
 Native calls such as `resume(readInt(c))`, computations inside arithmetic and
 constructors, and multiple arguments elaborate to ordinary `let` bindings and
 pairs. Effects execute once in left-to-right order; short-circuited operands stay
@@ -243,7 +252,7 @@ one caller-indexed `file` value with computation parameter `[C: Cty]`, called
 as `file[C](descriptor)(callback)`. It declares `(c: Int)[R: Reg]` to name its
 implicit caller. Its ordinary domain is `Int`; it returns
 a function with an explicit fixed-region contract. Its callbacks declare
-capabilities, evidence, and call ATCs with symbolic depths;
+named `File` capabilities, evidence, and call ATCs with symbolic depths;
 operation calls supply those ATCs. The helper is checked once and instantiated at
 both nested call sites, with no contextual specialization. `interface File`,
 `read(): Int`, and `close(): Unit` remain. The mock-backed program checks at

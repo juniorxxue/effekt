@@ -12,6 +12,9 @@ object Syntax {
   enum Type {
     case Int, Bool, Unit
     case Token(name: String)
+    // Source-only reference. Capability binders expand it to checked structural
+    // operation contracts; it is not a nominal runtime value type.
+    case Interface(name: String, arguments: List[Type])
     case Data(name: String)
     case Variable(name: String)
     case Pair(first: Type, second: Type)
@@ -158,6 +161,7 @@ object Syntax {
     case Type.Bool => "Bool"
     case Type.Unit => "Unit"
     case Type.Token(name) => name
+    case Type.Interface(name, arguments) => name + (if arguments.isEmpty then "" else arguments.map(show).mkString("[", ", ", "]"))
     case Type.Data(name) => name
     case Type.Variable(name) => displayName(name)
     case Type.Pair(a, b) => s"(${show(a)}, ${show(b)})"

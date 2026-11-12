@@ -635,7 +635,9 @@ object Parser {
             val body = tpe(); expect(")")
             Type.EffectPoly(name, body, constraint)
           }
-        case name if name.matches("[A-Z][a-zA-Z0-9_]*") => take(); Type.Token(name)
+        case name if name.matches("[A-Z][a-zA-Z0-9_]*") =>
+          take()
+          if interfaces.contains(name) then Type.Interface(name, typeArguments()) else Type.Token(name)
         case _ => fail(s"Expected a value type, found '$current'")
       }
       if accept("at") then {

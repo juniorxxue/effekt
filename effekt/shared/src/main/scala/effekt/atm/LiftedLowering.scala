@@ -103,6 +103,7 @@ object LiftedLowering {
       case Type.Bool => L.Type.TBoolean
       case Type.Unit => L.Type.TUnit
       case Type.Token(n) => token(n)._1
+      case Type.Interface(n, _) => throw Diagnostic(s"Unresolved interface capability type $n")
       case Type.Data(n) => dataTypes(n)
       case Type.Variable(n) => env.types.getOrElse(n, throw Diagnostic("Unbound Lifted type variable " + n))
       case Type.Pair(a, b) => L.ValueType.Data(pair, List(target(a, env), target(b, env)))

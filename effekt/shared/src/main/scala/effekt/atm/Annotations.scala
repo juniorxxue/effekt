@@ -95,6 +95,7 @@ object Annotations {
     def signature(o: Signature): Signature = o.copy(argument = typ(o.argument), result = typ(o.result),
       initialAnswer = computation(o.initialAnswer), finalAnswer = computation(o.finalAnswer))
     def typ(t: Type): Type = after(t match {
+      case Type.Interface(n, args) => Type.Interface(n, args.map(typ))
       case Type.Pair(a, b) => Type.Pair(typ(a), typ(b))
       case Type.Refined(n, b, p) => Type.Refined(n, typ(b), expression(p))
       case Type.Function(a, r, cs, scope, n, caller) =>
@@ -191,6 +192,7 @@ object Annotations {
       case _ => super.computation(c)
     }
     override def typ(t: Type): Type = t match {
+      case Type.Interface(n, _) => throw Diagnostic("Unresolved interface capability type " + n)
       case Type.KindPoly(n, k, b) =>
         kind(k)
         val savedKinds = ks; val savedRegions = rs

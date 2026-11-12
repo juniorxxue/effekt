@@ -11,6 +11,7 @@ frontend, rather than with the latest upstream language.
 | --- | --- |
 | `interface File { def read(): Int def close(): Unit }` | Named declarations, inherited clause value signatures, and checked repeated annotations. |
 | `interface Reader[A] { def read(): A }`; `with h: Reader[Int]` | Interface type parameters and explicit instantiation. Declarations are resolved in their own scope before instantiation. |
+| `(f: File) => T`; `fun (f: File) { value }` | Named capability parameters expand to structural operation contracts. Expected types supply exact ATM answers; an enclosing consumer result annotation supplies default `C => C` answers. |
 | `def op(x: Int, y: Int): Int` | Multiple function/lambda/operation parameters and arguments elaborate to nested pairs. Missing clause types come from the interface; mixed explicit/omitted annotations are checked. |
 | `resume(readInt(c))`, `f(g())`, `f()(x)`, calls in arithmetic/constructors | Expressions elaborate to fresh `let` bindings in left-to-right order, with each computation evaluated once. |
 | `false && call()`, `true || call()` | Computed right operands remain under conditional branches. Partial primitive operands such as division also remain conditional. |
@@ -56,7 +57,7 @@ callback-domain extension remains removed.
 | Polymorphic operations, omitted generic instantiations | Parameterized **interfaces** now work, but operations cannot declare their own type parameters. Function/interface type arguments remain explicit; native type-argument inference is not implemented. |
 | Mutual recursion and polymorphic recursive functions | Need recursive groups/schemes beyond the existing unary `LetRec`. Ordinary monomorphic self recursion works. |
 | Generic datatypes, records, lists, nested/default/guarded patterns | The datatype checker currently supports monomorphic data and exhaustive flat constructor cases. These forms require further data/pattern elaboration and coverage checking. |
-| Native interface names as general block/capability types; `new File { ... }` | Named interfaces currently supply handler signatures. General native object/block typing is not integrated. |
+| General native interface objects/blocks; `new File { ... }` | Named interfaces supply handler signatures and capability-parameter contracts. General native object/block typing is not integrated. |
 | `module`, `import`, namespaces, qualified names, `extern`, standard libraries | Module resolution, library contracts and external-call lowering remain missing. Fig. 1 still uses mocks. |
 | Strings, characters, floating point and interpolation | Literal/runtime/library support remains missing. Int execution is exact; it is not claimed to reproduce native fixed-width arithmetic. |
 | `var`, assignment, `while`, native `region`, `box`/`unbox` | State/control/capture elaboration and typing/runtime support remain missing. |
@@ -74,8 +75,10 @@ retain a distinction between multiple arguments and an explicitly packed pair.
 
 ## Intentional ATM meanings and extensions
 
-- Capabilities are passed with `fun (c: { def op(): T / (C1 => C2); }) { value }`
-  and `f(h)`. Their dependent arrow is `(c: { ... }) => T`; the structural
+- Capabilities are passed with `fun (c: File) { value }` and `f(h)` when an
+  expected contract supplies the operation answers. The explicit form remains
+  `fun (c: { def op(): T / (C1 => C2); }) { value }`.
+  Their dependent arrows are `(c: File) => T` and `(c: { ... }) => T`; the structural
   contract binds the abstract region using the existing capability rules.
   Answer effects use `fun [E: Eff]` and `f[pure]`. The prototype `capfun` and
   `effectfun` keywords and brace calls remain compatibility aliases only.
@@ -115,6 +118,9 @@ and [`Checker.scala`](../../effekt/shared/src/main/scala/effekt/atm/Checker.scal
 `AtmNativeSyntaxTests` covers evaluation order, short circuiting, native declarations,
 generics, recursion, wildcard fields, and rejected type/escape errors. Accepted
 cases run through the reference interpreter and optimized/unoptimized Chez.
+`AtmNamedCapabilityTests` covers contextual answer contracts, parameterized
+interfaces, lexical shadowing, dependent signatures, incompatible contracts,
+ambiguous answer contexts, and escape checking.
 `AtmExplicitFileTests` checks one generic helper/handler body in Core, two
 computation instantiations, symbolic callback evidence/ATCs,
 and rejection of invalid unused helper definitions and invalid annotations.

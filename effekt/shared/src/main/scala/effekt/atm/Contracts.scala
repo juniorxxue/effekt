@@ -56,6 +56,7 @@ object Contracts {
     case _ => Logic.True
   }
   def free(t: Type): Set[String] = t match {
+    case Type.Interface(_, arguments) => arguments.flatMap(free).toSet
     case Type.Pair(a, b) => free(a) ++ free(b)
     case Type.Refined(n, b, p) => free(b) ++ (Logic.variables(p) - n)
     case Type.Function(a, r, _, _, name, _) => free(a) ++ (free(r) -- name)

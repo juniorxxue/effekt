@@ -40,6 +40,7 @@ object Surface {
   def typeArguments(t: Type, actuals: Map[String, Type]): Type = new Annotations.Mapper {
     override def typ(t: Type): Type = t match {
       case Type.Token(n) if actuals.contains(n) => actuals(n)
+      case Type.Interface(n, Nil) if actuals.contains(n) => actuals(n)
       case Type.TypePoly(n, b) => Type.TypePoly(n, typeArguments(b, actuals - n))
       case Type.KindPoly(n, k, b) => Type.KindPoly(n, k, typeArguments(b, actuals - n))
       case _ => super.typ(t)

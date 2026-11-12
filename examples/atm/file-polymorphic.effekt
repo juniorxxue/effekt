@@ -2,23 +2,25 @@
 // Each callback declares its call ATC; the helper instantiates it with [].
 // The symbolic-distance inference failure is infer/polymorphic-outer-call.effekt.
 // Mock descriptors/read/close; no operating-system file access.
+interface File {
+  def read(): Int
+  def close(): Unit
+}
+
 def main(): Int = {
   def readInt(c: Int): Int = { c }
   def closeFile(c: Int): Unit = { () }
   val file = fun [R] {
     fun (c: Int) {
-      fun (body: (f: {
-        def read(Unit): Int / (R => R);
-        def close(Unit): Unit / (R => R);
-      }) => ((Unit)[K: ATC(dist(path(f)))] => R / (K[R] => K[R]) at {f})) {
+      fun (body: (f: File) => ((Unit)[K: ATC(dist(path(f)))] => R / (K[R] => K[R]) at {f})) {
         try {
           body(h)[[]]()
-        } with h {
-          def read(u: Unit): Int / (R => R) = {
+        } with h: File {
+          def read() = {
             val x = readInt(c);
             resume(x)
           }
-          def close(u: Unit): Unit / (R => R) = {
+          def close() = {
             closeFile(c);
             resume()
           }
@@ -28,10 +30,7 @@ def main(): Int = {
     }
   };
   val readNumber = file[Int](42);
-  val n = readNumber(fun (f: {
-    def read(Unit): Int / (Int => Int);
-    def close(Unit): Unit / (Int => Int);
-  }) {
+  val n = readNumber(fun (f: File) {
     fun (u: Unit)[K: ATC(dist(path(f)))]: Int / (K[Int] => K[Int]) {
       val x = f.read[path(f); K]();
       f.close[path(f); K]();
@@ -39,10 +38,7 @@ def main(): Int = {
     }
   });
   val checkNumber = file[Bool](35);
-  val ok = checkNumber(fun (f: {
-    def read(Unit): Int / (Bool => Bool);
-    def close(Unit): Unit / (Bool => Bool);
-  }) {
+  val ok = checkNumber(fun (f: File) {
     fun (u: Unit)[K: ATC(dist(path(f)))]: Bool / (K[Bool] => K[Bool]) {
       val x = f.read[path(f); K]();
       f.close[path(f); K]();

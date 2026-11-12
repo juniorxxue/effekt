@@ -23,6 +23,35 @@ effects, not native Effekt effect sets. Bare arguments such as `f[pure]` and
 Capability values use ordinary parameter and application syntax:
 
 ```effekt
+interface Ask { def ask(): Int }
+def use(body: (c: Ask) => ((Unit) =>[c] Int / (Int => Int))) at [top]: Int = {
+  try { body(h)() } with h: Ask { def ask() = resume(42) }: Int
+}
+def main(): Int = use(fun (c: Ask) {
+  fun () at [c]: Int / (Int => Int) { c.ask() }
+})
+```
+
+`c: Ask` takes the operation value signatures from the declaration. In a
+consumer's parameter type, its result annotation `C` supplies the default
+`C => C` operation answers. `C` can be a computation parameter or a computation
+with an answer effect, as in the reusable file example. A trailing whole-body
+computation ascription can supply the same context for an inferred function.
+The result must resolve in the domain's lexical scope, before the consumer's
+value, caller-region, or call-ATC binders.
+
+When checking a named capability lambda or domain against an expected capability
+type, the checker uses that type's full operation contracts, including distinct
+answer endpoints. It checks the interface's operation names and value signatures
+against those contracts. Parameterized names such as `Reader[Int]` work too;
+ordinary type parameters and local type aliases can shadow an interface name.
+Named references disappear during checking: Core still carries structural
+signatures, capability regions, and explicit answer contracts. A standalone
+named abstraction without a sufficient answer context is rejected; it does not
+infer answers from future call sites. Structural contracts remain available
+when an explicit answer transition is needed:
+
+```effekt
 val forward: (c: { def ask(): Int / (Int => Int); }) => cap(c) =
   fun (c: { def ask(): Int / (Int => Int); }) { c };
 // Within a compatible handler h:

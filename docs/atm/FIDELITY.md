@@ -83,6 +83,16 @@ An absent return clause expands to an identity clause with a fresh binder.
 No nominal-interface rule or capability equality rule is added to the calculus;
 the existing structural operation signatures and `A_Handle` checks remain.
 
+Named capability parameters such as `(f: File) => T` and `fun (f: File)`
+expand to the same structural signatures and capability abstraction rule.
+An expected capability type supplies its complete answer contracts. In a
+consumer parameter annotation without such an expectation, the enclosing
+result annotation supplies `C => C` defaults; it must resolve before the
+consumer's value/caller binders. This includes abstract computation parameters
+and effectful computations. There is no call-site specialization or inferred
+answer-contract quantification. A named abstraction without a sufficient
+context is rejected. Core independently rejects unresolved interface names.
+
 A result-only declaration does not specify an ATM answer transition. Each
 implementation may give an explicit transition or use the contextual convention
 below. This is additional surface elaboration, not a new inference rule in the

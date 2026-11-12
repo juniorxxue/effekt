@@ -112,6 +112,9 @@ object Checker {
                                    // Lexical default for unqualified arrows inside an annotation.
                                    // Result annotations use the fresh caller; domains use the outer region.
                                    annotationDefaultRegion: Option[String] = None,
+                                   // Resolved answer used only while elaborating named
+                                   // capability contracts in an annotated function domain.
+                                   capabilityAnswer: Option[Computation] = None,
                                    delta: List[Binding] = Nil,
                                    types: Map[String, String] = Map.empty,
                                    aliases: Map[String, Type] = Map.empty,
@@ -267,8 +270,12 @@ object Checker {
       case Type.KindPoly(_, _, body) => captures(body)
       case _ => Set.empty
     }
-    private def resolve(tpe: Type, env: Environment): Type = tpe match {
-      case Type.Pair(a, b) => Type.Pair(resolve(a, env), resolve(b, env))
+    private def resolve(tpe: Type, env: Environment, expected: Option[Type] = None): Type = tpe match {
+      case Type.Interface(n, Nil) if namedInterface(tpe, env).isEmpty => resolve(Type.Token(n), env)
+      case Type.Interface(n, _) => fail(s"Interface $n is only supported as a capability parameter type")
+      case Type.Pair(a, b) =>
+        val pair = expected.collect { case Type.Pair(x, y) => (x, y) }
+        Type.Pair(resolve(a, env, pair.map(_._1)), resolve(b, env, pair.map(_._2)))
       case Type.Token(name) if env.annotations.contains(name) => fail(s"$name is not a value type")
       case Type.Token(name) if env.types.contains(name) => Type.Variable(env.types(name))
       case Type.Token(name) if env.aliases.contains(name) => env.aliases(name)
@@ -300,7 +307,7 @@ object Checker {
       case Type.FixedFunction(arg, result, cs, region, parameter) =>
         val target = region.map(r => if r == Evidence.Top then r else env.localRegion(r)).getOrElse(env.region)
         val scope = env.copy(region = target)
-        val argument = resolve(arg, scope)
+        val argument = resolveDomain(arg, Some(result), scope, expected.collect { case f: Type.FixedFunction => f.argument })
         val id = parameter.map(fresh)
         val inner = parameter.zip(id).foldLeft(scope) { case (e, (n, i)) => e.bindIdentity(n, argument, i) }
         // Legacy emitter metadata: a local callback may capture any enclosing
@@ -308,12 +315,22 @@ object Checker {
         // additional source subtyping or region condition.
         val reachable = env.capabilities.keySet.filter(c => Evidence.known(target, c, env.delta).nonEmpty)
         Type.FixedFunction(argument, resolve(result, inner), cs.map(env.capability) ++ reachable, Some(target), id)
+      case Type.Function(arg, result, cs, _, parameter, template) if namedInterface(arg, env).nonEmpty =>
+        require(cs.isEmpty && template.isEmpty, "A named capability arrow cannot declare call-region or ATC parameters")
+        require(result.form.isEmpty && result.effect == Effect.Pure, "A capability arrow returns a value; put computations in a returned function")
+        val ref = namedInterface(arg, env).get
+        val name = parameter.getOrElse(fresh("capability"))
+        val identity = fresh(name)
+        val required = expected.collect { case p: Type.CapabilityPoly => p }
+        val ops = capabilityOperations(ref, identity, required, env)
+        val inner = env.withCapability(name, identity, ops)
+        Type.CapabilityPoly(identity, ops, resolve(result.value, inner, required.map(p => open(p.body, p.parameter, identity))))
       case Type.Function(arg, result, cs, _, parameter, template) =>
         val caller = Caller(fresh("typeCaller"), fresh("typeDistance"))
         val target = if cs.isEmpty then env.annotationDefaultRegion.getOrElse(env.region) else Evidence.minimum(cs.toList.map(env.capability), env.delta)
         val call = Binding(fresh("typeCallEvidence"), Constraint(caller.region, target), Distance.Variable(caller.distance))
         val identity = parameter.map(fresh)
-        val argument = resolve(arg, env)
+        val argument = resolveDomain(arg, Some(result), env, expected.collect { case f: Type.Function => f.argument })
         var inner = env.copy(region = caller.region,
           annotationDefaultRegion = Some(env.annotationDefaultRegion.getOrElse(env.region)),
           delta = call :: env.delta, kinds = env.kinds.updated(caller.distance, Kind.Distance))
@@ -380,6 +397,107 @@ object Checker {
       require(operations.nonEmpty, "A capability contract must declare at least one operation")
       require(operations.map(_.name).distinct.size == operations.size, "Duplicate operation in capability contract")
       operations.map(resolveSignature(_, env)).sortBy(_.name)
+    }
+    private def namedInterface(t: Type, env: Environment): Option[Type.Interface] = t match {
+      case ref @ Type.Interface(n, _) if !env.types.contains(n) && !env.aliases.contains(n) && !env.annotations.contains(n) => Some(ref)
+      case _ => None
+    }
+    private def containsNamedCapability(t: Type, env: Environment): Boolean = {
+      var found = false
+      new Annotations.Mapper {
+        override def typ(t: Type): Type = t match {
+          case Type.TypePoly(n, b) =>
+            if containsNamedCapability(b, env.withType(n, n)) then found = true
+            t
+          case Type.KindPoly(n, _, b) =>
+            if containsNamedCapability(b, env.withType(n, n)) then found = true
+            t
+          case _ => super.typ(t)
+        }
+        override def after(t: Type): Type = { if namedInterface(t, env).nonEmpty then found = true; t }
+      }.typ(t)
+      found
+    }
+    private def domainEnvironment(argument: Type, result: Option[Computation], env: Environment): Environment = {
+      if !containsNamedCapability(argument, env) then env
+      else result match {
+        // Resolve in the domain's lexical scope, before any caller or value
+        // binder. This must not reintroduce caller-dependent function domains.
+        case Some(c) => env.copy(capabilityAnswer = Some(resolve(c, env)))
+        case None => env
+      }
+    }
+    private def resolveDomain(argument: Type, result: Option[Computation], env: Environment,
+        expected: Option[Type] = None): Type =
+      // An expected domain already contains complete operation contracts. It
+      // does not depend on the enclosing arrow's caller or value parameter.
+      resolve(argument, if expected.nonEmpty then env else domainEnvironment(argument, result, env), expected)
+    private def interfaceOperations(ref: Type.Interface, env: Environment): List[Signature] = {
+      val Type.Interface(name, arguments) = ref
+      val schema = interfaces.getOrElse(name, fail(s"Unknown interface $name"))
+      require(schema.parameters.size == arguments.size, s"Wrong number of type arguments for interface $name")
+      val actuals = schema.parameters.zip(arguments.map(resolve(_, env))).toMap
+      val mapper = new Annotations.Mapper {
+        override def after(t: Type): Type = t match {
+          case Type.Variable(n) if actuals.contains(n) => actuals(n)
+          case _ => t
+        }
+      }
+      schema.operations.values.toList.sortBy(_.name).map(mapper.signature)
+    }
+    private def namedOperations(ref: Type.Interface, env: Environment, answer: Option[Computation]): List[Signature] = {
+      val declared = interfaceOperations(ref, env)
+      if declared.isEmpty then Nil else {
+        val c = answer.getOrElse(fail(s"Named capability ${ref.name} needs an expected capability contract or an enclosing function result annotation"))
+        declared.map(_.copy(initialAnswer = c, finalAnswer = c))
+      }
+    }
+    private def capabilityOperations(ref: Type.Interface, region: String, expected: Option[Type.CapabilityPoly],
+        env: Environment): List[Signature] = expected match {
+      case Some(p) =>
+        val required = p.operations.map(open(_, p.parameter, region))
+        val declared = interfaceOperations(ref, env)
+        // Compare value signatures modulo dependent binders, while retaining
+        // both ATM answer endpoints from the expected contract.
+        def values(o: Signature): Signature = o.copy(initialAnswer = Computation(Type.Unit), finalAnswer = Computation(Type.Unit))
+        require(TypeEquality.sameOperations(declared.map(values), required.map(values)),
+          s"Capability parameter ${ref.name} does not match the expected interface operation signatures")
+        required
+      case None => namedOperations(ref, env, env.capabilityAnswer)
+    }
+    private case class NamedLambda(parameter: String, interface: Type.Interface, result: Option[Computation], body: Value)
+    private def namedLambda(v: Value, env: Environment): Option[NamedLambda] = {
+      val parts: Option[(String, Type, Option[Computation], Term, Option[String])] = v match {
+        case Value.InferredLambda(p, a, b, caller) => Some((p, a, None, b, caller))
+        case Value.Lambda(p, a, r, b, caller) => Some((p, a, Some(r), b, caller))
+        case _ => None
+      }
+      parts.flatMap { case (p, a, r, b, caller) => namedInterface(a, env).map { ref =>
+        require(caller.isEmpty, "A capability parameter cannot also bind a caller region; use a returned function")
+        val body = b match {
+          case Term.Return(value) => value
+          case Term.Apply(f, a) => Value.Instantiate(f, a)
+          case _ => fail("A capability abstraction body must be a value; put computations inside a returned function")
+        }
+        require(r.forall(c => c.form.isEmpty && c.effect == Effect.Pure), "A capability abstraction result must be a value type")
+        NamedLambda(p, ref, r, body)
+      }}
+    }
+    private def namedAbstraction(lambda: NamedLambda, expected: Option[Type.CapabilityPoly], env: Environment): CheckedValue = {
+      val NamedLambda(parameter, ref, annotation, body) = lambda
+      val region = fresh(parameter)
+      val ops = capabilityOperations(ref, region, expected, env)
+      val inner = env.withCapability(parameter, region, ops)
+      val required = expected.map(p => open(p.body, p.parameter, region))
+      val declared = annotation.map(c => resolve(c, inner).value)
+      val checked = declared.orElse(required).fold(value(body, inner))(checkValue(body, _, inner))
+      required.foreach(t => require(subtype(checked.tpe, t, env.effectBounds, inner.logic),
+        s"Expected ${show(t)}, found ${show(checked.tpe)}", DiagnosticKind.ContractFailure))
+      val (captured, _) = Evidence.generalize(region, checked.residuals)
+      val cs = checked.captures - region
+      finishValue(CheckedValue(Value.CapabilityLambda(region, ops, body),
+        Type.CapabilityPoly(region, ops, checked.tpe, cs, None, captured), cs, List(checked),
+        quantified = captured.map(_.binding), discharged = captured.map(_.name).toSet))
     }
     private def declaredSignature(op: Operation, env: Environment): Option[Signature] = op.interfaceName.map { name =>
       val schema = interfaces.getOrElse(name, fail(s"Unknown interface $name"))
@@ -674,7 +792,7 @@ object Checker {
       val caller = Caller(fresh("bodyRegion"), fresh("callDistance"))
       val call = Binding(fresh("callEvidence"), Constraint(caller.region, target), Distance.Variable(caller.distance))
       val id = fresh(parameter)
-      val arg = resolve(argument, env)
+      val arg = resolveDomain(argument, Some(result), env)
       var inner = env.copy(region = caller.region, delta = call :: env.delta,
         kinds = env.kinds.updated(caller.distance, Kind.Distance)).withCaller(callerName, caller.region)
       val contexts = parameters.map { (n, k) =>
@@ -695,6 +813,8 @@ object Checker {
 
     private def checkValue(source: Value, expected: Type, env: Environment): CheckedValue = {
       val checked = (source, expected) match {
+        case (_, p: Type.CapabilityPoly) if namedLambda(source, env).nonEmpty =>
+          namedAbstraction(namedLambda(source, env).get, Some(p), env)
         case (lambda @ (Value.FixedLambda(_, _, _, _, _) | Value.Lambda(_, _, _, _, None) |
             Value.InferredLambda(_, _, _, None) | Value.UnannotatedLambda(_, _, _, None)),
             Type.FixedFunction(arg, ret, _, Some(region), binder)) =>
@@ -707,7 +827,7 @@ object Checker {
           }
           require(anchor.forall(n => env.localRegion(n) == region), "Fixed-region lambda annotation names a different call region")
           val scope = env.copy(region = region)
-          val domain = argument.fold(arg)(resolve(_, scope))
+          val domain = argument.fold(arg)(a => resolveDomain(a, annotation, scope, Some(arg)))
           val id = fresh(parameter)
           val required = binder.fold(ret)(n => Contracts.substitute(ret, n, Expr.Variable(id)))
           val result = annotation.fold(required)(resolve(_, scope.bindIdentity(parameter, domain, id)))
@@ -720,7 +840,8 @@ object Checker {
             case Value.UnannotatedLambda(p, r, b, name) => (p, None, r, b, name)
           }
           val caller = Caller(fresh("annotationCaller"), fresh("annotationDistance"))
-          val arg = argument.fold(f.argument)(resolve(_, env.copy(annotationDefaultRegion = f.region)))
+          val scope = env.copy(annotationDefaultRegion = f.region)
+          val arg = argument.fold(f.argument)(a => resolveDomain(a, annotation, scope, Some(f.argument)))
           val id = fresh(parameter)
           val opened = FunctionTypes.result(f, caller.region, Distance.Variable(caller.distance))
           val required = f.parameter.fold(opened)(n => Contracts.substitute(opened, n, Expr.Variable(id)))
@@ -737,6 +858,7 @@ object Checker {
     }
 
     private def inferValue(v: Value, env: Environment): CheckedValue = v match {
+      case _ if namedLambda(v, env).nonEmpty => namedAbstraction(namedLambda(v, env).get, None, env)
       case Value.Integer(n) => CheckedValue(v, if refined then singleton(Type.Int, Expr.Integer(n)) else Type.Int, Set.empty, symbolic = Some(Expr.Integer(n)))
       case Value.Boolean(b) => CheckedValue(v, if refined then singleton(Type.Bool, Expr.Boolean(b)) else Type.Bool, Set.empty, symbolic = Some(Expr.Boolean(b)))
       case Value.Unit => CheckedValue(v, Type.Unit, Set.empty, symbolic = Some(Expr.Unit))
@@ -816,20 +938,21 @@ object Checker {
       case Value.FixedLambda(parameter, argument, result, body, anchor) =>
         val region = anchor.map(env.localRegion).getOrElse(env.region)
         val scope = env.copy(region = region)
-        val arg = argument.map(resolve(_, scope)).getOrElse(fail("A fixed-region lambda without a domain needs an expected fixed-region arrow"))
+        val arg = argument.map(a => resolveDomain(a, result, scope)).getOrElse(fail("A fixed-region lambda without a domain needs an expected fixed-region arrow"))
         val id = fresh(parameter)
         val ret = result.map(resolve(_, scope.bindIdentity(parameter, arg, id)))
         fixedAbstraction(v, parameter, arg, ret, body, region, id, env)
       case Value.ContextLambda(p, a, r, ks, b, name) => contextAbstraction(v, p, a, r, ks, b, env, name)
       case Value.Lambda(parameter, argument, result, body, callerName) =>
         val caller = Caller(fresh("annotationCaller"), fresh("annotationDistance"))
-        val arg = resolve(argument, env)
+        val arg = resolveDomain(argument, Some(result), env)
         val id = fresh(parameter)
         val ret = resolve(result, env.copy(region = caller.region, annotationDefaultRegion = Some(env.region)).withCaller(callerName, caller.region).bindIdentity(parameter, arg, id))
         abstraction(v, parameter, arg, Some(ret), body, Some(env.region), Some(id), env, Some(caller), callerName)
       case Value.InferredLambda(parameter, argument, body, callerName) =>
         val caller = Caller(fresh("annotationCaller"), fresh("annotationDistance"))
-        abstraction(v, parameter, resolve(argument, env),
+        val annotation = body match { case Term.Ascribe(_, c) => Some(c); case _ => None }
+        abstraction(v, parameter, resolveDomain(argument, annotation, env),
           None, body, None, None, env, Some(caller), callerName)
       case _: Value.UnannotatedLambda =>
         fail("A lambda without a domain annotation needs an expected function type")
@@ -1271,7 +1394,7 @@ object Checker {
         require(anchor.forall(r => env.localRegion(r) == env.region), "A recursive fixed-region definition must use its enclosing lexical region")
         require(!local || callerName.isEmpty, "Caller-region binders belong to ordinary functions")
         val caller = Option.unless(local)(Caller(fresh("recursiveCaller"), fresh("recursiveDistance")))
-        val arg = resolve(argument, env)
+        val arg = resolveDomain(argument, Some(result), env)
         val id = fresh(parameter)
         val ret = resolve(result, env.copy(region = caller.fold(env.region)(_.region), annotationDefaultRegion = Some(env.region)).withCaller(callerName, caller.fold(env.region)(_.region)).bindIdentity(parameter, arg, id))
         val recursive = if local then Type.FixedFunction(arg, ret, env.capabilities.keySet, Some(env.region), Some(id))

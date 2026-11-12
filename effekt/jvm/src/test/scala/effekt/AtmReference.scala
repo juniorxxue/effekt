@@ -54,6 +54,12 @@ object AtmReference {
     }
     case Syntax.Value.Instantiate(function, capability) => value(function, env) match {
       case Value.CapabilityAbstraction(instantiate) => instantiate(value(capability, env))
+      // Named capability parameters use the ordinary lambda AST in source.
+      // Their checked elaboration is still a value-only capability abstraction.
+      case Value.Function(call) => call(value(capability, env)) match {
+        case Computation.Returned(result) => result
+        case _ => throw new IllegalStateException("A capability abstraction must return a value")
+      }
       case other => throw new IllegalStateException(s"Cannot instantiate $other")
     }
     case Syntax.Value.KindLambda(_, _, body) => Value.EffectAbstraction(value(body, env))

@@ -9,33 +9,24 @@ interface File {
 def main(): Int = {
   val file = fun [C: Cty] (c: Int)[R: Reg] {
     fun (body:
-      (f: {
-        def read(): Int / (C => C);
-        def close(): Unit / (C => C);
-      }) => (forall E: Ev(f, 1, R).
+      (f: File) => (forall E: Ev(f, 1, R).
         ((Unit)[K: ATC(dist(path(f)))] => Int / (K[Int] => K[C]) at {f}))
     ) at [R]: C {
       try {
         body(h)[step(h)][[]]()
       } with h: File {
-        def read(): Int / (C => C) = resume(c)
-        def close(): Unit / (C => C) = resume(())
+        def read() = resume(c)
+        def close() = resume(())
         return x => x
       }: C
     }
   };
-  file[Int](7)(fun (a: {
-    def read(): Int / (Int => Int);
-    def close(): Unit / (Int => Int);
-  }) {
+  file[Int](7)(fun (a: File) {
     fun [EA: Ev(a, 1, top)] {
       fun ()[S: Reg, K: ATC(dist(path(a)))]: Int / (K[Int] => K[Int]) {
         evidence PA = path(a);
         cty A = Int / (K[Int] => K[Int]);
-        file[A](35)(fun (b: {
-          def read(): Int / (A => A);
-          def close(): Unit / (A => A);
-        }) {
+        file[A](35)(fun (b: File) {
           fun [EB: Ev(b, 1, S)] {
             fun ()[J: ATC(dist(path(b)))]: Int / (J[Int] => J[A]) {
               val x = a.read[path(b) + EB + PA; J[layer(Int, K[Int], K)]]()

@@ -57,6 +57,7 @@ object Lowering {
       }
       val body = term(p.body, Env())
       val printed = Contracts.base(p.body.tpe.value) match {
+        case Type.Interface(n, _) => throw Diagnostic("Unresolved interface capability type " + n)
         case _: Type.AbstractResult => throw Diagnostic("A closed result must have a known value type")
         case Type.Int => "println(atmShowInteger(atmResult))"
         case Type.Bool => "println(atmResult)"
@@ -103,6 +104,7 @@ object Lowering {
         val cs = (captures.toList.sorted.map(env.caps) :+ "io").distinct.mkString(", ")
         s"() {$cap: $tpe} => (${target(body, env.withCapability(name, cap, tpe))}) at {$cs}"
       case Type.EffectPoly(_, body, _) => target(body, env)
+      case Type.Interface(n, _) => throw Diagnostic(s"Unresolved interface capability type $n")
     }
 
     private def typeCaptures(tpe: Type): Set[String] = tpe match {
